@@ -40,12 +40,17 @@ const MAX_SCALE = 4;
 const SCALE_STEP = 0.5;
 
 export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Reset khi src thay doi
   useEffect(() => {
@@ -82,7 +87,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
     }
   }, [src]);
 
-  if (!src) return null;
+  if (!mounted || !src) return null;
 
   const zoomIn = () => setScale((s) => Math.min(MAX_SCALE, +(s + SCALE_STEP).toFixed(2)));
   const zoomOut = () => setScale((s) => Math.max(MIN_SCALE, +(s - SCALE_STEP).toFixed(2)));
@@ -279,3 +284,5 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
     document.body
   );
 }
+
+export { ImageLightbox };

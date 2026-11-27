@@ -3,7 +3,7 @@
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SessionProvider } from "@/components/session-provider";
 import { PhanCongProvider } from "@/lib/data/cong-no-store";
 import { KhoProvider } from "@/lib/data/kho-store";
@@ -31,6 +31,17 @@ import { PhieuDatNccProvider } from "@/lib/data/phieu-dat-ncc-store";
 import { WorkspaceProvider } from "@/lib/workspace-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Ẩn splash loader mượt mà khi React đã mount hoàn tất
+    if (typeof window !== "undefined") {
+      const splash = document.getElementById("mimin-root-splash");
+      if (splash) {
+        splash.style.opacity = "0";
+        setTimeout(() => splash.remove(), 280);
+      }
+    }
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -44,8 +55,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <PhanCongProvider>
             <KhoProvider>
@@ -106,5 +118,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </SessionProvider>
       </QueryClientProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }

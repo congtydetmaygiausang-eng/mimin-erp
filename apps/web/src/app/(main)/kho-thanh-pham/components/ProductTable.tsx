@@ -1,10 +1,18 @@
 // ============ PRODUCT TABLE VIEW ============
-// Tach tu page.tsx (2026-08-05 - toi uu B.2)
+// Tối ưu nâng cấp Bảng Danh Sách Chuẩn ERP cho Kho Thành Phẩm
+"use client";
 
-import React, { useMemo } from "react";
-import { Edit, Truck, Trash2, Image as ImageIcon } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import {
+  Edit, Truck, Trash2, Image as ImageIcon, Eye,
+  ChevronDown, ChevronUp, Package, MapPin, Tag,
+  Layers, ShoppingBag, ArrowUpRight, CheckCircle2,
+  AlertTriangle
+} from "lucide-react";
 import { layMaLoTonKho, type SanPhamTP } from "../data";
 import { LOAI_SP_LABELS, type LoaiSP, detectLoaiSP } from "@/lib/data/lenh-cat-store";
+import { formatVND } from "@/lib/data/real-data";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 const getPhanLoaiLabel = (phanLoai: string, tenSP: string) => {
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(phanLoai);
@@ -21,189 +29,419 @@ interface ProductTableProps {
   handleDelete: (id: string) => void;
   onSuaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
   onXoaTong?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
+  onDangBan?: (group: { maSP: string; tenSP: string; items: SanPhamTP[] }) => void;
+  onOpenVariant?: (s: SanPhamTP) => void;
+  highlightedMaSP?: string | null;
 }
 
-export function ProductTable({ filtered, productImages, productVariantImages = {}, setEditing, handleXuatKho, handleDelete, onSuaTong, onXoaTong }: ProductTableProps) {
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+export function ProductTable({
+  filtered,
+  productImages,
+  productVariantImages = {},
+  setEditing,
+  handleXuatKho,
+  handleDelete,
+  onSuaTong,
+  onXoaTong,
+  onDangBan,
+  onOpenVariant,
+  highlightedMaSP,
+}: ProductTableProps) {
+  const [zoomImg, setZoomImg] = useState<{ src: string; alt?: string } | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleCollapse = (maSP: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [maSP]: !prev[maSP] }));
+  };
 
   // Nhóm sản phẩm theo Mã SP
   const groupedProducts = useMemo(() => {
     const groups: Record<string, SanPhamTP[]> = {};
-    filtered.forEach((s) => {
+    (filtered || []).forEach((s) => {
+      if (!s || !s.maSP) return;
       if (!groups[s.maSP]) groups[s.maSP] = [];
       groups[s.maSP].push(s);
     });
     return Object.values(groups);
   }, [filtered]);
 
-  const [displayLimit, setDisplayLimit] = React.useState(20);
+  const [displayLimit, setDisplayLimit] = useState(25);
+
+  React.useEffect(() => {
+    if (highlightedMaSP) {
+      const idx = groupedProducts.findIndex((g) => g?.[0]?.maSP === highlightedMaSP);
+      if (idx >= 0 && idx >= displayLimit) {
+        setDisplayLimit(idx + 10);
+      }
+    }
+  }, [highlightedMaSP, groupedProducts, displayLimit]);
 
   const handleScroll = () => {
     if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 500) {
-      setDisplayLimit(prev => prev + 20);
+      setDisplayLimit((prev) => prev + 25);
     }
   };
 
   React.useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="flex flex-col gap-4">
-      {previewImage && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out transition-opacity"
-          onClick={() => setPreviewImage(null)}
-        >
-          <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl" />
-        </div>
+      {zoomImg && (
+        <ImageLightbox
+          src={zoomImg.src}
+          alt={zoomImg.alt || "Ảnh sản phẩm"}
+          onClose={() => setZoomImg(null)}
+        />
       )}
-      
-      {groupedProducts.slice(0, displayLimit).map((group) => {
-        const totalQty = group.reduce((s, x) => s + x.soLuong, 0);
+
+      {groupedProducts.slice(0, displayLimit).map((group, groupIndex) => {
+        if (!group || group.length === 0 || !group[0]) return null;
+        const mainSP = group[0];
+        const totalQty = group.reduce((sum, x) => sum + (Number(x?.soLuong) || 0), 0);
+        const totalValue = group.reduce((sum, x) => sum + (Number(x?.giaTri) || 0), 0);
+        const isCollapsed = collapsedGroups[mainSP.maSP] === true;
+        const isManPJ =
+          (mainSP.maSP || "").toUpperCase().includes("TPJ") ||
+          (mainSP.tenSP || "").toUpperCase().includes("MANPJ") ||
+          (mainSP.thuongHieu || "").toLowerCase().includes("man");
+
+        const mainImg =
+          productImages[mainSP.maSP] ||
+          productImages[mainSP.id] ||
+          mainSP.hinhAnh?.[0] ||
+          group.find((x) => x.hinhAnh?.[0])?.hinhAnh?.[0];
+
         return (
-        <div key={group[0].maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          {/* Header / Main SP */}
-          <div className="p-4 md:px-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex gap-4 relative">
-             <div className="absolute top-4 right-4 md:right-6 flex items-center gap-2 z-10">
-               {onSuaTong && (
-                 <button onClick={() => onSuaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-indigo-600 rounded-lg transition-colors bg-white/80 border border-slate-200 shadow-sm flex items-center gap-1.5" title="Sửa tổng thể sản phẩm">
-                    <Edit className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Sửa Nhóm</span>
-                 </button>
-               )}
-               {onXoaTong && (
-                 <button onClick={() => onXoaTong({ maSP: group[0].maSP, tenSP: group[0].tenSP, items: group })} className="p-2 text-rose-400 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors bg-white/80 border border-rose-200 shadow-sm flex items-center gap-1.5" title="Xóa toàn bộ nhóm sản phẩm">
-                    <Trash2 className="w-4 h-4" /> <span className="hidden md:inline text-xs font-bold">Xóa Nhóm</span>
-                 </button>
-               )}
-             </div>
-            <div 
-              className="w-20 h-28 md:w-24 md:h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 shadow-sm cursor-zoom-in hover:opacity-90 transition-opacity"
-              onClick={() => {
-                const img = productImages[group[0].maSP] || group[0].hinhAnh?.[0];
-                if (img) setPreviewImage(img);
-              }}
-            >
-              {productImages[group[0].maSP] || group[0].hinhAnh?.[0] ? (
-                <img src={productImages[group[0].maSP] || group[0].hinhAnh?.[0]} alt={group[0].tenSP} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                  <ImageIcon className="w-8 h-8" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center pr-6 py-1">
-              <div className="font-bold text-slate-800 text-[15px] md:text-lg leading-tight line-clamp-2 mb-1.5">{group[0].tenSP}</div>
-              <div className="text-xs md:text-sm font-mono font-extrabold text-indigo-600 mb-3">{group[0].maSP}</div>
-              <div className="flex flex-wrap items-center gap-2">
-                 <div className="text-[10px] md:text-xs uppercase font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 shadow-sm">
-                   {getPhanLoaiLabel(group[0].phanLoai, group[0].tenSP)}
-                 </div>
-                 <div className="text-[10px] md:text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 shadow-sm">
-                   Tổng: <span className="text-emerald-900 font-black">{totalQty.toLocaleString()}</span> sp
-                 </div>
-                 <div className="hidden md:flex gap-1.5 ml-2">
-                    <PriceChip label="Bán lẻ" price={group[0].giaBanLe} />
-                    <PriceChip label="Bán sỉ" price={group[0].giaBanSi} />
-                 </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Variants */}
-          <div className="divide-y divide-slate-100 bg-white">
-            {group.map(s => (
-              <div key={s.id} className="p-4 md:px-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex-shrink-0 relative cursor-zoom-in hover:opacity-90 transition-opacity"
-                    onClick={() => {
-                      if (s.hinhAnh?.[0]) setPreviewImage(s.hinhAnh[0]);
-                    }}
-                  >
-                    {s.hinhAnh?.[0] ? (
-                      <img src={s.hinhAnh[0]} alt={s.mau} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <ImageIcon className="w-5 h-5" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 rounded-lg pointer-events-none"></div>
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-800 text-sm md:text-base mb-0.5">{s.mau}</div>
-                    <div className="text-xs md:text-sm text-slate-500 font-medium">{s.size}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 border-slate-50 pt-3 md:pt-0">
-                  <div className="flex flex-col md:items-end gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="font-black text-slate-800 text-[16px] md:text-lg">{s.soLuong.toLocaleString()}</div>
-                      {s.soLuong <= 0 ? (
-                        <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] md:text-xs rounded font-bold shadow-sm">Hết hàng</span>
-                      ) : (
-                        <>
-                          {s.trangThai === "con" && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] md:text-xs rounded font-bold shadow-sm">Còn</span>}
-                          {s.trangThai === "dat-hang" && <span className="px-2 py-0.5 bg-sky-100 text-sky-700 text-[10px] md:text-xs rounded font-bold shadow-sm">Đang SX</span>}
-                          {s.trangThai === "xuat-kho" && <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] md:text-xs rounded font-bold shadow-sm">Đã xuất</span>}
-                        </>
-                      )}
+          <div
+            key={mainSP.maSP}
+            id={`product-group-${mainSP.maSP}`}
+            className={`bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-300 shadow-sm overflow-hidden ${
+              highlightedMaSP === mainSP.maSP
+                ? "border-emerald-500 ring-4 ring-emerald-300 dark:ring-emerald-900 shadow-lg bg-emerald-50/10"
+                : "border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
+            }`}
+          >
+            {/* ============ HEADER CỦA NHÓM SẢN PHẨM ============ */}
+            <div className="p-4 md:p-5 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-800/60 dark:via-slate-800/30 dark:to-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                {/* Ảnh đại diện sản phẩm */}
+                <div
+                  className="w-16 h-20 md:w-20 md:h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0 shadow-xs cursor-pointer relative group/thumb flex items-center justify-center"
+                  onClick={() => {
+                    if (mainImg) setZoomImg({ src: mainImg, alt: mainSP.tenSP });
+                  }}
+                  title="Bấm để xem ảnh lớn"
+                >
+                  {mainImg ? (
+                    <img
+                      src={mainImg}
+                      alt={mainSP.tenSP}
+                      className="w-full h-full object-cover group-hover/thumb:scale-105 transition duration-300"
+                    />
+                  ) : (
+                    <div className="text-slate-400 flex flex-col items-center">
+                      <ImageIcon className="w-6 h-6 opacity-40" />
+                      <span className="text-[10px] font-bold mt-1">Chưa có</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs md:text-sm font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-md border border-violet-200 shadow-sm">{s.viTri || 'Chưa xếp'}</span>
-                      <span
-                        title={s.maLenhCat ? `Lô tồn kho · Nguồn: ${s.maLenhCat}` : "Lô tồn kho nhập trực tiếp"}
-                        className="text-[10px] md:text-xs font-mono font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-dashed border-slate-300"
-                      >
-                        Lô tồn · {layMaLoTonKho(s)}
-                      </span>
-                      {s.maLenhCat && (
-                        <span className="text-[10px] md:text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                          Nguồn · {s.maLenhCat}
+                  )}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/thumb:opacity-100 transition flex items-center justify-center text-white">
+                    <Eye className="w-4 h-4" />
+                  </div>
+                </div>
+
+                {/* Thông tin sản phẩm */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-mono font-black text-xs md:text-sm text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800 whitespace-nowrap">
+                      {mainSP.maSP}
+                    </span>
+                    <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                      {getPhanLoaiLabel(mainSP.phanLoai, mainSP.tenSP)}
+                    </span>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                        isManPJ
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300"
+                          : "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300"
+                      }`}
+                    >
+                      {isManPJ ? "👔 Hàng ManPJ" : "👕 Hàng Polomimin"}
+                    </span>
+                  </div>
+
+                  <h2 className="text-base md:text-lg font-black text-slate-900 dark:text-white leading-tight line-clamp-1" title={mainSP.tenSP}>
+                    {mainSP.tenSP}
+                  </h2>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
+                    <span className="flex items-center gap-1 font-semibold">
+                      <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>{group.length} màu</span>
+                    </span>
+                    <span>•</span>
+                    <span className="font-semibold">
+                      Tổng tồn:{" "}
+                      <b className="text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm">
+                        {totalQty.toLocaleString()} SP
+                      </b>
+                    </span>
+                    {totalValue > 0 && (
+                      <>
+                        <span>•</span>
+                        <span className="font-semibold">
+                          Trị giá: <b className="text-slate-800 dark:text-slate-200 font-mono font-bold">{formatVND(totalValue)}</b>
                         </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => setEditing(s)} className="p-2 bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600 rounded-lg transition-colors border border-slate-200 shadow-sm" title="Sửa">
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleXuatKho(s.id)} className="p-2 bg-slate-100 text-slate-500 hover:bg-emerald-100 hover:text-emerald-600 rounded-lg transition-colors border border-slate-200 shadow-sm" title="Xuất kho">
-                      <Truck className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(s.id)} className="p-2 bg-slate-100 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-lg transition-colors border border-slate-200 shadow-sm" title="Xóa">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            ))}
+
+              {/* Các nút hành động của nhóm */}
+              <div className="flex items-center gap-1.5 flex-wrap self-end md:self-center shrink-0">
+                {onDangBan && (
+                  <button
+                    type="button"
+                    onClick={() => onDangBan({ maSP: mainSP.maSP, tenSP: mainSP.tenSP, items: group })}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition shadow-xs cursor-pointer whitespace-nowrap"
+                    title="Đăng bán sản phẩm này sang Danh Mục Sản Phẩm"
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Đăng bán</span>
+                  </button>
+                )}
+
+                {onSuaTong && (
+                  <button
+                    type="button"
+                    onClick={() => onSuaTong({ maSP: mainSP.maSP, tenSP: mainSP.tenSP, items: group })}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 font-bold text-xs flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                    title="Sửa đồng loạt tên, giá, loại sản phẩm"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Sửa Nhóm</span>
+                  </button>
+                )}
+
+                {onXoaTong && (
+                  <button
+                    type="button"
+                    onClick={() => onXoaTong({ maSP: mainSP.maSP, tenSP: mainSP.tenSP, items: group })}
+                    className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300 transition cursor-pointer"
+                    title="Xóa toàn bộ nhóm sản phẩm này khỏi kho"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => toggleCollapse(mainSP.maSP)}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer whitespace-nowrap"
+                  title={isCollapsed ? "Mở rộng bảng chi tiết màu" : "Thu gọn bảng chi tiết"}
+                >
+                  {isCollapsed ? (
+                    <>
+                      <span>Mở rộng</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Thu gọn</span>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* ============ BẢNG CHI TIẾT TỪNG MÀU & SIZE ============ */}
+            {!isCollapsed && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[980px]">
+                  <thead className="bg-slate-100/70 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200/80 dark:border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-3 text-center w-12 whitespace-nowrap">#</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">Biến Thể Màu Sắc</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap min-w-[170px]">Chi Tiết Size</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px]">Vị Trí Kho</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">Mã Lô Tồn Kho</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">Đơn Giá / Giá Vốn</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">Tồn Kho (SP)</th>
+                      <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[110px]">Tình Trạng</th>
+                      <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[130px]">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium bg-white dark:bg-slate-900">
+                    {group.map((s, colorIndex) => {
+                      if (!s) return null;
+                      const sQty = Number(s.soLuong) || 0;
+                      const sImg =
+                        s.hinhAnh?.[0] ||
+                        productVariantImages[`${s.maSP}_${s.mau}`] ||
+                        productImages[s.maSP];
+                      const maLo = layMaLoTonKho(s);
+
+                      return (
+                        <tr
+                          key={s.id}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition group"
+                        >
+                          {/* STT */}
+                          <td className="py-3 px-3 text-center text-slate-400 font-bold whitespace-nowrap">
+                            {colorIndex + 1}
+                          </td>
+
+                          {/* Màu sắc & Ảnh biến thể */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 shrink-0 cursor-pointer shadow-2xs relative group/varimg flex items-center justify-center"
+                                onClick={() => {
+                                  if (sImg) setZoomImg({ src: sImg, alt: `${s.tenSP} - ${s.mau}` });
+                                }}
+                                title="Bấm xem ảnh lớn biến thể màu"
+                              >
+                                {sImg ? (
+                                  <img src={sImg} alt={s.mau} className="w-full h-full object-cover" />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                                  {s.mau || "Mặc định"}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono block">
+                                  {s.maSKU || s.id}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Chi tiết size */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {s.chiTietSize && s.chiTietSize.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+                                {s.chiTietSize.map((sz, szIdx) => (
+                                  <span
+                                    key={szIdx}
+                                    className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-slate-700 dark:text-slate-300 font-bold"
+                                  >
+                                    {sz.size}: <b>{sz.sl}</b>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-600 dark:text-slate-400 text-xs">
+                                {s.size || "Free Size"}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Vị trí kho */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-[11px] font-semibold">
+                              <MapPin className="w-3 h-3" />
+                              {s.viTri || "Khu A1"}
+                            </span>
+                          </td>
+
+                          {/* Mã Lô Tồn Kho */}
+                          <td className="py-3 px-3 whitespace-nowrap font-mono text-xs text-slate-600 dark:text-slate-400">
+                            {maLo}
+                          </td>
+
+                          {/* Đơn giá / Giá vốn */}
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                              {formatVND(s.donGia || s.giaVon || 0)}
+                            </span>
+                          </td>
+
+                          {/* Tồn kho */}
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <span
+                              className={`font-mono font-black text-sm ${
+                                sQty === 0
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : sQty < 50
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {sQty.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400 ml-1">SP</span>
+                          </td>
+
+                          {/* Tình trạng */}
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {sQty === 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                Hết hàng
+                              </span>
+                            ) : sQty < 50 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                Sắp hết ({sQty})
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Còn hàng
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Thao tác */}
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (onOpenVariant) onOpenVariant(s);
+                                  else setEditing(s);
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 transition cursor-pointer"
+                                title="Chỉnh sửa biến thể màu này"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleXuatKho(s.id)}
+                                className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 dark:bg-teal-950 dark:text-teal-300 transition cursor-pointer"
+                                title="Xuất kho biến thể này"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(s.id)}
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:bg-rose-950 dark:text-rose-300 transition cursor-pointer"
+                                title="Xóa dòng biến thể này"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
         );
       })}
     </div>
-  );
-}
-
-function PriceChip({ label, price }: { label: string; price?: number }) {
-  const [show, setShow] = React.useState(false);
-  
-  if (price == null || price === 0) return null; // Only show channels that have a price configured
-  
-  return (
-    <button 
-      onClick={() => setShow(!show)} 
-      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border transition-all duration-200 shadow-sm ${
-        show 
-          ? 'bg-amber-100 border-amber-300 text-amber-800' 
-          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
-      }`}
-    >
-      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
-    </button>
   );
 }

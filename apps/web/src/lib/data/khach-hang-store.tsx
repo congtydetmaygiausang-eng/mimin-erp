@@ -61,20 +61,87 @@ export type KhachHangUI = {
 export const LOAI_KH_OPTIONS = ["Đại lý cấp 1", "Đại lý cấp 2", "Công ty", "Shop", "Cá nhân", "Xưởng", "Khách hàng xưởng"] as const;
 export type LoaiKH = typeof LOAI_KH_OPTIONS[number];
 
+// Helper lọc sạch ký tự rác, lỗi font mã hóa (mojibake \uFFFD, ¿, non-breaking space)
+export function cleanCorruptedText(str?: string): string {
+  if (!str) return "";
+  return str.replace(/[\uFFFD¿]/g, "").replace(/\s+/g, " ").trim();
+}
+
+// Chuẩn hóa hiển thị loại khách hàng, triệt tiêu lỗi font và ký tự mã hóa lỗi
+export function formatLoaiKH(loai?: string): string {
+  if (!loai) return "Khách sỉ";
+  const trimmed = loai.trim();
+  if (!trimmed) return "Khách sỉ";
+
+  // Chuẩn hóa loại bỏ dấu, ký tự lạ, ký tự lỗi mã hóa UTF-8/mojibake (¿, ?, \uFFFD)
+  const norm = trimmed
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase();
+
+  // 1. Cá nhân (CÁ¿ NHÂN¿, CÁ? NHÂN, CÁ NHÂN, Cá nhân, ca_nhan, ca nhan, c? nh?n, ...)
+  if (
+    norm.includes("canhan") ||
+    (norm.startsWith("c") && norm.includes("nhan")) ||
+    norm === "ca" ||
+    norm.includes("nhan")
+  ) {
+    return "Cá nhân";
+  }
+
+  // 2. Đại lý cấp 1 & 2
+  if (norm.includes("dailycap1") || norm.includes("cap1") || norm === "daily1" || norm === "dl1") {
+    return "Đại lý cấp 1";
+  }
+  if (norm.includes("dailycap2") || norm.includes("cap2") || norm === "daily2" || norm === "dl2") {
+    return "Đại lý cấp 2";
+  }
+  if (norm.includes("daily") || norm.startsWith("dl")) {
+    return "Đại lý cấp 1";
+  }
+
+  // 3. Công ty
+  if (norm.includes("congty") || norm.includes("cty") || norm === "company") {
+    return "Công ty";
+  }
+
+  // 4. Shop
+  if (norm.includes("shop") || norm.includes("cuahang")) {
+    return "Shop";
+  }
+
+  // 5. Xưởng / Khách hàng xưởng
+  if (norm.includes("xuong")) {
+    return "Khách hàng xưởng";
+  }
+
+  // 6. Khách sỉ / Sỉ
+  if (norm.includes("khachsi") || norm.includes("si")) {
+    return "Khách sỉ";
+  }
+
+  // Dọn sạch ký tự lỗi font trước khi trả về chuỗi gốc
+  const cleaned = trimmed.replace(/[\?¿\uFFFD\u00A0]/g, "").trim();
+  return cleaned || "Khách sỉ";
+}
+
 function mapToDB(ui: KhachHangUI): any {
   return {
     id: ui.id,
     ma_kh: ui.maKH,
-    ten_kh: ui.ten,
-    loai: ui.loai || "",
-    dia_chi: ui.diaChi || "",
+    ten_kh: cleanCorruptedText(ui.ten),
+    loai: formatLoaiKH(ui.loai),
+    dia_chi: cleanCorruptedText(ui.diaChi) || "",
     sdt: ui.sdt || "",
     email: ui.email || "",
     mst: ui.mst || "",
     cong_no: Number(ui.congNo) || 0,
     han_muc_no: Number(ui.hanMucNo) || 0, // P1 - 2026-08-07
     rating: Number(ui.rating) || 4,
-    ghi_chu: ui.ghiChu || "",
+    ghi_chu: cleanCorruptedText(ui.ghiChu) || "",
     trang_thai: ui.trangThai || "Thường",
     facebook_url: ui.facebookUrl || "", // 2026-08-08
     nhu_cau_chinh: Array.isArray(ui.nhuCauChinh) ? ui.nhuCauChinh : [], // 2026-08-18
@@ -127,14 +194,14 @@ function mapToUI(db: any): KhachHangUI {
   return {
     id: db.id,
     maKH,
-    ten,
+    ten: cleanCorruptedText(ten),
     sdt: (db.sdt || db.phone || "").trim(),
     email: (db.email || "").trim(),
-    diaChi: (db.dia_chi || db.diaChi || db.address || "").trim(),
-    loai: db.loai || db.loaiKH || "",
+    diaChi: cleanCorruptedText(db.dia_chi || db.diaChi || db.address || ""),
+    loai: formatLoaiKH(db.loai || db.loaiKH || ""),
     congNo: Number(db.cong_no ?? db.congNo ?? db.cong_no_hien_tai ?? db.congNoHienTai ?? 0) || 0,
     hanMucNo: Number(db.han_muc_no ?? db.hanMucNo ?? 0) || 0,
-    ghiChu,
+    ghiChu: cleanCorruptedText(ghiChu),
     trangThai: db.trang_thai || db.trangThai || "",
     rating: Number(r) || 4,
     mst,

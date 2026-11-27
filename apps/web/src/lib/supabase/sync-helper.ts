@@ -17,8 +17,19 @@
 //   await supabaseFetchAll("lenh_cat")
 //   await supabaseUpsert("lenh_cat", data)
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase, isSupabaseEnabled } from "./client";
+
+// Bộ đệm ghi nhớ các bảng bị chặn quyền (42501 RLS) hoặc bảng chưa tạo (42P01) để tuyệt đối không gửi request spam lên Supabase
+const blockedTables = new Set<string>(["vat_tu_dat_san_xuat"]);
+
+export function clearBlockedTables() {
+  blockedTables.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("mimin_auth_changed", clearBlockedTables);
+}
 
 /**
  * Convert camelCase → snake_case
@@ -70,25 +81,73 @@ export function checkSupabase(): boolean {
   return isSupabaseEnabled && supabase !== null;
 }
 
+const QUERY_TIMEOUT_MS = 3500; // 3.5s Network Timeout Shield chống nghẽn trang khi Supabase lag
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[Supabase] Request timed out sau ${timeoutMs}ms, tự động chuyển dùng local cache fallback`);
+      resolve(fallback);
+    }, timeoutMs);
+  });
+  return Promise.race([
+    promise.then((res) => {
+      clearTimeout(timer);
+      return res;
+    }),
+    timeoutPromise,
+  ]);
+}
+
 /**
  * Fetch tất cả rows từ 1 bảng
  * Tự động convert snake_case → camelCase cho khớp với app code
+ * Tích hợp AbortController chống nghẽn server và cờ chặn bảng không có quyền RLS
  */
 export async function supabaseFetchAll<T = any>(
   table: string,
   orderBy: string = "created_at",
   ascending: boolean = false
 ): Promise<T[]> {
-  if (!checkSupabase()) return [];
-  const { data, error } = await supabase!
-    .from(table)
-    .select("*")
-    .order(orderBy, { ascending });
-  if (error) {
-    console.error(`[Supabase] fetchAll(${table}) error:`, error);
+  if (!checkSupabase() || blockedTables.has(table)) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
+
+  try {
+    const { data, error } = await supabase!
+      .from(table)
+      .select("*")
+      .order(orderBy, { ascending })
+      .abortSignal(controller.signal);
+
+    clearTimeout(timer);
+
+    if (error) {
+      if (
+        error.code === "42501" ||
+        error.code === "42P01" ||
+        error.message?.includes("permission denied") ||
+        error.message?.includes("does not exist")
+      ) {
+        blockedTables.add(table);
+        console.warn(`[Supabase] Bảng "${table}" không khả dụng (${error.code || "RLS/Not Found"}). Đã chặn request tiếp theo để bảo vệ database.`);
+      } else {
+        console.warn(`[Supabase] fetchAll(${table}) error:`, error.message);
+      }
+      return [];
+    }
+    return (data || []).map((row) => snakeToCamel(row)) as T[];
+  } catch (e: any) {
+    clearTimeout(timer);
+    if (e?.name === "AbortError") {
+      console.warn(`[Supabase] fetchAll(${table}) timeout sau ${QUERY_TIMEOUT_MS}ms (Đã hủy request để chống quá tải Postgres).`);
+    } else {
+      console.warn(`[Supabase] fetchAll(${table}) exception:`, e?.message);
+    }
     return [];
   }
-  return (data || []).map((row) => snakeToCamel(row)) as T[];
 }
 
 /**
@@ -102,16 +161,44 @@ export async function supabaseFetchAllRaw<T = any>(
   orderBy: string = "created_at",
   ascending: boolean = false
 ): Promise<T[]> {
-  if (!checkSupabase()) return [];
-  const { data, error } = await supabase!
-    .from(table)
-    .select("*")
-    .order(orderBy, { ascending });
-  if (error) {
-    console.warn(`[Supabase] fetchAllRaw(${table}) error:`, error.message);
+  if (!checkSupabase() || blockedTables.has(table)) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
+
+  try {
+    const { data, error } = await supabase!
+      .from(table)
+      .select("*")
+      .order(orderBy, { ascending })
+      .abortSignal(controller.signal);
+
+    clearTimeout(timer);
+
+    if (error) {
+      if (
+        error.code === "42501" ||
+        error.code === "42P01" ||
+        error.message?.includes("permission denied") ||
+        error.message?.includes("does not exist")
+      ) {
+        blockedTables.add(table);
+        console.warn(`[Supabase] Bảng "${table}" không khả dụng (${error.code || "RLS/Not Found"}). Đã chặn request tiếp theo để bảo vệ database.`);
+      } else {
+        console.warn(`[Supabase] fetchAllRaw(${table}) error:`, error.message);
+      }
+      return [];
+    }
+    return (data || []) as T[];
+  } catch (e: any) {
+    clearTimeout(timer);
+    if (e?.name === "AbortError") {
+      console.warn(`[Supabase] fetchAllRaw(${table}) timeout sau ${QUERY_TIMEOUT_MS}ms (Đã hủy request để chống quá tải Postgres).`);
+    } else {
+      console.warn(`[Supabase] fetchAllRaw(${table}) exception:`, e?.message);
+    }
     return [];
   }
-  return (data || []) as T[];
 }
 
 /**
@@ -190,10 +277,28 @@ export async function supabaseUpsert<T extends { id: string }>(
  */
 export async function supabaseDelete(table: string, id: string): Promise<boolean> {
   if (!checkSupabase()) return false;
-  const { error } = await supabase!
-    .from(table)
-    .delete()
-    .eq("id", id);
+  if (!id) return false;
+
+  let query = supabase!.from(table).delete();
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+  if (table === "san_pham") {
+    if (isUUID) {
+      query = query.or(`id.eq.${id},ma_sp.eq.${id}`);
+    } else {
+      query = query.or(`ma_sp.eq.${id},ma_sp.ilike.${id}`);
+    }
+  } else if (table === "kho_thanh_pham") {
+    if (isUUID) {
+      query = query.or(`id.eq.${id},ma_sp.eq.${id}`);
+    } else {
+      query = query.or(`id.eq.${id},ma_sp.eq.${id},ma_sp.ilike.${id}`);
+    }
+  } else {
+    query = query.eq("id", id);
+  }
+
+  const { error } = await query;
   if (error) {
     console.error(`[Supabase] delete(${table}, ${id}) error:`, error);
     return false;
@@ -229,6 +334,10 @@ export function useSupabaseSync<T extends { id: string }>(
     onConflict?: string;
   }
 ) {
+  const initialDataRef = useRef(initialData);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const mapOut = options?.mapOut;
   const onConflict = options?.onConflict || "id";
   const upsertRow = useCallback(
@@ -244,14 +353,28 @@ export function useSupabaseSync<T extends { id: string }>(
     }
   }, [localStorageKey]);
 
-  // Helper: đọc localStorage
+  // Helper: đọc localStorage (không phụ thuộc tham chiếu array initialData mới)
   const loadLocal = useCallback((): T[] => {
     if (typeof window === "undefined") return [];
     try {
       const raw = localStorage.getItem(localStorageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const init = initialDataRef.current;
+          if (Array.isArray(init) && init.length > 0) {
+            const existingIds = new Set(parsed.map((item: any) => item?.id));
+            const missing = init.filter((item: any) => item?.id && !existingIds.has(item.id));
+            if (missing.length > 0) {
+              const combined = [...missing, ...parsed];
+              try {
+                localStorage.setItem(localStorageKey, JSON.stringify(combined));
+              } catch {}
+              return combined;
+            }
+          }
+          return parsed;
+        }
       }
     } catch {}
     return [];
@@ -264,7 +387,16 @@ export function useSupabaseSync<T extends { id: string }>(
         const raw = localStorage.getItem(localStorageKey);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(initialData) && initialData.length > 0) {
+              const existingIds = new Set(parsed.map((item: any) => item?.id));
+              const missing = initialData.filter((item: any) => item?.id && !existingIds.has(item.id));
+              if (missing.length > 0) {
+                return [...missing, ...parsed];
+              }
+            }
+            return parsed;
+          }
         }
       } catch {}
     }
@@ -288,7 +420,7 @@ export function useSupabaseSync<T extends { id: string }>(
   const [source, setSource] = useState<"local" | "supabase" | "merged">("local");
   const [error, setError] = useState<string | null>(null);
 
-  // Init: Instant Load cache trước (SWR), âm thầm revalidate từ Supabase ở background
+  // Init: Chạy đúng 1 lần khi mount, tuyệt đối không re-fetch lặp vô tận
   useEffect(() => {
     let cancelled = false;
 
@@ -299,18 +431,33 @@ export function useSupabaseSync<T extends { id: string }>(
       setLoading(false);
     }
 
+    if (blockedTables.has(table)) {
+      if (local.length > 0) {
+        setDataState(local);
+        setSource("local");
+      }
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         if (checkSupabase()) {
           let remote = await supabaseFetchAll<any>(table);
-          if (options?.mapIn) {
-            remote = remote.map(options.mapIn);
+          if (optionsRef.current?.mapIn) {
+            remote = remote.map(optionsRef.current.mapIn);
           }
           if (!cancelled) {
-            // Nguồn Supabase luôn là chân lý: cập nhật êm dịu và sync xuống local
-            setDataState(remote);
-            saveLocal(remote);
-            setSource("supabase");
+            // Nguồn Supabase luôn là chân lý: nếu remote có dữ liệu thì cập nhật êm dịu và sync xuống local
+            if (remote && remote.length > 0) {
+              setDataState(remote);
+              saveLocal(remote);
+              setSource("supabase");
+            } else if (local.length > 0) {
+              // Nếu remote rỗng (do Supabase lỗi, timeout hoặc bảng trống): GIỮ NGUYÊN LOCAL DATA!
+              setDataState(local);
+              setSource("local");
+            }
           }
         } else {
           // Supabase tắt → chỉ dùng localStorage
@@ -332,16 +479,12 @@ export function useSupabaseSync<T extends { id: string }>(
       }
     })();
     return () => { cancelled = true; };
-  // Loading does not use the write mapper. Inline mapOut callbacks change on
-  // every render; depending on upsertRow here repeatedly reloads local data
-  // and triggers an infinite render loop when Supabase is disabled.
   }, [table, localStorageKey, loadLocal, saveLocal]);
 
-  // Subscribe realtime updates từ Supabase
+  // Subscribe realtime updates từ Supabase: Sử dụng channel tĩnh duy nhất
   useEffect(() => {
-    if (!checkSupabase()) return;
-    // Thêm random suffix để tránh lỗi trùng lặp channel khi nhiều component cùng mount
-    const channelName = `${table}-changes-${Math.random().toString(36).slice(2)}`;
+    if (!checkSupabase() || blockedTables.has(table)) return;
+    const channelName = `mimin-sync-${table}`;
     const channel = supabase!
       .channel(channelName)
       .on("postgres_changes",
@@ -352,7 +495,7 @@ export function useSupabaseSync<T extends { id: string }>(
             let next = [...prev];
             if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
               const camelPayload = snakeToCamel(payload.new);
-              const newRow = options?.mapIn ? options.mapIn(camelPayload) : (camelPayload as T);
+              const newRow = optionsRef.current?.mapIn ? optionsRef.current.mapIn(camelPayload) : (camelPayload as T);
               const idx = next.findIndex((r) => r.id === newRow.id);
               if (idx >= 0) next[idx] = newRow;
               else next = [newRow, ...next];
@@ -370,7 +513,7 @@ export function useSupabaseSync<T extends { id: string }>(
         }
       )
       .subscribe();
-    return () => { supabase!.removeChannel(channel); };
+    return () => { void supabase?.removeChannel(channel); };
   }, [table, saveLocal]);
 
   // setData: ghi cả 2 nơi
@@ -380,9 +523,13 @@ export function useSupabaseSync<T extends { id: string }>(
       saveLocal(next);
       // Ghi Supabase async (không block UI)
       if (checkSupabase()) {
-        const oldIds = prev.map((r) => r.id);
-        const newIds = next.map((r) => r.id);
-        const deletedIds = oldIds.filter((id) => !newIds.includes(id));
+        const newIds = new Set(next.map((r) => r.id));
+        const deletedItems = prev.filter((r) => !newIds.has(r.id));
+        const deletedIds: string[] = [];
+        deletedItems.forEach((item: any) => {
+          if (item.id) deletedIds.push(item.id);
+          if (item.dbId && item.dbId !== item.id) deletedIds.push(item.dbId);
+        });
         
         // Chỉ upsert những row mới hoặc bị thay đổi reference
         const rowsToUpsert = next.filter((row) => {

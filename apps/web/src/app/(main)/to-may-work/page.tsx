@@ -12,7 +12,7 @@ import { can } from "@/lib/permissions";
 
 import { useStageColorInput } from "@/lib/use-stage-color-input";
 import React, { useState } from "react";
-import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateCcw } from "lucide-react";
+import { Shirt, CheckCircle2, Clock, AlertTriangle, Package, ArrowRight, RotateCcw, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useLenhCat, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, type TrangThaiCongDoan, type LenhCat } from "@/lib/data/lenh-cat-store";
 import { kiemTraTruocHoanThanh } from "@/lib/data/cong-doan-helper";
@@ -20,6 +20,7 @@ import { LenhCatCardV2, ChiTietMauHistoryModal, StageWorkList, type ChiTietMauIn
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import { UploadBangChungModal } from "@/components/modals/UploadBangChungModal";
 import { useSession } from "@/components/session-provider";
+import { SanLuongGiaCongTab } from "./components/SanLuongGiaCongTab";
 
 const MAY_KEYS = ["mayAo", "mayQuan", "may"];
 
@@ -161,6 +162,14 @@ export default function UiMayPage() {
         getStagePC={(lc) => getMayPC(lc)?.[0]}
         onColorClick={(lc, mau) => setSelectedMau({ lc, mau })}
         emptyMessage="Chưa có việc may nào được giao"
+        extraTabs={[
+          {
+            key: "san_luong_gia_cong",
+            label: "Sản lượng gia công",
+            icon: <BarChart3 className="w-4 h-4" />,
+            content: <SanLuongGiaCongTab dsLenhCat={dsLenhCat} scope="MAY_ONLY" defaultGroup="MAY" />,
+          },
+        ]}
         renderCard={(lc) => {
 
             const catTT = getCatTT(lc);

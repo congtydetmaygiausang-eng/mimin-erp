@@ -7,6 +7,8 @@ import { useTheme } from "next-themes";
 import { Sun, Moon, Shirt, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
+import { useSession } from "@/components/session-provider";
+import { getDefaultLandingRoute } from "@/lib/permissions";
 
 const BACKGROUNDS = [
   { id: "teal", src: "/bg/login-teal.jpg", label: "Teal" },
@@ -18,6 +20,7 @@ const BACKGROUNDS = [
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { user } = useSession();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [bgIndex, setBgIndex] = useState(0);
@@ -58,7 +61,7 @@ export default function ResetPasswordPage() {
       toast.error(error.message);
     } else {
       toast.success("Đặt lại mật khẩu thành công!");
-      router.push("/dashboard");
+      router.push(getDefaultLandingRoute(user?.role));
     }
   };
 

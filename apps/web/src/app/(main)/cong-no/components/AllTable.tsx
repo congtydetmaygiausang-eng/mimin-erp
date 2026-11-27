@@ -29,9 +29,42 @@ export function AllTable({ filtered, phanCong, statusFilter, setStatusFilter, ng
 
   return (
     <>
-      <div className="card p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs opacity-60">Trạng thái:</span>
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition"
+              placeholder="Tìm theo tên xưởng, mã PC, lệnh cắt…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar self-stretch md:self-auto pb-0.5">
+            <span className="text-xs font-semibold text-slate-500 shrink-0 mr-1">Đối tượng:</span>
+            {([
+              { id: "all" as NguoiFilter, label: "Tất cả" },
+              { id: "Đối tác gia công" as NguoiFilter, label: "Xưởng gia công" },
+              { id: "Nhân viên nội bộ" as NguoiFilter, label: "Nội bộ" },
+            ]).map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setNguoiFilter(f.id)}
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  nguoiFilter === f.id
+                    ? "bg-teal-700 text-white font-semibold shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar tab-scroll-mobile max-w-full pt-1 border-t border-slate-100 dark:border-slate-800">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Trạng thái:</span>
           {([
             { id: "all" as StatusFilter, label: `Tất cả (${phanCong.length})` },
             { id: "Chờ giao" as StatusFilter, label: `Chờ giao (${dsChoGiao.length})` },
@@ -42,48 +75,23 @@ export function AllTable({ filtered, phanCong, statusFilter, setStatusFilter, ng
             <button
               key={f.id}
               onClick={() => setStatusFilter(f.id)}
-              className={`px-2.5 py-1 rounded text-xs ${
-                statusFilter === f.id ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                statusFilter === f.id
+                  ? "bg-slate-900 dark:bg-slate-800 text-white font-semibold shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
               }`}
             >
               {f.label}
             </button>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs opacity-60">Người PT:</span>
-          {([
-            { id: "all" as NguoiFilter, label: "Tất cả" },
-            { id: "Đối tác gia công" as NguoiFilter, label: "Đối tác" },
-            { id: "Nhân viên nội bộ" as NguoiFilter, label: "Nội bộ" },
-          ]).map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setNguoiFilter(f.id)}
-              className={`px-2.5 py-1 rounded text-xs ${
-                nguoiFilter === f.id ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
-          <input
-            className="input pl-9"
-            placeholder="Tìm theo tên, mã, lệnh cắt…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[950px] text-xs md:text-sm">
             <thead>
-              <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
+              <tr className="text-left bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
                 <th className="p-3">Mã PC</th>
                 <th className="p-3">Lệnh cắt</th>
                 <th className="p-3">Công đoạn</th>

@@ -82,7 +82,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Xóa profile thất bại: " + profileErr.message }, { status: 500 });
     }
 
-    // 2. Đã bỏ logic xóa auth.users theo yêu cầu, chỉ xóa trên public.users (ERP)
+    // 2. Xóa khỏi auth.users (nếu tồn tại)
+    try {
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+    } catch {
+      // Bỏ qua nếu user chỉ là record ở public.users
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

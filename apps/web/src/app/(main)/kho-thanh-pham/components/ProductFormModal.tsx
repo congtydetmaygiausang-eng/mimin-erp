@@ -7,7 +7,8 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
-import { Camera, Save, Plus, Trash2, Package, Calculator, X } from "lucide-react";
+import { AddSizeRatioModal } from "./AddSizeRatioModal";
+import { Camera, Save, Plus, Trash2, Package, Calculator, X, Loader2, Box, Tag, DollarSign, Layers, CheckCircle2, AlertCircle, ShoppingCart, Sparkles, Building2, ExternalLink, HelpCircle, ShoppingBag, Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { DS_KHU_KE_HANG, DS_KENH_BAN, layMaLoTonKho, hienThiDanhSachSize, type KenhBan, type SanPhamTP } from "../data";
 import {
@@ -21,6 +22,9 @@ import { uploadProductFile } from "@/lib/product-upload";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { useDanhMucSP } from "@/lib/data/danh-muc-sp-store";
 import { useBangGia, type KenhBan as KenhBanBangGia } from "@/lib/data/bang-gia-store";
+
+const formatVND = (value: number) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value);
 
 // Chỉ còn Màu + số lượng theo size là khác nhau giữa các biến thể - mọi thứ
 // khác (mã/tên SP, phân loại, tỉ lệ size, giá vốn/bán/sỉ/lẻ/lô) đều dùng
@@ -95,6 +99,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [maSP, setMaSP] = useState("");
   const [tenSP, setTenSP] = useState("");
   const [phanLoai, setPhanLoai] = useState<string>("BoTru");
+  const [thuongHieu, setThuongHieu] = useState<"Man PJ" | "Polomimin">("Man PJ");
   const [maLoKho] = useState(taoMaLoTonKho);
   const [ngayNhap, setNgayNhap] = useState(new Date().toISOString().slice(0, 10));
   const [presetId, setPresetId] = useState("");
@@ -103,6 +108,9 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const [customPresets, setCustomPresets] = useState<SizeRatioPreset[]>([]);
   const [openSizeBuilder, setOpenSizeBuilder] = useState(false);
   const [isNewProduct, setIsNewProduct] = useState(false);
+  
+  // Kênh bán áp dụng chung cho cả lô hàng (đăng bài nhanh chóng)
+  const [loKenhBan, setLoKenhBan] = useState<KenhBan[]>(["ban-si", "ban-le"]);
   const [selectedBangGia, setSelectedBangGia] = useState<Record<string, string>>({});
   const [inputPrices, setInputPrices] = useState<Record<string, number>>({});
   
@@ -142,6 +150,7 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       setTenSP("");
       setPhanLoai("BoTru");
       setPresetId("");
+      setThuongHieu("Man PJ");
       setBienThe([bienTheMoi([])]);
       return;
     }
@@ -151,6 +160,12 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
     if (!product) return;
     setTenSP(product.tenSP);
     setPhanLoai(product.loaiSP);
+    const pBrand = (product.thuongHieu === "Man PJ" || product.thuongHieu === "Polomimin"
+      ? product.thuongHieu
+      : product.ncc === "Polomimin"
+      ? "Polomimin"
+      : ((product.id || "").toUpperCase().includes("BPJ") || (product.tenSP || "").toUpperCase().includes("MANPJ") ? "Man PJ" : "Polomimin"));
+    setThuongHieu(pBrand as "Man PJ" | "Polomimin");
     if (product.bangSize?.sizes?.length && product.bangSize.ratios.some((value) => value > 0)) {
       setPresetId(`product-${product.id}`);
       setBienThe([bienTheMoi(product.bangSize.sizes)]);
@@ -179,8 +194,6 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
 
   // Đổi tỉ lệ size chung -> áp lại size list cho MỌI biến thể đang có.
-  // Nhận thêm `fromList` (dùng khi vừa lưu 1 bảng size mới, tránh phụ thuộc
-  // vào customPresets trong closure vì setCustomPresets chưa kịp cập nhật).
   const doiPresetChung = (id: string, fromList: SizeRatioPreset[] = allPresets) => {
     const p = fromList.find((x) => x.id === id);
     setPresetId(id);
@@ -213,16 +226,31 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
   const tongSLTatCa = bienThe.reduce((s, bt) => s + tongSLBienThe(bt), 0);
   const tongGiaTriVon = tongSLTatCa * (giaVon || 0);
 
-  const laySkuTheoMau = (mau: string) => selectedProduct?.dsMau.find((item) => item.ten === mau)?.maSKU || undefined;
-  const layGiaBienThe = (bt: BienTheDraft, kenh: KenhBan) => layGia(kenh as KenhBanBangGia, maSP, laySkuTheoMau(bt.mau), Math.max(1, tongSLBienThe(bt)));
+  // Tra cứu giá từ Bảng Giá Bán theo Kênh và Mã SP
+  const layGiaKenh = (kenh: KenhBan) => {
+    if (!maSP) return null;
+    return layGia(kenh as KenhBanBangGia, maSP.trim().toUpperCase(), undefined, 1);
+  };
 
+  // Toggle kênh bán chung của lô hàng
+  const toggleKenhBanChung = (kenh: KenhBan) => {
+    const nextChannels = loKenhBan.includes(kenh)
+      ? loKenhBan.filter((k) => k !== kenh)
+      : [...loKenhBan, kenh];
+    setLoKenhBan(nextChannels);
+    // Đồng bộ sang tất cả các biến thể màu
+    setBienThe((prev) => prev.map((bt) => ({ ...bt, kenhBan: nextChannels })));
+  };
+
+  // Kiểm tra kênh nào được chọn mà chưa có giá trong Bảng giá bán
   const missingChannels = useMemo(() => {
-    const checked = new Set<string>();
-    bienThe.forEach(bt => bt.kenhBan.forEach(k => checked.add(k)));
-    return Array.from(checked).filter(k => {
-      return bienThe.some(bt => layGiaBienThe(bt, k as KenhBan) == null);
+    if (!maSP) return [];
+    return loKenhBan.filter((kenh) => {
+      const existing = layGiaKenh(kenh);
+      const manual = selectedBangGia[kenh] && (inputPrices[kenh] || 0) > 0;
+      return existing == null && !manual;
     });
-  }, [bienThe, maSP, selectedProduct, layGia, layGiaBienThe]);
+  }, [loKenhBan, maSP, layGia, selectedBangGia, inputPrices]);
 
   const handleSubmit = async () => {
     if (!selectedProduct && !isNewProduct) {
@@ -250,65 +278,80 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
       toast.error("Mỗi màu cần có số lượng nhập kho lớn hơn 0");
       return;
     }
-    if (hopLe.some((bt) => bt.kenhBan.length === 0)) {
-      toast.error("Mỗi màu cần chọn ít nhất 1 kênh bán");
+    if (loKenhBan.length === 0) {
+      toast.error("Vui lòng chọn ít nhất 1 kênh bán cho lô hàng này");
       return;
     }
-    const missingPrice = hopLe.flatMap((bt) => bt.kenhBan.filter((kenh) => {
-       const giaStore = layGiaBienThe(bt, kenh);
-       const hasManual = selectedBangGia[kenh] && (inputPrices[kenh] || 0) > 0;
-       return giaStore == null && !hasManual;
-    }).map((kenh) => `${bt.mau} · ${DS_KENH_BAN.find((item) => item.value === kenh)?.label || kenh}`));
-    
-    if (missingPrice.length > 0) {
-      toast.error(`Chưa có bảng giá đang áp dụng cho: ${missingPrice.join(", ")}`);
+
+    // Kiểm tra tính hợp lệ của giá bán cho TẤT CẢ các kênh đã chọn (Bắt buộc)
+    const kenhThieuGia = loKenhBan.filter((kenh) => {
+      const giaHeThong = layGiaKenh(kenh);
+      const giaNhapMoi = (inputPrices[kenh] || 0) > 0 && selectedBangGia[kenh];
+      return giaHeThong == null && !giaNhapMoi;
+    });
+
+    if (kenhThieuGia.length > 0) {
+      const tenKenhThieu = kenhThieuGia.map((k) => DS_KENH_BAN.find((c) => c.value === k)?.label || k).join(", ");
+      toast.error(`Bắt buộc có giá bán cho: ${tenKenhThieu}. Vui lòng nhập giá bán để tiếp tục.`);
       return;
     }
+
     setSaving(true);
 
     try {
-      for (const kenh of missingChannels) {
+      // Tự động lưu giá bán mới vào tab Bảng giá bán (useBangGia)
+      for (const kenh of loKenhBan) {
+        const giaHeThong = layGiaKenh(kenh);
         const bgId = selectedBangGia[kenh];
-        const gia = inputPrices[kenh];
-        if (bgId && gia > 0) {
-           await themChiTiet({
-              bangGiaId: bgId,
-              maSP: maSP.trim().toUpperCase(),
-              giaBan: gia,
-              soLuongTu: 1
-           });
+        const giaMoi = inputPrices[kenh];
+
+        // Nếu kênh chưa có giá hoặc nhân sự có nhập giá mới kèm chọn bảng giá
+        if (bgId && giaMoi && giaMoi > 0 && (!giaHeThong || giaHeThong !== giaMoi)) {
+          await themChiTiet({
+            bangGiaId: bgId,
+            maSP: maSP.trim().toUpperCase(),
+            giaBan: giaMoi,
+            soLuongTu: 1,
+          });
         }
       }
     } catch (err) {
-      toast.error("Lỗi khi lưu bảng giá: " + (err as Error).message);
+      toast.error("Lỗi khi lưu bảng giá bán: " + (err as Error).message);
       setSaving(false);
       return;
     }
 
-    const rows = hopLe.map((bt) => ({
-      maSP: maSP.trim().toUpperCase(),
-      tenSP: tenSP.trim(),
-      phanLoai,
-      mau: bt.mau.trim(),
-      size: bt.sizes.filter((s) => s.sl > 0).map((s) => s.size).join(", "),
-      chiTietSize: bt.sizes,
-      tiLeSize: preset.value,
-      lsx: maLoKho,
-      ngayNhap,
-      soLuong: tongSLBienThe(bt),
-      donGia: 0,
-      giaVon,
-      giaBanSi: bt.kenhBan.includes("ban-si") ? layGiaBienThe(bt, "ban-si") || inputPrices["ban-si"] || 0 : 0,
-      giaBanLe: bt.kenhBan.includes("ban-le") ? layGiaBienThe(bt, "ban-le") || inputPrices["ban-le"] || 0 : 0,
-      giaBanLo: bt.kenhBan.includes("ban-lo") ? layGiaBienThe(bt, "ban-lo") || inputPrices["ban-lo"] || 0 : 0,
-      giaTikTok: bt.kenhBan.includes("tiktok") ? layGiaBienThe(bt, "tiktok") || inputPrices["tiktok"] || 0 : 0,
-      giaShopee: bt.kenhBan.includes("shopee") ? layGiaBienThe(bt, "shopee") || inputPrices["shopee"] || 0 : 0,
-      kenhBan: bt.kenhBan,
-      viTri: bt.viTri.trim(),
-      ghiChu: bt.ghiChu.trim(),
-      trangThai: "con",
-      __tempImage: bt.img,
-    }));
+    const rows = hopLe.map((bt) => {
+      const effectiveKenhBan = loKenhBan.length > 0 ? loKenhBan : bt.kenhBan;
+      return {
+        maSP: maSP.trim().toUpperCase(),
+        tenSP: tenSP.trim(),
+        phanLoai,
+        thuongHieu,
+        mau: bt.mau.trim(),
+        size: bt.sizes.filter((s) => s.sl > 0).map((s) => s.size).join(", "),
+        chiTietSize: bt.sizes,
+        tiLeSize: preset.value,
+        lsx: maLoKho,
+        ngayNhap,
+        soLuong: tongSLBienThe(bt),
+        donGia: giaVon,
+        giaVon,
+        hinhAnh: bt.img ? [bt.img] : [],
+        maSKU: `${maSP.trim().toUpperCase()}-${bt.mau.trim().toUpperCase()}`,
+        giaBanSi: effectiveKenhBan.includes("ban-si") ? layGiaKenh("ban-si") || inputPrices["ban-si"] || 0 : 0,
+        giaBanLe: effectiveKenhBan.includes("ban-le") ? layGiaKenh("ban-le") || inputPrices["ban-le"] || 0 : 0,
+        giaBanLo: effectiveKenhBan.includes("ban-lo") ? layGiaKenh("ban-lo") || inputPrices["ban-lo"] || 0 : 0,
+        giaTikTok: effectiveKenhBan.includes("tiktok") ? layGiaKenh("tiktok") || inputPrices["tiktok"] || 0 : 0,
+        giaShopee: effectiveKenhBan.includes("shopee") ? layGiaKenh("shopee") || inputPrices["shopee"] || 0 : 0,
+        kenhBan: effectiveKenhBan,
+        viTri: bt.viTri.trim(),
+        ghiChu: bt.ghiChu.trim(),
+        trangThai: "con",
+        __tempImage: bt.img,
+      };
+    });
+
     onSave(rows);
   };
 
@@ -316,458 +359,738 @@ function ThemNhieuBienTheForm({ onClose, onSave }: { onClose: () => void; onSave
     <>
       <ResponsiveModal
         open={true}
-        maxWidth="3xl"
+        maxWidth="6xl"
         onClose={onClose}
         title={
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2B4C3E] flex items-center justify-center shadow-inner">
-              <Package className="w-5 h-5 text-emerald-300" />
-            </div>
-            <div>
-              <div className="text-lg font-bold text-slate-800 tracking-tight">Nhập lô hàng tồn kho</div>
-              <div className="text-xs font-medium text-slate-500">
-                Thêm nhiều biến thể cùng lúc
+          <div className="flex items-center justify-between w-full pr-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2B4C3E] flex items-center justify-center shadow-inner text-white">
+                <Package className="w-5 h-5 text-emerald-300" />
               </div>
+              <div>
+                <div className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+                  <span>Nhập Lô Hàng Tồn Kho</span>
+                  <span className="text-xs font-bold font-mono px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md border border-slate-200">
+                    {maLoKho}
+                  </span>
+                </div>
+                <div className="text-xs font-medium text-slate-500">
+                  Thêm nhiều biến thể màu cùng lúc · Đồng bộ Bảng giá bán & Tỉ lệ size
+                </div>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs">
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200">
+                Quy mô: {bienThe.length} màu · {tongSLTatCa.toLocaleString()} SP
+              </span>
             </div>
           </div>
         }
       >
-        <div className="flex flex-col h-[85vh]">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 space-y-6">
-            
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">1</span>
-                Thông Tin Chung
-              </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Sản phẩm trong danh mục *</label>
-                    <select value={isNewProduct ? "NEW" : maSP} onChange={(e) => chonSanPham(e.target.value)} disabled={loadingDanhMuc} className="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60">
-                      <option value="">{loadingDanhMuc ? "Đang tải danh mục..." : "-- Chọn sản phẩm --"}</option>
-                      <option value="NEW" className="font-bold text-emerald-600">-- Thêm sản phẩm mới --</option>
-                      {[...dsDanhMuc].sort((a, b) => a.id.localeCompare(b.id)).map((product) => <option key={product.id} value={product.id}>{product.id} — {product.tenSP}</option>)}
-                    </select>
-                    {!loadingDanhMuc && dsDanhMuc.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Danh mục sản phẩm đang trống. Hãy tạo sản phẩm trước khi nhập kho.</p>}
-                    {selectedProduct && selectedProduct.dsMau.length === 0 && <p className="mt-1.5 text-xs font-semibold text-rose-600">Sản phẩm chưa có màu / SKU trong danh mục.</p>}
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã sản phẩm</label>
-                    <input value={maSP} onChange={(e) => isNewProduct && setMaSP(e.target.value)} readOnly={!isNewProduct} className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50'}`} placeholder={isNewProduct ? "Nhập mã SP..." : ""} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Tên sản phẩm</label>
-                    <input value={tenSP} onChange={(e) => isNewProduct && setTenSP(e.target.value)} readOnly={!isNewProduct} className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50'}`} placeholder={isNewProduct ? "Nhập tên SP..." : ""} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Phân loại</label>
-                    <select 
-                      value={phanLoai} 
-                      onChange={(e) => isNewProduct && setPhanLoai(e.target.value)} 
-                      disabled={!isNewProduct && !!selectedProduct}
-                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-50"
-                    >
-                      {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">Mã lô tồn kho</label>
-                    <input value={maLoKho} readOnly className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono bg-slate-50" />
-                  </div>
-                </div>
-            </div>
-
-            {missingChannels.length > 0 && (
-              <div className="bg-rose-50 p-5 rounded-2xl border border-rose-200 shadow-sm relative overflow-hidden mt-4">
-                <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                <h3 className="text-base font-bold text-rose-800 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-xs">!</span>
-                  Bổ sung giá bán (Bắt buộc)
-                </h3>
-                <p className="text-xs text-rose-600 mb-4">Các kênh bán sau chưa có giá trong hệ thống. Vui lòng chọn Bảng giá và nhập giá để tiếp tục.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {missingChannels.map(kenhValue => {
-                    const kenh = DS_KENH_BAN.find(k => k.value === kenhValue)!;
-                    const activeLists = dsBangGia.filter(b => b.kenhBan === kenhValue && b.trangThai === "dang-ap-dung");
-                    return (
-                      <div key={kenh.value} className="border border-rose-200 rounded-xl p-3 bg-white">
-                         <label className="text-xs font-bold text-slate-700 mb-2 block">Kênh: {kenh.label}</label>
-                         <div className="space-y-2">
-                           <select 
-                             value={selectedBangGia[kenh.value] || ""}
-                             onChange={e => setSelectedBangGia({...selectedBangGia, [kenh.value]: e.target.value})}
-                             className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm bg-white focus:border-rose-500 outline-none"
-                           >
-                             <option value="">-- Chọn bảng giá --</option>
-                             {activeLists.map(b => <option key={b.id} value={b.id}>{b.tenBangGia}</option>)}
-                           </select>
-                           <input 
-                             type="number" 
-                             placeholder="Nhập giá bán..." 
-                             value={inputPrices[kenh.value] || ""}
-                             onChange={e => setInputPrices({...inputPrices, [kenh.value]: parseInt(e.target.value) || 0})}
-                             className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm bg-white focus:border-rose-500 outline-none"
-                           />
-                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden mt-4">
-              <div className="absolute top-0 left-0 w-1 h-full bg-fuchsia-500"></div>
-              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-fuchsia-100 text-fuchsia-700 flex items-center justify-center text-xs">2</span>
-                  Đặc Tính & Tỉ Lệ Size
-                </div>
-              </h3>
+        <div className="flex flex-col h-[86vh]">
+          {/* Main content body: Chia 2 cột trên Desktop (lg:grid-cols-12) */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-100/70">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              <div>
-                <label className="text-xs font-bold text-slate-700 mb-1.5 block">Chọn bảng tỉ lệ áp dụng *</label>
-                <select value={presetId} onChange={(e) => doiPresetChung(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
-                  <option value="">-- Chọn bảng tỷ lệ size --</option>
-                  {productSizePreset && <option value={productSizePreset.id}>✅ {productSizePreset.label} (Đúng theo danh mục)</option>}
-                  {SIZE_RATIO_PRESETS.length > 0 && (
-                    <optgroup label="Bảng chuẩn">
-                      {SIZE_RATIO_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                    </optgroup>
-                  )}
-                  {customPresets.length > 0 && (
-                    <optgroup label="⭐ Bảng tự tạo">
-                      {customPresets.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-              {productSizePreset && presetId !== productSizePreset.id && <p className="mt-2 text-xs font-semibold text-amber-700">⚠️ Đang dùng bảng size khác với danh mục. Tỉ lệ trong danh mục: {productSizePreset.label}</p>}
-              <div className="mt-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-2 text-xs text-slate-600">
-                <span className="font-bold text-slate-800 shrink-0">Tỉ lệ:</span> 
-                <span className="tracking-widest">{preset ? `${preset.sizes.join(":")} = ${preset.ratios.join(":")}` : "Chưa chọn bảng size"}</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-              <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-xs">3</span>
-                Giá Vốn & Bảng Giá
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60">
-                  <label className="text-xs font-bold text-slate-700 mb-1.5 block">Giá vốn</label>
-                  <div className="relative">
-                    <input type="number" min={0} value={giaVon || ""} onChange={(e) => setGiaVon(Math.max(0, parseInt(e.target.value) || 0))} className="w-full pl-3 pr-8 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-bold focus:border-[#2B4C3E] outline-none bg-white text-slate-800" placeholder="0" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">đ</span>
-                  </div>
-                </div>
+              {/* ==================== CỘT TRÁI: CẤU HÌNH SẢN PHẨM & BẢNG GIÁ (5 COLS) ==================== */}
+              <div className="lg:col-span-5 space-y-5">
                 
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  <p className="font-bold">Giá bán lấy tự động từ tab Bảng giá bán</p>
-                  <p className="mt-1">Chọn kênh bán tại từng biến thể. Hệ thống sẽ tra đúng sản phẩm, SKU, số lượng và ngày hiệu lực khi lưu.</p>
-                  {loadingBangGia && <p className="mt-2 font-semibold">Đang tải bảng giá...</p>}
-                </div>
-              </div>
-            </div>
+                {/* KHỐI 1: THÔNG TIN SẢN PHẨM & THƯƠNG HIỆU */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600"></div>
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
+                    Thông Tin Sản Phẩm & Lô Kho
+                  </h3>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs">4</span>
-                  Danh Sách Biến Thể Màu ({bienThe.length})
-                </h3>
-                <span className="text-xs font-semibold text-[#2B4C3E] bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
-                  Tổng: {tongSLTatCa.toLocaleString()} SP
-                </span>
-              </div>
-              
-              <div className="space-y-4">
-                {bienThe.map((bt, idx) => {
-                  const tong = tongSLBienThe(bt);
-                  return (
-                    <div key={idx} className="border-2 border-slate-200 bg-slate-50/50 rounded-xl p-4 relative group transition-colors hover:border-[#2B4C3E]">
-                      {bienThe.length > 1 && (
-                        <button onClick={() => setBienThe((prev) => prev.filter((_, i) => i !== idx))} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Xoá biến thể này">
-                          <Trash2 className="w-4 h-4" />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                        Sản phẩm trong danh mục *
+                      </label>
+                      <select 
+                        value={isNewProduct ? "NEW" : maSP} 
+                        onChange={(e) => chonSanPham(e.target.value)} 
+                        disabled={loadingDanhMuc} 
+                        className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:opacity-60 shadow-2xs"
+                      >
+                        <option value="">{loadingDanhMuc ? "Đang tải danh mục..." : "-- Chọn sản phẩm từ danh mục --"}</option>
+                        <option value="NEW" className="font-bold text-emerald-600">+ Thêm sản phẩm mới ngoài danh mục</option>
+                        {[...dsDanhMuc].sort((a, b) => a.id.localeCompare(b.id)).map((product) => (
+                          <option key={product.id} value={product.id}>
+                            [{product.id}] {product.tenSP}
+                          </option>
+                        ))}
+                      </select>
+                      {!loadingDanhMuc && dsDanhMuc.length === 0 && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-600">Danh mục sản phẩm đang trống.</p>
+                      )}
+                      {selectedProduct && selectedProduct.dsMau.length === 0 && (
+                        <p className="mt-1.5 text-xs font-semibold text-rose-600">Sản phẩm chưa có màu / SKU trong danh mục.</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">Mã sản phẩm *</label>
+                        <input 
+                          value={maSP} 
+                          onChange={(e) => isNewProduct && setMaSP(e.target.value)} 
+                          readOnly={!isNewProduct} 
+                          className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-mono font-bold ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50 text-slate-700'}`} 
+                          placeholder={isNewProduct ? "VD: M016" : ""} 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">Phân loại *</label>
+                        <select 
+                          value={phanLoai} 
+                          onChange={(e) => isNewProduct && setPhanLoai(e.target.value)} 
+                          disabled={!isNewProduct && !!selectedProduct}
+                          className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-50 disabled:text-slate-700"
+                        >
+                          {Object.entries(LOAI_SP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1 block">Tên sản phẩm *</label>
+                      <input 
+                        value={tenSP} 
+                        onChange={(e) => isNewProduct && setTenSP(e.target.value)} 
+                        readOnly={!isNewProduct} 
+                        className={`w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm outline-none font-semibold ${isNewProduct ? 'bg-white focus:border-[#2B4C3E]' : 'bg-slate-50 text-slate-700'}`} 
+                        placeholder={isNewProduct ? "VD: Áo Polo Cổ Trụ Phối Bo..." : ""} 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-1.5 block">Thương hiệu sản phẩm *</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setThuongHieu("Man PJ")}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                            thuongHieu === "Man PJ"
+                              ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                          Man PJ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThuongHieu("Polomimin")}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                            thuongHieu === "Polomimin"
+                              ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                          Polomimin
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KHỐI 2: ĐẶC TÍNH & BẢNG TỈ LỆ SIZE */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500"></div>
+                  
+                  {/* Header Khối 2 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-xs font-black shadow-xs shadow-indigo-500/20">
+                        2
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                          Bảng Tỉ Lệ Size Áp Dụng
+                        </h3>
+                        <p className="text-[11px] text-slate-400 font-medium">Quyết định cơ cấu size và phân bổ số lượng cho các màu</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setOpenSizeBuilder(true)}
+                      className="px-3.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-all flex items-center gap-1.5 border border-indigo-200 shadow-2xs hover:shadow-xs cursor-pointer"
+                      title="Mở bảng quản lý & tạo tỉ lệ size"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Tạo bảng size
+                    </button>
+                  </div>
+                  
+                  {/* Dropdown chọn bảng tỉ lệ */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        Chọn bảng tỉ lệ áp dụng cho lô hàng <span className="text-rose-500">*</span>
+                      </label>
+                      {preset && (
+                        <span className="text-[11px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-200/70">
+                          Ri {preset.riSo} ({preset.sizes.length} size)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <select 
+                        value={presetId} 
+                        onChange={(e) => doiPresetChung(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl text-xs focus:border-indigo-500 outline-none bg-white font-semibold text-slate-800 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <option value="">-- Chọn bảng tỷ lệ size áp dụng --</option>
+                        {productSizePreset && (
+                          <option value={productSizePreset.id}>
+                            ✅ {productSizePreset.label} (Đúng danh mục)
+                          </option>
+                        )}
+                        {SIZE_RATIO_PRESETS.length > 0 && (
+                          <optgroup label="⚡ Bảng chuẩn hệ thống">
+                            {SIZE_RATIO_PRESETS.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.label} (Ri {p.riSo})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {customPresets.length > 0 && (
+                          <optgroup label="⭐ Bảng tự tạo từ Supabase">
+                            {customPresets.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.label} (Ri {p.riSo})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Gợi ý chọn nhanh các bảng phổ biến */}
+                    <div className="flex items-center gap-1.5 pt-1 overflow-x-auto pb-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 shrink-0">Gợi ý nhanh:</span>
+                      {productSizePreset && (
+                        <button
+                          type="button"
+                          onClick={() => doiPresetChung(productSizePreset.id)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition-all cursor-pointer shrink-0 ${presetId === productSizePreset.id ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs" : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"}`}
+                        >
+                          Theo danh mục ({productSizePreset.value})
                         </button>
                       )}
-                      
-                      <div className="flex flex-col sm:flex-row gap-5 mb-4">
-                        <div className="w-20 h-20 bg-white rounded-xl border-2 border-slate-200 shrink-0 flex items-center justify-center cursor-pointer overflow-hidden relative shadow-sm hover:border-[#2B4C3E] transition-colors" onClick={() => fileInputs.current[idx]?.click()}>
-                          <input ref={(el) => { fileInputs.current[idx] = el; }} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadAnh(idx, f); }} />
-                          {uploadingIdx === idx ? (
-                            <div className="text-[10px] text-emerald-600 font-bold text-center px-1">Đang tải...</div>
-                          ) : bt.img ? (
-                            <img src={bt.img} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                          ) : (
-                            <div className="flex flex-col items-center">
-                              <Camera className="w-6 h-6 text-slate-300" />
-                              <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">Tải ảnh</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 space-y-4">
-                          <div className="pr-8">
-                            <label className="text-xs font-bold text-slate-700 mb-1.5 block">{isNewProduct ? "Tên màu sắc *" : "Màu / SKU trong danh mục *"}</label>
-                            {isNewProduct ? (
-                              <input 
-                                value={bt.mau} 
-                                onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
-                                placeholder="VD: Đen, Trắng..." 
-                                className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium" 
-                              />
-                            ) : (
-                              <select value={bt.mau} onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} disabled={!selectedProduct} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium disabled:bg-slate-100">
-                                <option value="">-- Chọn màu / SKU --</option>
-                                {selectedProduct?.dsMau.map((variant) => <option key={variant.maSKU || variant.ten} value={variant.ten}>{variant.ten}{variant.maSKU ? ` — ${variant.maSKU}` : ""}</option>)}
-                              </select>
-                            )}
-                          </div>
+                      {SIZE_RATIO_PRESETS.slice(0, 3).map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => doiPresetChung(p.id)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition-all cursor-pointer shrink-0 ${presetId === p.id ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700"}`}
+                        >
+                          {p.label.replace("Tỉ lệ ", "")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-xs font-bold text-slate-700">Chia số lượng theo Size</label>
-                              <div className="flex items-center gap-2">
-                                <label className="text-[10px] text-slate-500 shrink-0">Nhập tổng SL tự chia:</label>
-                                <input type="number" min={0} value={bt.slDuKien || ""} onChange={(e) => doiSlDuKien(idx, Math.max(0, parseInt(e.target.value) || 0))} className="w-20 px-2 py-1 border-2 border-slate-200 rounded-lg text-xs focus:border-[#2B4C3E] outline-none text-right font-bold bg-white" placeholder="0" />
-                              </div>
-                            </div>
-                            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-end">
-                              {bt.sizes.map((s) => (
-                                <div key={s.size} className="flex flex-col shrink-0 min-w-[54px]">
-                                  <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t-lg bg-slate-200 text-slate-600 text-center">{s.size}</span>
-                                  <span className="w-full px-1 py-1.5 text-sm font-extrabold text-center bg-slate-50 text-emerald-700 border-x-2 border-b-2 border-slate-200 rounded-b-lg">{s.sl}</span>
-                                </div>
-                              ))}
-                              <div className="flex flex-col shrink-0 min-w-[60px] ml-2">
-                                <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t-lg bg-[#2B4C3E] text-white text-center">Tổng SL</span>
-                                <span className="w-full px-1 py-1.5 text-sm font-extrabold text-center bg-white border-x-2 border-b-2 border-[#2B4C3E] rounded-b-lg text-slate-800">{tong}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                  {productSizePreset && presetId !== productSizePreset.id && (
+                    <div className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200/80 flex items-center gap-2">
+                      <span className="text-sm">⚠️</span>
+                      <span>Đang dùng bảng size khác với danh mục sản phẩm (Danh mục: <strong className="font-bold">{productSizePreset.label}</strong>)</span>
+                    </div>
+                  )}
+
+                  {/* Visual Size Matrix & Tỉ lệ trực quan */}
+                  {preset ? (
+                    <div className="mt-3.5 p-3.5 bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 rounded-xl border border-indigo-100/90 shadow-2xs space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <Ruler className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Chi tiết phân bổ cơ cấu size:</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-indigo-800 bg-white px-2 py-0.5 rounded-md border border-indigo-100 shadow-2xs">
+                          {preset.label}
+                        </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t-2 border-slate-200 border-dashed">
+                      {/* Ma trận thẻ Size & Tỉ lệ tương ứng */}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        {preset.sizes.map((s, idx) => {
+                          const ratio = preset.ratios[idx] || 0;
+                          const pct = preset.riSo > 0 ? Math.round((ratio / preset.riSo) * 100) : 0;
+                          return (
+                            <div key={s} className="bg-white rounded-xl border border-indigo-100 shadow-2xs overflow-hidden flex flex-col text-center">
+                              <div className="bg-indigo-50/80 py-1 px-1.5 text-[11px] font-black text-indigo-900 border-b border-indigo-100/70">
+                                {s}
+                              </div>
+                              <div className="py-1 px-1.5 text-xs font-black text-indigo-600 bg-white">
+                                x{ratio}
+                              </div>
+                              <div className="py-0.5 text-[9px] font-semibold text-slate-400 bg-slate-50/80 border-t border-slate-100">
+                                {pct}%
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Công thức và ghi chú */}
+                      <div className="pt-1 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-medium border-t border-indigo-100/60">
                         <div>
-                          <label className="text-xs font-bold text-slate-700 mb-1.5 block">Vị trí (Khu kệ)</label>
-                          <select value={bt.viTri} onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
-                            <option value="">-- Chọn --</option>
-                            {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
+                          Công thức: <span className="font-mono font-bold text-indigo-800">{preset.sizes.join(" : ")} = {preset.ratios.join(" : ")}</span>
                         </div>
-                        <div>
-                          <label className="text-xs font-bold text-slate-700 mb-1.5 block">Trạng thái</label>
-                          <select value={bt.trangThai} onChange={(e) => capNhatBienThe(idx, { trangThai: e.target.value as any })} className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium">
-                            <option value="con">Còn hàng</option>
-                            <option value="dat-hang">Đã đặt hàng</option>
-                            <option value="xuat-kho">Đã xuất kho</option>
-                            <option value="khong-dat">Không đạt</option>
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="text-xs font-bold text-slate-700 mb-2 block">Kênh được phép bán *</label>
-                          <div className="flex flex-wrap gap-2">
-                            {DS_KENH_BAN.map((kenh) => {
-                              const selected = bt.kenhBan.includes(kenh.value);
-                              const gia = bt.mau ? (layGiaBienThe(bt, kenh.value) || inputPrices[kenh.value]) : undefined;
-                              return (
-                                <button
-                                  key={kenh.value}
-                                  type="button"
-                                  onClick={() => capNhatBienThe(idx, {
-                                    kenhBan: selected
-                                      ? bt.kenhBan.filter((value) => value !== kenh.value)
-                                      : [...bt.kenhBan, kenh.value],
-                                  })}
-                                  className={`rounded-xl border-2 px-4 py-2 text-xs font-bold transition-all ${selected ? "border-[#2B4C3E] bg-emerald-50 text-[#2B4C3E]" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
-                                >
-                                  <span>{selected ? "✓ " : ""}{kenh.label}</span>
-                                  {bt.mau && <span className={`ml-1 ${gia == null ? "text-rose-600" : "text-emerald-700"}`}>· {gia == null ? "Chưa có giá" : `${gia.toLocaleString("vi-VN")}đ`}</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
+                        <div className="text-emerald-700 font-bold flex items-center gap-1 text-[10px]">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Tự động tính số lượng cho tất cả màu</span>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="mt-3.5 p-4 bg-slate-50/80 rounded-xl border border-dashed border-slate-300 text-center flex flex-col items-center justify-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <Ruler className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-700 block">Chưa chọn bảng tỉ lệ size</span>
+                        <span className="text-[11px] text-slate-400">Chọn bảng tỉ lệ từ danh mục phía trên hoặc tạo bảng mới</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOpenSizeBuilder(true)}
+                        className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        + Tạo bảng size mới
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* KHỐI 4: GIÁ VỐN & KÊNH PHÂN PHỐI (BẢNG GIÁ BÁN) */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">3</span>
+                      Giá Vốn & Kênh Phân Phối
+                    </h3>
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      Bắt buộc có giá
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Giá vốn */}
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <label className="text-xs font-bold text-slate-700 mb-1 block">
+                        Giá vốn sản phẩm (VNĐ / SP) *
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          min={0} 
+                          value={giaVon || ""} 
+                          onChange={(e) => setGiaVon(Math.max(0, parseInt(e.target.value) || 0))} 
+                          className="w-full pl-3 pr-10 py-2 border-2 border-slate-200 rounded-xl text-sm font-black focus:border-[#2B4C3E] outline-none bg-white text-slate-800 shadow-2xs" 
+                          placeholder="0" 
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">VNĐ</span>
+                      </div>
+                    </div>
+
+                    {/* Danh sách kênh bán */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 mb-2 block flex items-center gap-1.5">
+                        <ShoppingBag className="w-3.5 h-3.5 text-amber-600" /> Chọn kênh bán áp dụng cho lô hàng:
+                      </label>
+
+                      <div className="space-y-2.5">
+                        {DS_KENH_BAN.map((kenh) => {
+                          const isSelected = loKenhBan.includes(kenh.value);
+                          const currentPrice = layGiaKenh(kenh.value);
+                          const customPrice = inputPrices[kenh.value];
+                          const activeLists = dsBangGia.filter((b) => b.kenhBan === kenh.value && b.trangThai === "dang-ap-dung");
+                          const allLists = dsBangGia.filter((b) => b.kenhBan === kenh.value);
+
+                          return (
+                            <div 
+                              key={kenh.value} 
+                              className={`rounded-xl border-2 transition-all p-3 ${
+                                isSelected 
+                                  ? "border-[#2B4C3E]/40 bg-emerald-50/20 shadow-2xs" 
+                                  : "border-slate-200 bg-slate-50/60 opacity-70"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleKenhBanChung(kenh.value)}
+                                    className="w-4 h-4 rounded border-2 border-slate-300 text-[#2B4C3E] focus:ring-[#2B4C3E] accent-[#2B4C3E] cursor-pointer"
+                                  />
+                                  <span className={`text-xs font-bold ${isSelected ? "text-slate-800" : "text-slate-500"}`}>
+                                    {kenh.label}
+                                  </span>
+                                </label>
+
+                                {isSelected && (
+                                  <div>
+                                    {currentPrice != null && currentPrice > 0 ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                        {formatVND(currentPrice)}
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        <AlertCircle className="w-3 h-3 text-amber-600" />
+                                        Cần bổ sung giá
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Form nhập giá nếu kênh chưa có giá */}
+                              {isSelected && currentPrice == null && (
+                                <div className="mt-2.5 pt-2.5 border-t border-slate-200/80 bg-white p-2.5 rounded-lg border border-amber-200/90 space-y-2">
+                                  <div className="text-[10px] font-bold text-amber-800 flex items-center justify-between">
+                                    <span>Bổ sung giá bán {kenh.label}:</span>
+                                    <span className="font-normal text-amber-600">Tự động lưu vào Bảng giá bán</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <select
+                                        value={selectedBangGia[kenh.value] || ""}
+                                        onChange={(e) => setSelectedBangGia({ ...selectedBangGia, [kenh.value]: e.target.value })}
+                                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-[11px] bg-slate-50 outline-none"
+                                      >
+                                        <option value="">-- Chọn bảng giá --</option>
+                                        {(activeLists.length > 0 ? activeLists : allLists).map((b) => (
+                                          <option key={b.id} value={b.id}>
+                                            {b.tenBangGia}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="Nhập giá (VNĐ)..."
+                                        value={customPrice || ""}
+                                        onChange={(e) => setInputPrices({ ...inputPrices, [kenh.value]: Math.max(0, parseInt(e.target.value) || 0) })}
+                                        className="w-full px-2 py-1.5 border border-amber-300 rounded-md text-[11px] font-bold bg-white outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              <button
-                type="button"
-                onClick={() => preset && setBienThe((prev) => [...prev, bienTheMoi(preset.sizes)])}
-                disabled={!preset}
-                className="w-full mt-4 py-3 border-2 border-dashed border-[#2B4C3E] rounded-xl text-[#2B4C3E] font-bold text-sm hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+              {/* ==================== CỘT PHẢI: BIẾN THỂ MÀU SẮC & SỐ LƯỢNG (7 COLS) ==================== */}
+              <div className="lg:col-span-7 space-y-5">
+                
+                {/* KHỐI 3: DANH SÁCH BIẾN THỂ MÀU */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">4</span>
+                      Danh Sách Biến Thể Màu Sắc ({bienThe.length})
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-[#2B4C3E] bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 shadow-2xs">
+                        Tổng nhập: {tongSLTatCa.toLocaleString()} SP
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {bienThe.map((bt, idx) => {
+                      const tong = tongSLBienThe(bt);
+                      return (
+                        <div key={idx} className="border-2 border-slate-200 bg-slate-50/60 rounded-2xl p-4 relative group transition-all hover:border-[#2B4C3E] hover:bg-white hover:shadow-sm">
+                          {bienThe.length > 1 && (
+                            <button 
+                              type="button"
+                              onClick={() => setBienThe((prev) => prev.filter((_, i) => i !== idx))} 
+                              className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
+                              title="Xoá màu này"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          
+                          <div className="flex flex-col sm:flex-row gap-4 mb-3">
+                            {/* Ảnh màu biến thể */}
+                            <div 
+                              className="w-24 h-24 bg-white rounded-2xl border-2 border-dashed border-slate-300 shrink-0 flex items-center justify-center cursor-pointer overflow-hidden relative shadow-2xs hover:border-[#2B4C3E] transition-all group/img" 
+                              onClick={() => fileInputs.current[idx]?.click()}
+                              title="Nhấn để tải ảnh màu"
+                            >
+                              <input 
+                                ref={(el) => { fileInputs.current[idx] = el; }} 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadAnh(idx, f); }} 
+                              />
+                              {uploadingIdx === idx ? (
+                                <div className="text-[10px] text-emerald-600 font-bold text-center px-1 animate-pulse">Đang tải...</div>
+                              ) : bt.img ? (
+                                <img src={bt.img} alt={bt.mau} className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300" />
+                              ) : (
+                                <div className="flex flex-col items-center">
+                                  <Camera className="w-6 h-6 text-slate-300 group-hover/img:text-[#2B4C3E] transition-colors" />
+                                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-1">Tải ảnh</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Tên màu và chia số lượng */}
+                            <div className="flex-1 space-y-3">
+                              <div className="pr-8">
+                                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                                  {isNewProduct ? "Tên màu sắc *" : "Màu / SKU trong danh mục *"}
+                                </label>
+                                {isNewProduct ? (
+                                  <input 
+                                    value={bt.mau} 
+                                    onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
+                                    placeholder="VD: Đen, Trắng, Xanh rêu, Xám chì..." 
+                                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-medium shadow-2xs" 
+                                  />
+                                ) : (
+                                  <select 
+                                    value={bt.mau} 
+                                    onChange={(e) => capNhatBienThe(idx, { mau: e.target.value })} 
+                                    disabled={!selectedProduct} 
+                                    className="w-full px-3 py-2 border-2 border-slate-200 rounded-xl text-sm focus:border-[#2B4C3E] outline-none bg-white font-semibold disabled:bg-slate-100 shadow-2xs"
+                                  >
+                                    <option value="">-- Chọn màu / SKU --</option>
+                                    {selectedProduct?.dsMau.map((variant) => (
+                                      <option key={variant.maSKU || variant.ten} value={variant.ten}>
+                                        {variant.ten}{variant.maSKU ? ` — SKU: ${variant.maSKU}` : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+
+                              {/* Bảng phân chia số lượng theo size */}
+                              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                    <Calculator className="w-3.5 h-3.5 text-[#2B4C3E]" /> Số lượng theo Size
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-[11px] font-semibold text-slate-500 shrink-0">Tổng tự chia:</label>
+                                    <input 
+                                      type="number" 
+                                      min={0} 
+                                      value={bt.slDuKien || ""} 
+                                      onChange={(e) => doiSlDuKien(idx, Math.max(0, parseInt(e.target.value) || 0))} 
+                                      className="w-20 px-2 py-1 border-2 border-slate-200 rounded-lg text-xs focus:border-[#2B4C3E] outline-none text-right font-black bg-slate-50 focus:bg-white text-emerald-800" 
+                                      placeholder="0" 
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar items-end">
+                                  {bt.sizes.map((s, sIdx) => (
+                                    <div key={s.size} className="flex flex-col shrink-0 min-w-[52px]">
+                                      <span className="w-full px-1 py-0.5 text-[10px] font-bold rounded-t-lg bg-slate-100 text-slate-700 text-center border-t border-x border-slate-200">
+                                        {s.size}
+                                      </span>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={s.sl || 0}
+                                        onChange={(e) => {
+                                          const val = Math.max(0, parseInt(e.target.value) || 0);
+                                          const newSizes = [...bt.sizes];
+                                          newSizes[sIdx] = { ...s, sl: val };
+                                          capNhatBienThe(idx, { sizes: newSizes });
+                                        }}
+                                        className="w-full px-1 py-1 text-xs font-black text-center bg-white text-emerald-700 border-2 border-slate-200 rounded-b-lg focus:border-[#2B4C3E] outline-none"
+                                      />
+                                    </div>
+                                  ))}
+                                  <div className="flex flex-col shrink-0 min-w-[60px] ml-auto">
+                                    <span className="w-full px-1 py-0.5 text-[10px] font-bold rounded-t-lg bg-[#2B4C3E] text-white text-center">
+                                      Tổng
+                                    </span>
+                                    <span className="w-full px-1 py-1 text-xs font-black text-center bg-emerald-50 border-x-2 border-b-2 border-[#2B4C3E] rounded-b-lg text-[#2B4C3E]">
+                                      {tong.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Vị trí kệ và Trạng thái */}
+                          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 border-dashed">
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-600 mb-1 block">Vị trí kệ kho</label>
+                              <select 
+                                value={bt.viTri} 
+                                onChange={(e) => capNhatBienThe(idx, { viTri: e.target.value })} 
+                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white outline-none"
+                              >
+                                <option value="">-- Chọn vị trí --</option>
+                                {DS_KHU_KE_HANG.map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-slate-600 mb-1 block">Trạng thái kho</label>
+                              <select 
+                                value={bt.trangThai} 
+                                onChange={(e) => capNhatBienThe(idx, { trangThai: e.target.value as any })} 
+                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white outline-none font-medium"
+                              >
+                                <option value="con">Còn hàng</option>
+                                <option value="dat-hang">Đã đặt hàng</option>
+                                <option value="xuat-kho">Đã xuất kho</option>
+                                <option value="khong-dat">Lỗi / Không đạt</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => preset && setBienThe((prev) => [...prev, bienTheMoi(preset.sizes)])}
+                    disabled={!preset}
+                    className="w-full mt-4 py-2.5 border-2 border-dashed border-[#2B4C3E] rounded-xl text-[#2B4C3E] font-bold text-xs hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                  >
+                    <Plus className="w-4 h-4" /> Thêm biến thể màu mới
+                  </button>
+                </div>
+
+                {/* KHỐI 5: TÓM TẮT LÔ NHẬP KHO */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-black tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-[#2B4C3E]" /> Tóm Tắt Lô Nhập Kho
+                    </span>
+                    <span className="text-xs font-mono font-bold text-[#2B4C3E] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      {maLoKho}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2.5 text-xs">
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div className="text-[10px] text-slate-400 font-semibold">Sản phẩm</div>
+                      <div className="font-bold text-slate-800 truncate">{maSP || "Chưa có"}</div>
+                      <div className="text-[11px] text-slate-500 truncate">{tenSP || "—"}</div>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div className="text-[10px] text-slate-400 font-semibold">Thương hiệu</div>
+                      <div className="font-bold text-slate-800">{thuongHieu}</div>
+                      <div className="text-[11px] text-slate-500">{LOAI_SP_LABELS[phanLoai as LoaiSP] || phanLoai}</div>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <div className="text-[10px] text-slate-400 font-semibold">Tổng nhập kho</div>
+                      <div className="font-black text-emerald-700 text-sm">{tongSLTatCa.toLocaleString()} SP</div>
+                      <div className="text-[11px] text-slate-500">{bienThe.length} màu sắc</div>
+                    </div>
+                  </div>
+
+                  {/* Kênh bán đã áp dụng */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-600">Kênh bán ({loKenhBan.length}):</span>
+                    {loKenhBan.map((kVal) => {
+                      const kObj = DS_KENH_BAN.find((x) => x.value === kVal);
+                      const pVal = layGiaKenh(kVal) || inputPrices[kVal] || 0;
+                      return (
+                        <span key={kVal} className="text-[11px] font-semibold bg-slate-50 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                          {kObj?.label}: <strong className="text-emerald-700">{pVal > 0 ? formatVND(pVal) : "Chưa có giá"}</strong>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          {/* Sticky footer đáy modal */}
+          <div className="p-4 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 sticky bottom-0 rounded-b-2xl z-20 shadow-md">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                Lô: <strong>{maLoKho}</strong>
+              </span>
+              <span className="font-bold text-[#2B4C3E] bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+                Tổng nhập: <strong className="text-sm">{tongSLTatCa.toLocaleString()}</strong> SP · <strong>{bienThe.length}</strong> màu
+              </span>
+              {giaVon > 0 && tongSLTatCa > 0 && (
+                <span className="hidden sm:inline text-slate-500 font-semibold">
+                  Tổng giá trị vốn: <strong className="text-slate-800">{formatVND(tongGiaTriVon)}</strong>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2.5 ml-auto">
+              <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-white hover:bg-slate-50 border-2 border-slate-200 rounded-xl font-bold transition-colors text-sm">
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleSubmit} 
+                disabled={saving || loadingDanhMuc || loadingBangGia || (!selectedProduct && !isNewProduct)}
+                className="px-6 py-2.5 bg-[#2B4C3E] hover:bg-[#203a2f] text-white rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                <Plus className="w-5 h-5" /> Thêm biến thể mới
+                <Save className="w-4 h-4" /> {saving ? "Đang lưu..." : loadingBangGia ? "Đang tải bảng giá..." : `Lưu lô hàng (${bienThe.length} màu · ${tongSLTatCa.toLocaleString()} SP)`}
               </button>
             </div>
-
-            {/* Summary widget */}
-            <div className="bg-[#2B4C3E]/5 p-4 rounded-2xl border-2 border-[#2B4C3E]/20">
-              <div className="text-xs font-bold text-[#2B4C3E] mb-2">TÓM TẮT LÔ NHẬP</div>
-              <div className="space-y-1.5 text-sm text-[#2B4C3E]">
-                <div className="flex justify-between items-start gap-2">
-                  <span className="font-bold shrink-0">{maSP || "—"}</span>
-                  <span className="text-right truncate">{tenSP || "—"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Số lượng màu:</span>
-                  <span className="font-bold">{bienThe.length}</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-[#2B4C3E]/20 mt-2">
-                  <span className="font-bold">Tổng nhập kho:</span>
-                  <span className="font-black text-[#2B4C3E] text-lg">{tongSLTatCa.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-        </div>
-
-          <div className="p-4 bg-white border-t border-slate-200 flex justify-end gap-3 sticky bottom-0 rounded-b-2xl z-20">
-            <button onClick={onClose} className="px-5 py-2.5 text-slate-600 bg-white hover:bg-slate-50 border-2 border-slate-200 rounded-xl font-bold transition-colors">
-              Hủy bỏ
-            </button>
-            <button 
-              onClick={handleSubmit} 
-              disabled={saving || loadingDanhMuc || loadingBangGia || (!selectedProduct && !isNewProduct)}
-              className="px-6 py-2.5 bg-[#2B4C3E] hover:bg-[#203a2f] text-white rounded-xl font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-5 h-5" /> {saving ? "Đang lưu..." : loadingBangGia ? "Đang tải bảng giá..." : `Lưu ${bienThe.length} biến thể`}
-            </button>
           </div>
         </div>
       </ResponsiveModal>
 
       {openSizeBuilder && (
-        <SizeRatioBuilderModal onClose={() => setOpenSizeBuilder(false)} onSave={handleLuuBangSizeMoi} />
+        <AddSizeRatioModal onClose={() => setOpenSizeBuilder(false)} onSelectPreset={handleLuuBangSizeMoi} />
       )}
     </>
   );
 }
 
-// =================== TẠO BẢNG TỈ LỆ SIZE MỚI + QUY ĐỔI TỈ LỆ ===================
-function SizeRatioBuilderModal({ onClose, onSave }: { onClose: () => void; onSave: (p: SizeRatioPreset) => void }) {
-  const [label, setLabel] = useState("");
-  const [rows, setRows] = useState<{ size: string; ratio: number }[]>([
-    { size: "M", ratio: 1 },
-    { size: "L", ratio: 1 },
-    { size: "XL", ratio: 1 },
-  ]);
-  const [tongSLQuyDoi, setTongSLQuyDoi] = useState(0);
-
-  const suaRow = (idx: number, patch: Partial<{ size: string; ratio: number }>) => {
-    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
-  };
-  const xoaRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
-  const themRow = () => setRows((prev) => [...prev, { size: "", ratio: 1 }]);
-
-  const riSo = rows.reduce((s, r) => s + (r.ratio || 0), 0);
-  const quyDoi = (() => {
-    const base = riSo > 0 ? Math.floor(tongSLQuyDoi / riSo) : 0;
-    return rows.map((r) => ({ size: r.size, sl: base * (r.ratio || 0) }));
-  })();
-
-  const handleLuu = () => {
-    const hopLe = rows.map((r) => ({ size: r.size.trim(), ratio: r.ratio })).filter((r) => r.size && r.ratio > 0);
-    if (hopLe.length < 2) {
-      toast.error("Cần ít nhất 2 size có tên và tỉ lệ > 0");
-      return;
-    }
-    const tenTrung = new Set(hopLe.map((r) => r.size.toUpperCase()));
-    if (tenTrung.size !== hopLe.length) {
-      toast.error("Tên size bị trùng nhau");
-      return;
-    }
-    onSave(buildCustomSizeRatioPreset(hopLe.map((r) => r.size), hopLe.map((r) => r.ratio), label));
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white p-4 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="font-bold text-lg flex items-center gap-2"><Calculator className="w-5 h-5" /> Tạo bảng tỉ lệ size mới</h2>
-          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-slate-700 mb-1 block">Tên bảng (tuỳ chọn)</label>
-            <input value={label} onChange={(e) => setLabel(e.target.value)} className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none" placeholder="Tự động đặt tên nếu để trống" />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[10px] font-bold text-slate-500 uppercase px-0.5">
-              <div>Size</div>
-              <div>Tỉ lệ</div>
-              <div></div>
-            </div>
-            {rows.map((r, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                <input value={r.size} onChange={(e) => suaRow(idx, { size: e.target.value })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none" placeholder="VD: M" />
-                <input type="number" min={0} value={r.ratio || ""} onChange={(e) => suaRow(idx, { ratio: Math.max(0, parseInt(e.target.value) || 0) })} className="w-full px-2.5 py-1.5 border-2 border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none" placeholder="0" />
-                <button onClick={() => xoaRow(idx)} disabled={rows.length <= 1} className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded disabled:opacity-30 disabled:hover:bg-transparent" title="Xoá size này">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            <button type="button" onClick={themRow} className="w-full py-2 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-600 font-bold text-xs hover:bg-indigo-50 flex items-center justify-center gap-1">
-              <Plus className="w-3.5 h-3.5" /> Thêm size
-            </button>
-          </div>
-
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs">
-            <div className="font-semibold text-indigo-800 mb-1">
-              Tỉ lệ: {rows.filter((r) => r.size).map((r) => r.ratio).join(":")} (Ri{riSo})
-            </div>
-            <div className="text-indigo-700">{rows.filter((r) => r.size).map((r) => r.size).join(":") || "—"}</div>
-          </div>
-
-          {/* Quy đổi tỉ lệ: nhập tổng SL -> xem thử chia ra bao nhiêu mỗi size */}
-          <div className="border-2 border-slate-200 rounded-lg p-3 space-y-2">
-            <div className="text-xs font-bold text-slate-700">Quy đổi tỉ lệ (xem thử)</div>
-            <div className="flex items-center gap-2">
-              <label className="text-[11px] text-slate-500 shrink-0">Tổng SL muốn nhập</label>
-              <input type="number" min={0} value={tongSLQuyDoi || ""} onChange={(e) => setTongSLQuyDoi(Math.max(0, parseInt(e.target.value) || 0))} className="w-28 px-2 py-1 border border-slate-200 rounded text-sm focus:border-indigo-500 outline-none" placeholder="0" />
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {quyDoi.filter((q) => q.size).map((q) => (
-                <div key={q.size} className="flex flex-col items-center shrink-0 min-w-[48px]">
-                  <span className="w-full px-1 py-1 text-[11px] font-bold rounded-t bg-slate-100 text-slate-600 border border-b-0 border-slate-200 text-center">{q.size}</span>
-                  <span className="w-full px-1 py-1 text-sm font-extrabold text-center bg-emerald-50 text-emerald-700 border border-slate-200 rounded-b">{q.sl}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 rounded-b-2xl sticky bottom-0">
-          <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-semibold">Hủy</button>
-          <button onClick={handleLuu} className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-bold hover:bg-indigo-600 flex items-center gap-2">
-            <Save className="w-4 h-4" /> Lưu bảng size
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // =================== SỬA 1 BIẾN THỂ (giữ nguyên hành vi cũ) ===================
-function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => void }) {
+function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; initialImage?: string; onClose: () => void; onSave: (data: any) => Promise<void> | void }) {
   const isValidKey = Object.keys(LOAI_SP_LABELS).includes(sp.phanLoai || "");
   const detectedPhanLoai = isValidKey ? sp.phanLoai : detectLoaiSP((sp.tenSP || "") + " " + (sp.phanLoai || ""));
+
+  const [chiTietSize, setChiTietSize] = useState<Array<{ size: string; sl: number }>>(() => {
+    if (Array.isArray(sp.chiTietSize) && sp.chiTietSize.length > 0) {
+      return sp.chiTietSize;
+    }
+    const defaultSizes = sp.size ? sp.size.split(",").map(s => s.trim()).filter(Boolean) : ["L", "XL", "2XL", "3XL"];
+    const baseList = defaultSizes.length > 0 ? defaultSizes : ["L", "XL", "2XL", "3XL"];
+    return baseList.map(size => ({ size, sl: 0 }));
+  });
 
   const [form, setForm] = useState({
     maSP: sp.maSP || "",
     tenSP: sp.tenSP || "",
     phanLoai: detectedPhanLoai || "BoTru",
+    thuongHieu: (sp as any).thuongHieu || (sp.maSP?.toUpperCase().includes("BPJ") || sp.tenSP?.toUpperCase().includes("MANPJ") ? "Man PJ" : "Polomimin"),
     mau: sp.mau || "Trắng",
     size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
     lsx: layMaLoTonKho(sp),
@@ -786,9 +1109,52 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
     ghiChu: sp.ghiChu || "",
   });
 
+  const [isSaving, setIsSaving] = useState(false);
   const [image, setImage] = useState(initialImage || "");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Phân bổ tự động số lượng vào các size khi user đổi "Số lượng thực tế"
+  const handleSoLuongChange = (rawVal: string) => {
+    const newSl = Math.max(0, parseInt(rawVal) || 0);
+    let newTt = form.trangThai;
+    if (newSl === 0) newTt = "xuat-kho";
+    else if (newSl > 0 && (form.trangThai === "xuat-kho" || (form.trangThai as any) === "het")) newTt = "con";
+
+    let updatedSizes = chiTietSize;
+    if (updatedSizes.length > 0) {
+      const tongCu = updatedSizes.reduce((s, x) => s + (Number(x.sl) || 0), 0);
+      let conLai = newSl;
+      updatedSizes = updatedSizes.map((x, idx) => {
+        if (idx === updatedSizes.length - 1) return { ...x, sl: conLai };
+        const chia = tongCu > 0 ? Math.round(((Number(x.sl) || 0) / tongCu) * newSl) : Math.floor(newSl / updatedSizes.length);
+        conLai -= chia;
+        return { ...x, sl: Math.max(0, chia) };
+      });
+    } else {
+      updatedSizes = [{ size: form.size || "Freesize", sl: newSl }];
+    }
+    setChiTietSize(updatedSizes);
+    const newSizeStr = hienThiDanhSachSize(form.size, updatedSizes);
+    setForm((prev) => ({ ...prev, soLuong: newSl, trangThai: newTt, size: newSizeStr }));
+  };
+
+  // Cho phép user gõ trực tiếp số lượng từng size nếu muốn
+  const handleSizeItemChange = (idx: number, newQty: number) => {
+    const updated = [...chiTietSize];
+    updated[idx] = { ...updated[idx], sl: Math.max(0, newQty) };
+    const tongMoi = updated.reduce((s, x) => s + (Number(x.sl) || 0), 0);
+    setChiTietSize(updated);
+    let newTt = form.trangThai;
+    if (tongMoi === 0) newTt = "xuat-kho";
+    else if (tongMoi > 0 && (form.trangThai === "xuat-kho" || (form.trangThai as any) === "het")) newTt = "con";
+    setForm((prev) => ({
+      ...prev,
+      soLuong: tongMoi,
+      trangThai: newTt,
+      size: hienThiDanhSachSize(prev.size, updated),
+    }));
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -871,6 +1237,36 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
                 </p>
               </div>
             </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">Thương hiệu *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, thuongHieu: "Man PJ" })}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                    form.thuongHieu === "Man PJ"
+                      ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                  Man PJ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, thuongHieu: "Polomimin" })}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
+                    form.thuongHieu === "Polomimin"
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Polomimin
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* KHỐI 2: ĐẶC TÍNH & TRẠNG THÁI */}
@@ -933,19 +1329,40 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
               </div>
               <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <label className="block text-xs font-bold text-blue-900 mb-1.5 uppercase tracking-wider">Số Lượng Thực Tế *</label>
-                <input 
-                  type="number" min="0" 
-                  className="w-32 border-2 border-blue-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-lg font-bold text-blue-700 bg-white" 
-                  value={form.soLuong} onChange={(e) => {
-                    const newSl = Math.max(0, parseInt(e.target.value) || 0);
-                    let newTt = form.trangThai;
-                    if (newSl === 0) newTt = "xuat-kho";
-                    else if (newSl > 0 && (form.trangThai === "xuat-kho" || form.trangThai === "het" as any)) newTt = "con";
-                    setForm({ ...form, soLuong: newSl, trangThai: newTt });
-                  }}
-                />
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="number" min="0" 
+                    className="w-32 border-2 border-blue-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-lg font-bold text-blue-700 bg-white" 
+                    value={form.soLuong} 
+                    onChange={(e) => handleSoLuongChange(e.target.value)}
+                  />
+                  <span className="text-xs font-bold text-slate-500">sản phẩm</span>
+                </div>
               </div>
             </div>
+
+            {/* PHÂN BỔ THEO SIZE NẾU CÓ CHI TIẾT */}
+            {chiTietSize.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-200">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Box className="w-3.5 h-3.5 text-blue-600" /> Chi tiết phân bổ theo size
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {chiTietSize.map((item, idx) => (
+                    <div key={idx} className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex flex-col items-center shadow-xs">
+                      <span className="text-xs font-black text-slate-700 uppercase">{item.size}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full text-center font-bold text-blue-700 bg-white border border-slate-300 rounded-lg py-1 mt-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={item.sl}
+                        onChange={(e) => handleSizeItemChange(idx, parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* KHỐI 3: THIẾT LẬP GIÁ BÁN */}
@@ -1028,15 +1445,30 @@ function SuaBienTheForm({ sp, initialImage, onClose, onSave }: { sp: SanPhamTP; 
 
         {/* STICKY FOOTER */}
         <div className="p-4 sm:px-6 sm:py-4 border-t border-slate-200 bg-white flex justify-end gap-3 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] rounded-b-2xl">
-          <button onClick={onClose} className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors border-2 border-slate-200">Đóng</button>
-          <button onClick={() => {
-            if (form.kenhBan.length === 0) {
-              toast.error("Cần chọn ít nhất 1 kênh bán");
-              return;
-            }
-            onSave({ ...sp, ...form, __tempImage: image });
-          }} className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02]">
-            <Save className="w-5 h-5" /> LƯU THAY ĐỔI
+          <button type="button" disabled={isSaving} onClick={onClose} className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors border-2 border-slate-200 disabled:opacity-50">Đóng</button>
+          <button 
+            type="button"
+            disabled={isSaving}
+            onClick={async () => {
+              if (form.kenhBan.length === 0) {
+                toast.error("Cần chọn ít nhất 1 kênh bán");
+                return;
+              }
+              setIsSaving(true);
+              try {
+                await onSave({ ...sp, ...form, chiTietSize, __tempImage: image });
+                onClose();
+              } catch (err: any) {
+                console.error("[SuaBienTheForm] Lỗi khi lưu:", err);
+                toast.error(err?.message || "Lỗi khi lưu thay đổi");
+              } finally {
+                setIsSaving(false);
+              }
+            }} 
+            className="px-8 py-2.5 font-bold text-white bg-[#2B4C3E] hover:bg-[#1f382d] rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg transition-all scale-100 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+            {isSaving ? "Đang lưu..." : "LƯU THAY ĐỔI"}
           </button>
         </div>
       </div>

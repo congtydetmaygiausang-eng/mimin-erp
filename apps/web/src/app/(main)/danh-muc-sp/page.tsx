@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store } from "lucide-react";
+import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store, RotateCcw } from "lucide-react";
 import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
@@ -65,6 +65,8 @@ export default function DanhMucSanPhamPage() {
   const dsMaDaCo = useMemo(() => dsOrder.map((o) => o.maDH), [dsOrder]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [filterThuongHieu, setFilterThuongHieu] = useState<"all" | "Man PJ" | "Polomimin">("all");
+  const [filterTonKho, setFilterTonKho] = useState<"all" | "con-hang" | "het-hang">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedProduct, setSelectedProduct] = useState<SanPham | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -114,10 +116,43 @@ export default function DanhMucSanPhamPage() {
     refresh();
     fetchKhoData();
 
+    // Lắng nghe thay đổi realtime từ Supabase giữa các thiết bị (kho_thanh_pham & san_pham)
+    let channel: any = null;
+    if (supabase) {
+      channel = supabase
+        .channel("danh-muc-sp-cross-device-sync")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "kho_thanh_pham" },
+          () => {
+            fetchKhoData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "san_pham" },
+          () => {
+            refresh();
+            fetchKhoData();
+          }
+        )
+        .subscribe();
+    }
+
     if (typeof window !== "undefined") {
       window.addEventListener("mimin:kho-thanh-pham-changed", fetchKhoData);
-      return () => window.removeEventListener("mimin:kho-thanh-pham-changed", fetchKhoData);
+      window.addEventListener("mimin:danh-muc-sp-changed", fetchKhoData);
     }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mimin:kho-thanh-pham-changed", fetchKhoData);
+        window.removeEventListener("mimin:danh-muc-sp-changed", fetchKhoData);
+      }
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, [refresh]);
 
   const dsDongBo = useMemo<SanPham[]>(() => {
@@ -150,24 +185,24 @@ export default function DanhMucSanPhamPage() {
         dsMau: (() => {
           if (current?.dsMau?.length) {
             let base = [...current.dsMau];
-            // Đồng bộ xoá: Loại bỏ các màu đã bị xóa khỏi Kho thành phẩm
-            base = base.filter(m => colors.some(c => c.ten === m.ten));
             
             // Lọc trùng trong base (đề phòng dữ liệu cũ bị lỗi duplicate)
             const uniqueBase = new Map<string, any>();
             for (const m of base) {
-                if (!uniqueBase.has(m.ten)) uniqueBase.set(m.ten, m);
+                const k = (m.ten || "").trim().toLowerCase();
+                if (!uniqueBase.has(k)) uniqueBase.set(k, m);
             }
             base = Array.from(uniqueBase.values());
             
-            // Đồng bộ thêm: Cập nhật màu mới và hình ảnh
+            // Đồng bộ số lượng tồn kho và ảnh từ kho thành phẩm vào từng màu (so khớp case-insensitive)
+            // TUYỆT ĐỐI KHÔNG tự ý push màu lạ từ kho vào sản phẩm đã có dsMau chuẩn để tránh nhảy màu.
             colors.forEach(c => {
-              const idx = base.findIndex(x => x.ten === c.ten);
-              if (idx === -1) {
-                 base.push(c); 
-              } else {
-                 if (c.img) base[idx].img = c.img;
+              const cNorm = (c.ten || "").trim().toLowerCase();
+              const idx = base.findIndex(x => (x.ten || "").trim().toLowerCase() === cNorm);
+              if (idx !== -1) {
+                 if (c.img && !base[idx].img) base[idx].img = c.img;
                  base[idx].soLuongKho = c.soLuongKho;
+                 if (!base[idx].maSKU && c.maSKU) base[idx].maSKU = c.maSKU;
               }
             });
             return base;
@@ -186,7 +221,15 @@ export default function DanhMucSanPhamPage() {
         giaTikTok: item.giaTikTok || current?.giaTikTok || 0,
         giaShopee: item.giaShopee || current?.giaShopee || 0,
         kenhBan: item.kenhBan?.length ? item.kenhBan : (current?.kenhBan || []),
-        hinhAnh: current?.hinhAnh || colors.find(c => c.img)?.img || "",
+        hinhAnh: (() => {
+          const inStockRealImg = colors.find(c => c.img && c.soLuongKho > 0 && !c.img.startsWith("/product-models/"))?.img;
+          const anyRealImg = colors.find(c => c.img && !c.img.startsWith("/product-models/"))?.img;
+          const currentRealImg = current?.hinhAnh && !current.hinhAnh.startsWith("/product-models/") ? current.hinhAnh : "";
+          const itemHinhAnh = item.hinhAnh && !item.hinhAnh.startsWith("/product-models/") ? item.hinhAnh : "";
+          const anyKhoImg = colors.find(c => c.img)?.img;
+          const fallbackImg = current?.hinhAnh || (item.maSP && /^M\d{2}$/i.test(item.maSP) ? `/product-models/${item.maSP}.png` : "");
+          return inStockRealImg || anyRealImg || currentRealImg || itemHinhAnh || anyKhoImg || fallbackImg;
+        })(),
       });
     }
     
@@ -243,6 +286,29 @@ export default function DanhMucSanPhamPage() {
         }
       });
     }
+
+    // Lọc theo thương hiệu: Man PJ | Polomimin
+    if (filterThuongHieu !== "all") {
+      result = result.filter((sp) => {
+        const th = sp.thuongHieu || (sp.ncc === "Man PJ" || sp.ncc === "Polomimin" ? sp.ncc : ((sp.id || "").toUpperCase().includes("BPJ") || (sp.tenSP || "").toUpperCase().includes("MANPJ") ? "Man PJ" : "Polomimin"));
+        return th === filterThuongHieu;
+      });
+    }
+
+    // Lọc theo trạng thái tồn kho: Còn hàng | Hết hàng
+    if (filterTonKho !== "all") {
+      result = result.filter((sp) => {
+        const tonMau = tonKho[sp.id] || (sp.maSP ? tonKho[sp.maSP] : undefined) || (sp.id ? tonKho[sp.id.toUpperCase()] : undefined);
+        let totalStock = 0;
+        if (tonMau) {
+          totalStock = Object.values(tonMau).reduce((sum, list) => sum + (list || []).reduce((s, row) => s + (row.sl || 0), 0), 0);
+        } else if (sp.dsMau && sp.dsMau.length > 0) {
+          totalStock = sp.dsMau.reduce((s, m) => s + (Number(m.soLuongKho) || 0), 0);
+        }
+        const isConHang = totalStock > 0 && sp.trangThai !== "het-hang" && sp.trangThai !== "ngung-kinh-doanh";
+        return filterTonKho === "con-hang" ? isConHang : !isConHang;
+      });
+    }
     // Sort by created date first (stably, ignoring edits so items don't jump around)
     result.sort((a, b) => {
       // Priority: prefix match on ID when searching
@@ -265,7 +331,7 @@ export default function DanhMucSanPhamPage() {
       return dateB.localeCompare(dateA);
     });
     return result;
-  }, [dsDongBo, search, activeFilter]);
+  }, [dsDongBo, search, activeFilter, filterThuongHieu, filterTonKho, tonKho]);
 
   // === HANDLERS (3 CTA buttons) ===
   const handleAddToCart = (sp: SanPham) => {
@@ -503,12 +569,15 @@ export default function DanhMucSanPhamPage() {
   };
 
   const handleDeleteProduct = (sp: SanPham) => {
-    if (confirm(`Bạn có chắc muốn xóa sản phẩm ${sp.tenSP}?`)) {
+    if (confirm(`Bạn có chắc muốn xóa sản phẩm ${sp.tenSP}? Sản phẩm sẽ được xóa khỏi Danh mục và Kho thành phẩm.`)) {
       if (xoaSP) {
-        xoaSP(sp.id);
+        xoaSP(sp.id, user);
+        if (sp.maSP && sp.maSP !== sp.id) xoaSP(sp.maSP, user);
+        if (sp.tenSP) xoaSP(sp.tenSP, user);
         setDanhMucKho(prev => {
           const newDMK = { ...prev };
           delete newDMK[sp.id];
+          if (sp.maSP) delete newDMK[sp.maSP];
           return newDMK;
         });
         setSelectedProduct(null);
@@ -519,24 +588,25 @@ export default function DanhMucSanPhamPage() {
 
   const isSavingRef = useRef(false);
 
-  const handleSaveProduct = async (sp: Partial<SanPham>) => {
+  const handleSaveProduct = async (sp: Partial<SanPham> & { oldId?: string }) => {
     if (isSavingRef.current) return;
     isSavingRef.current = true;
     try {
-      const targetId = (productToEdit?.id || sp.id || "").trim().toUpperCase();
-      const isExisting = Boolean(productToEdit || (dsSanPham && dsSanPham.some(p => (p.id || "").trim().toUpperCase() === targetId)));
+      const oldId = (productToEdit?.id || (sp as any).oldId || "").trim().toUpperCase();
+      const newId = (sp.id || "").trim().toUpperCase();
+      const isExisting = Boolean(productToEdit || (oldId && dsSanPham && dsSanPham.some(p => (p.id || "").trim().toUpperCase() === oldId)));
 
-      if (isExisting) {
+      if (isExisting && oldId) {
         if (suaSP) {
-          await suaSP(targetId, sp);
-          toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP || targetId}`);
-          if (selectedProduct && (selectedProduct.id || "").trim().toUpperCase() === targetId) {
-            setSelectedProduct({ ...selectedProduct, ...sp } as SanPham);
+          await suaSP(oldId, sp);
+          toast.success(`Đã cập nhật sản phẩm: ${sp.tenSP || newId}`);
+          if (selectedProduct && ((selectedProduct.id || "").trim().toUpperCase() === oldId || (selectedProduct.id || "").trim().toUpperCase() === newId)) {
+            setSelectedProduct({ ...selectedProduct, ...sp, id: newId } as SanPham);
           }
         }
       } else if (themSP) {
         await themSP(sp as SanPham);
-        toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP || targetId}`);
+        toast.success(`Đã tạo sản phẩm mới: ${sp.tenSP || newId}`);
       }
 
       // Cập nhật ngay dữ liệu kho vào state để hiển thị chính xác số tồn vừa chỉnh sửa
@@ -559,7 +629,7 @@ export default function DanhMucSanPhamPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800 -m-4 md:-m-6 p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-800 -m-4 md:-m-6 p-4 md:p-6 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] max-w-[calc(100%+2rem)] md:max-w-[calc(100%+3rem)] overflow-x-hidden">
       {/* === HEADER === */}
       <div className="max-w-[1600px] mx-auto mb-5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
@@ -597,33 +667,35 @@ export default function DanhMucSanPhamPage() {
               
   
   
-              {/* B2C Cart Header Button */}
-              <button
-                onClick={() => setShowCustomerCheckout(true)}
-                className="relative w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-2xl shadow-xl hover:bg-white/30 transition-colors whitespace-nowrap"
-              >
-                <ShoppingCart className="w-5 h-5" /> Giỏ hàng
-                {getCustomerCartItems() > 0 && (
-                  <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
-                    {getCustomerCartItems()}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setShowProductForm(true)}
-                className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white text-cyan-700 font-extrabold rounded-2xl shadow-xl hover:bg-cyan-50 transition-colors whitespace-nowrap"
-              >
-                <Plus className="w-5 h-5"/> Tạo Mới
-              </button>
+              {/* B2C Cart Header Button + Create Button (Side by side on mobile) */}
+              <div className="grid grid-cols-2 gap-2 w-full md:w-auto md:flex md:items-center">
+                <button
+                  onClick={() => setShowCustomerCheckout(true)}
+                  className="relative flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white/20 backdrop-blur text-white font-extrabold rounded-xl md:rounded-2xl shadow-lg hover:bg-white/30 transition-colors whitespace-nowrap text-sm"
+                >
+                  <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" /> Giỏ hàng
+                  {getCustomerCartItems() > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1 rounded-full bg-rose-500 text-white text-[11px] font-black flex items-center justify-center shadow-md">
+                      {getCustomerCartItems()}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowProductForm(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white text-cyan-700 font-extrabold rounded-xl md:rounded-2xl shadow-lg hover:bg-cyan-50 transition-colors whitespace-nowrap text-sm"
+                >
+                  <Plus className="w-4 h-4 md:w-5 md:h-5"/> Tạo Mới
+                </button>
+              </div>
             </div>
             
-            {/* Gợi ý tìm kiếm */}
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-96 px-1">
+            {/* Gợi ý tìm kiếm (Swipeable on mobile) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar tab-scroll-mobile w-full md:w-96 px-1 pb-1">
               {["Áo Trụ", "Áo Cổ Tròn", "Bộ Trụ", "Bộ Cổ Tròn", "Phụ Kiện"].map(tag => (
                 <button 
                   key={tag}
                   onClick={() => setSearch(tag)}
-                  className="px-2.5 py-1 text-xs font-semibold bg-white/10 hover:bg-white/20 text-cyan-50 rounded-full transition-colors border border-white/20"
+                  className="px-2.5 py-1 text-xs font-semibold bg-white/10 hover:bg-white/20 text-cyan-50 rounded-full transition-colors border border-white/20 shrink-0 whitespace-nowrap"
                 >
                   {tag}
                 </button>
@@ -633,33 +705,103 @@ export default function DanhMucSanPhamPage() {
         </div>
 
         {/* Filter tabs + view toggle */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 flex-1">
-            {FILTER_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveFilter(tab.id)}
-                  className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap shadow-md ${
-                    active
-                      ? "bg-white text-cyan-700"
-                      : "bg-white/20 backdrop-blur text-white hover:bg-white/30"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar tab-scroll-mobile pb-1 flex-1 min-w-0">
+              {FILTER_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveFilter(tab.id)}
+                    className={`px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition whitespace-nowrap shadow-md shrink-0 ${
+                      active
+                        ? "bg-white text-cyan-700"
+                        : "bg-white/20 backdrop-blur text-white hover:bg-white/30"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Stats badge (hidden on mobile to give full width to scrollable tabs) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <span className="text-cyan-100 text-xs font-semibold whitespace-nowrap">
+                {filtered.length} sản phẩm
+              </span>
+            </div>
           </div>
 
-          {/* Stats badge */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-cyan-100 text-xs font-semibold whitespace-nowrap">
-              {filtered.length} sản phẩm
-            </span>
+          {/* Hàng 2: Bộ lọc Thương hiệu & Tồn kho */}
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-2.5 border-t border-white/15">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar tab-scroll-mobile w-full md:w-auto max-w-full pb-1">
+              {/* Thương hiệu */}
+              <div className="flex items-center gap-1 bg-white/15 backdrop-blur-md p-1 rounded-xl border border-white/20 shrink-0">
+                <span className="text-[11px] font-bold text-cyan-100 px-2 uppercase tracking-wider flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5" /> Thương hiệu:
+                </span>
+                {(["all", "Man PJ", "Polomimin"] as const).map((th) => {
+                  const active = filterThuongHieu === th;
+                  return (
+                    <button
+                      key={th}
+                      onClick={() => setFilterThuongHieu(th)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                        active
+                          ? "bg-white text-cyan-800 shadow-sm"
+                          : "text-white/80 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {th === "all" ? "Tất cả" : th}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Trạng thái tồn kho */}
+              <div className="flex items-center gap-1 bg-white/15 backdrop-blur-md p-1 rounded-xl border border-white/20 shrink-0">
+                <span className="text-[11px] font-bold text-cyan-100 px-2 uppercase tracking-wider flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" /> Trạng thái:
+                </span>
+                {(["all", "con-hang", "het-hang"] as const).map((tt) => {
+                  const active = filterTonKho === tt;
+                  return (
+                    <button
+                      key={tt}
+                      onClick={() => setFilterTonKho(tt)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                        active
+                          ? "bg-white text-cyan-800 shadow-sm"
+                          : "text-white/80 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {tt === "con-hang" && <span className="w-2 h-2 rounded-full bg-emerald-400"></span>}
+                      {tt === "het-hang" && <span className="w-2 h-2 rounded-full bg-rose-400"></span>}
+                      {tt === "all" ? "Tất cả" : tt === "con-hang" ? "Còn Hàng" : "Hết Hàng"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Reset nút nếu đang lọc */}
+            {(filterThuongHieu !== "all" || filterTonKho !== "all" || activeFilter !== "all" || search) && (
+              <button
+                onClick={() => {
+                  setFilterThuongHieu("all");
+                  setFilterTonKho("all");
+                  setActiveFilter("all");
+                  setSearch("");
+                }}
+                className="text-xs text-white/80 hover:text-white underline font-semibold flex items-center gap-1 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Đặt lại lọc
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -682,12 +824,13 @@ export default function DanhMucSanPhamPage() {
               <ProductLibraryCard
                 key={sp.id}
                 sp={sp}
-                tonKhoTheoMau={tonKho[sp.id]}
+                tonKhoTheoMau={tonKho[sp.id] || (sp.maSP ? tonKho[sp.maSP] : undefined) || (sp.id ? tonKho[sp.id.toUpperCase()] : undefined)}
                 activeFilter={activeFilter}
                 onAddToCart={handleAddToCart}
                 onCreateOrder={handleCreateOrder}
                 onProduceOrder={handleProduceOrder}
                 onFavorite={handleFavorite}
+                onDelete={handleDeleteProduct}
                 isFavorite={favoriteIds.includes(sp.id)}
                 onClick={(product) => setSelectedProduct(product)}
               />
@@ -699,7 +842,7 @@ export default function DanhMucSanPhamPage() {
       {selectedProduct && (
         <ProductDetailModal
           sp={selectedProduct}
-          tonKhoTheoMau={tonKho[selectedProduct.id]}
+          tonKhoTheoMau={tonKho[selectedProduct.id] || (selectedProduct.maSP ? tonKho[selectedProduct.maSP] : undefined) || (selectedProduct.id ? tonKho[selectedProduct.id.toUpperCase()] : undefined)}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
           onCreateOrder={handleCreateOrder}

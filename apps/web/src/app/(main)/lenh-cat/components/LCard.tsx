@@ -2,7 +2,7 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import React, { ReactNode } from "react";
-import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, UsersRound, Image as ImageIcon, Wallet } from "lucide-react";
+import { Package, Shirt, Calendar, Calculator, AlertCircle, Edit3, Trash2, CheckCircle2, ArrowRight, UsersRound, Image as ImageIcon, Wallet, Printer } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import { DateDisplay } from "@/components/ui";
 import { TRANG_THAI_LC_LABELS, TRANG_THAI_LC_STYLE, LOAI_SP_LABELS, type LenhCat, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
@@ -11,6 +11,7 @@ import { GiaCongModal } from "@/components/modals/GiaCongModal";
 import { TyLeSizeModal } from "@/components/modals/TyLeSizeModal";
 import { useState } from "react";
 import { LenhCatSummaryModal, type LenhCatSummaryView } from "./LenhCatSummaryModal";
+import ChonPhieuInModal from "@/components/ui/ChonPhieuInModal";
 
 // ============ STAT CARD ============
 export function StatCard({ icon, label, value, sub, color }: {
@@ -75,6 +76,7 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
   const [modalGiaCong, setModalGiaCong] = useState<"ao" | "quan" | null>(null);
   const [modalTyLeMauIdx, setModalTyLeMauIdx] = useState<number | null>(null);
   const [summaryView, setSummaryView] = useState<LenhCatSummaryView | null>(null);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   // Kiểm tra khâu Cắt đã có số liệu chưa (dựa vào tyLeSizeChiTiet của tất cả màu)
   // Nếu cắt chưa nhập: khoá nút Gia Công và TyLeSize các khâu sau
@@ -121,6 +123,14 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
               <Edit3 className="w-5 h-5 group-hover:text-sky-600" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setPrintModalOpen(true)}
+            className="p-2.5 rounded-lg bg-white/50 border border-slate-200 hover:bg-white text-slate-700 transition-all shadow-sm group"
+            title="In phiếu A4 (Lệnh Cắt / Kiểm Đếm)"
+          >
+            <Printer className="w-5 h-5 group-hover:text-teal-600" />
+          </button>
           {onDelete && !isTransferred && (
             <button onClick={onDelete} className="p-2.5 rounded-lg bg-rose-50/50 border border-rose-100 text-rose-500 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300 transition-all shadow-sm ml-1" title="Xóa lệnh cắt">
               <Trash2 className="w-5 h-5" />
@@ -129,36 +139,36 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
         </div>
       </div>
 
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col p-4 sm:p-5">
         
         {/* INFO ROW: Name, Code, Total, Deadline */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 mb-6">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
           <div className="flex-1">
-            <h3 className="font-black text-3xl text-slate-900 leading-tight mb-3 cursor-pointer hover:text-sky-600 transition-colors" onClick={onEdit}>
+            <h3 className="font-extrabold text-xl md:text-2xl text-slate-900 leading-tight mb-2 cursor-pointer hover:text-teal-700 transition-colors" onClick={onEdit}>
               {lc.tenSP}
             </h3>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center px-3 py-1 rounded text-slate-600 text-xs font-bold bg-slate-100 border border-slate-200">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-slate-600 text-xs font-semibold bg-slate-100 border border-slate-200/80">
                 {LOAI_SP_LABELS[lc.loaiSP] || "Sản phẩm"}
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded text-slate-500 text-xs font-medium bg-slate-100 border border-slate-200">
-                Mã: <span className="font-bold text-slate-800 ml-1.5">{lc.maSP || "---"}</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-slate-500 text-xs font-medium bg-slate-100 border border-slate-200/80">
+                Mã: <span className="font-bold text-slate-800 ml-1">{lc.maSP || "---"}</span>
               </span>
-              <span className="inline-flex items-center px-3 py-1 rounded text-slate-500 text-xs font-medium bg-slate-100 border border-slate-200">
-                Thợ cắt: <span className="font-bold text-slate-800 ml-1.5">{thoCat}</span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded text-slate-500 text-xs font-medium bg-slate-100 border border-slate-200/80">
+                Thợ cắt: <span className="font-bold text-slate-800 ml-1">{thoCat}</span>
               </span>
             </div>
           </div>
           
-          <div className="flex items-center gap-6 border-t md:border-t-0 pt-4 md:pt-0">
+          <div className="flex items-center gap-5 border-t md:border-t-0 pt-3 md:pt-0">
             <div className="text-right">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tổng SL</div>
-              <div className="text-4xl font-black text-sky-700 leading-none">{(lc.tongSL || 0).toLocaleString()}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tổng SL</div>
+              <div className="text-2xl md:text-3xl font-black text-teal-800 font-mono leading-none">{(lc.tongSL || 0).toLocaleString()}</div>
             </div>
-            <div className="w-px h-12 bg-slate-200 mx-1"></div>
+            <div className="w-px h-10 bg-slate-200 mx-1"></div>
             <div className="text-right">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center justify-end gap-1">Hạn chót</div>
-              <div className={`text-xl font-bold leading-none ${isLate ? 'text-rose-600' : 'text-slate-800'}`}>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center justify-end gap-1">Hạn chót</div>
+              <div className={`text-lg font-bold leading-none ${isLate ? 'text-rose-600' : 'text-slate-800'}`}>
                 <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" showRelative={false} />
               </div>
             </div>
@@ -166,13 +176,13 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
         </div>
 
         {/* COLORS & IMAGES (ALWAYS VISIBLE) */}
-        <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-             <div className="text-sm font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+        <div className="bg-slate-50 rounded-2xl p-3.5 mb-4 border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+             <div className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
                <span>🎨</span> Phân bổ Màu & Size ({lc.dsMau?.length || 0})
              </div>
           </div>
-          <div className="-mx-2">
+          <div className="-mx-1">
              <LenhCatColorCards lc={lc} onClickColor={(idx) => setModalTyLeMauIdx(idx)} />
           </div>
         </div>
@@ -291,6 +301,12 @@ export function LenhCatCard({ lc, onEdit, onDelete, onChangeStatus, onSaveGiaCon
       )}
 
       {summaryView && <LenhCatSummaryModal lc={lc} view={summaryView} onClose={() => setSummaryView(null)} />}
+
+      <ChonPhieuInModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        lenhCat={lc}
+      />
     </div>
   );
 }

@@ -5,11 +5,146 @@
  * - Phạt lỗi: 30% đơn giá / sp lỗi
  * - Thưởng vượt: 20% đơn giá / sp vượt
  * - Phạt trễ hạn: 50K / task trễ
- * - Lương cứng (admin/ke toan/content): cố định theo data Excel
+ * - Lương theo ngày công (admin/kế toán/kho/content...): lương tháng × (ngày công thực tế / 28), không giới hạn trần, nghỉ phép = 0 công
  */
 
 import { REAL_NHAN_VIEN, REAL_DON_GIA } from "./real-workflow-data";
 import { KH_SI_FULL } from "./master-data-full";
+import {
+  CHUAN_NGAY_CONG_THANG,
+  CHUAN_GIO_LAM_MOI_NGAY,
+  TONG_GIO_CHUAN_THANG,
+  tinhDonGiaGio,
+  tinhTienTangCa,
+  tinhLuongTheoNgayCong,
+  tinhPhanTramNgayCong,
+  tongHopChamCong,
+  type ChamCongRecord,
+} from "./cham-cong";
+import type { GiaoDichThuChi } from "./data/thu-chi";
+
+/**
+ * Helper so khớp nhân viên giữa Bảng Lương và phiếu Thu Chi nội bộ (Tạm ứng)
+ * Hỗ trợ khớp chính xác theo:
+ * 1. Mã đối tác (maDoiTac) hoặc mã NV trong người nhận (nguoiNhan)
+ * 2. Họ tên đầy đủ (có dấu/không dấu)
+ * 3. Nội dung cụ thể chỉ đích danh nhân viên
+ * Tuyệt đối không gán nhầm khi phiếu đã có mã nhân viên khác, hoặc từ đồng âm (như "chi phí", "lệ phí", "quản lý"...)
+ */
+export function matchNhanVienThuChi(
+  nv: { ma: string; ten: string },
+  nguoiNhanText?: string,
+  noiDungText?: string,
+  maDoiTac?: string,
+  tenDoiTac?: string,
+  loaiTamUng?: string
+): boolean {
+  // Loại trừ phiếu tạm ứng gia công ngoài (không tính vào lương nhân sự nội bộ)
+  if (
+    loaiTamUng === "gia_cong" ||
+    (maDoiTac && maDoiTac.toUpperCase().startsWith("GC-")) ||
+    (nguoiNhanText && (nguoiNhanText.toUpperCase().startsWith("GC-") || /xưởng/i.test(nguoiNhanText)))
+  ) {
+    return false;
+  }
+
+  const targetMa = nv.ma.trim().toUpperCase().replace(/-/g, "");
+  const targetTen = nv.ten.trim().toLowerCase();
+
+  const removeAccents = (str: string) =>
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+
+  const targetTenNo = removeAccents(targetTen);
+
+  // 1. Kiểm tra mã đối tác trực tiếp (ưu tiên số 1)
+  if (maDoiTac) {
+    const dtMa = maDoiTac.trim().toUpperCase().replace(/-/g, "");
+    if (dtMa.startsWith("NV")) {
+      return dtMa === targetMa;
+    }
+  }
+
+  // 2. Kiểm tra thông tin người nhận (nguoiNhanText)
+  const nguoiNhan = (nguoiNhanText || "").trim();
+  if (nguoiNhan) {
+    // Nếu trong thông tin người nhận đã có mã NV (VD: "NV03 - Nguyễn Triết Khang")
+    const matchMaNV = nguoiNhan.match(/\b(NV-?\d+)\b/i);
+    if (matchMaNV) {
+      const foundMa = matchMaNV[1].toUpperCase().replace(/-/g, "");
+      return foundMa === targetMa;
+    }
+
+    // So khớp họ tên trong người nhận
+    const nnLow = nguoiNhan.toLowerCase();
+    const nnNo = removeAccents(nnLow);
+    if (nnLow.includes(targetTen) || nnNo.includes(targetTenNo)) {
+      return true;
+    }
+  }
+
+  // 3. So khớp họ tên đối tác trực tiếp (tenDoiTac)
+  if (tenDoiTac) {
+    const tdtLow = tenDoiTac.trim().toLowerCase();
+    const tdtNo = removeAccents(tdtLow);
+    if (tdtLow.includes(targetTen) || tdtNo.includes(targetTenNo)) {
+      return true;
+    }
+  }
+
+  // 4. Nếu phiếu đã có người nhận ghi rõ tên nhân sự khác thì không match vào nội dung nữa
+  if (nguoiNhan && nguoiNhan !== "null" && nguoiNhan !== "Chưa xác định") {
+    // Có người nhận cụ thể nhưng không trùng mã hay tên của NV này -> không match
+    return false;
+  }
+
+  // 5. Kiểm tra nội dung (noiDungText) khi chưa xác định người nhận
+  const noiDung = (noiDungText || "").trim();
+  if (!noiDung) return false;
+
+  const ndLow = noiDung.toLowerCase();
+  const ndNo = removeAccents(ndLow);
+
+  // Khớp mã nhân viên trong nội dung (VD: "tạm ứng cho NV04", "NV-04")
+  const maRegex = new RegExp(`(^|[^a-zA-Z0-9])${nv.ma.replace(/-/g, "-?")}([^a-zA-Z0-9]|$)`, "i");
+  if (maRegex.test(noiDung)) return true;
+
+  // Khớp họ tên đầy đủ trong nội dung (VD: "tạm ứng Lương Hoàng Phi")
+  if (ndLow.includes(targetTen) || ndNo.includes(targetTenNo)) return true;
+
+  // 6. So khớp tên riêng theo ngữ cảnh nhân sự (tránh nhầm lẫn các từ kế toán thông dụng)
+  // Loại bỏ các cụm từ dễ nhầm lẫn trong tiếng Việt:
+  // - "chi phí", "lệ phí", "học phí", "viện phí", "kinh phí", "cước phí", "phí ship" (tránh nhầm với "Phi")
+  // - "thu chi", "chi tiêu", "chi trả", "chi lương", "chi tạm ứng" (tránh nhầm với "Chi")
+  // - "quản lý", "xử lý", "hợp lý", "đại lý" (tránh nhầm với "Lý")
+  const cleanedNoiDung = ndLow
+    .replace(/(chi|học|lệ|viện|kinh|cước)\s+phí|phí\s+(ship|xe|vận\s+chuyển|phát\s+sinh|khác)/g, " ")
+    .replace(/quản\s+lý|xử\s+lý|hợp\s+lý|đại\s+lý/g, " ")
+    .replace(/thu\s+chi|chi\s+tiêu|chi\s+trả|chi\s+lương|chi\s+tạm\s+ứng/g, " ");
+
+  const cleanedNoiDungNo = removeAccents(cleanedNoiDung);
+
+  const tenParts = nv.ten.split(/\s+/).filter(Boolean);
+  if (tenParts.length >= 2) {
+    const lastNameTwo = `${tenParts[tenParts.length - 2]} ${tenParts[tenParts.length - 1]}`.toLowerCase();
+    const lastNameTwoNo = removeAccents(lastNameTwo);
+    // Khớp 2 từ cuối tên (VD: "Hoàng Phi", "Văn Lý", "Kim Chi", "Thái Hào")
+    if (cleanedNoiDung.includes(lastNameTwo) || cleanedNoiDungNo.includes(lastNameTwoNo)) {
+      return true;
+    }
+
+    const firstName = tenParts[tenParts.length - 1].toLowerCase();
+    const firstNameNo = removeAccents(firstName);
+
+    // Kiểm tra danh xưng + tên riêng (VD: "anh Phi", "em Phi", "bạn Phi", "anh Khang", "chị Hạnh"...)
+    const titleRegex = new RegExp(`(^|[^a-zA-Z0-9À-ỹ])(anh|chị|chi|em|bạn|cô|chú)\\s+${firstName}([^a-zA-Z0-9À-ỹ]|$)`, "i");
+    const titleRegexNo = new RegExp(`(^|[^a-zA-Z0-9])(anh|chi|em|ban|co|chu)\\s+${firstNameNo}([^a-zA-Z0-9]|$)`, "i");
+    if (titleRegex.test(cleanedNoiDung) || titleRegexNo.test(cleanedNoiDungNo)) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export interface BangLuongNV {
   maNV: string;
@@ -17,17 +152,29 @@ export interface BangLuongNV {
   boPhan: string;          // Cắt / Gấp xếp / Ủi / Khuy nút / Content / Kho / ...
   donGia: number;          // đ/sp (0 nếu lương cứng)
   donVi: string;            // cái/sp
-  luongCung: number;        // Lương cứng tháng (nếu có)
-  isLuongSP: boolean;      // true = lương sản phẩm, false = lương cứng
+  luongCung: number;        // Lương cơ bản tháng (mức chuẩn 28 công)
+  isLuongSP: boolean;      // true = lương sản phẩm, false = lương theo ngày công
+  ngayCongThucTe: number;  // Số công thực tế trong tháng (đi-làm/đi-trễ=1, nửa-ngày=0.5, nghỉ-phép=0)
+  ngayCongChuan: number;   // Chuẩn 28 ngày công/tháng
+  tyLeNgayCong: number;    // % thực tế so với chuẩn 28 công (không giới hạn trần)
+  ngayPhep: number;        // Số ngày nghỉ phép (0 công)
+  ngayKhongPhep: number;
+  soLanDiTre: number;
+  gioTangCa: number;
+  donGiaGioTangCa: number;  // Đơn giá 1h làm việc chuẩn = Lương cơ bản / (28 * 8.5)
+  tienTangCa: number;       // Tiền tăng ca = gioTangCa * donGiaGioTangCa
+  coDuLieuChamCong: boolean;
   soLuongGiao: number;      // Tổng SL được giao
   soLuongDat: number;       // SL hoàn thành đúng
   soLuongLoi: number;       // SL bị lỗi
   soLuongVuot: number;      // SL vượt (nếu có)
-  tienCong: number;         // Tiền công = slDat × donGia (cho lương SP)
+  tienCong: number;         // Tiền công = slDat × donGia (SP) hoặc lương × (công / 28)
   phatLoi: number;          // Phạt lỗi (30% đơn giá / sp lỗi)
   thuongVuot: number;       // Thưởng vượt (+20% đơn giá / sp vượt)
   phatTreHan: number;       // Phạt trễ hạn (nếu có)
-  thucNhan: number;         // Thực nhận
+  tamUng: number;           // Tổng số tiền tạm ứng trong tháng từ Thu Chi nội bộ
+  danhSachTamUng: GiaoDichThuChi[]; // Danh sách các lần tạm ứng chi tiết trong tháng
+  thucNhan: number;         // Thực nhận = Tiền công + Thưởng - Phạt - Tạm ứng
   ngayTra: string;          // Ngày trả dự kiến (ngày 5 tháng sau)
   tasks: string[];          // Danh sách task IDs đã làm
   ghiChu?: string;
@@ -68,11 +215,27 @@ export function tinhBangLuongThang(
   thang: number,
   nam: number,
   allPhieu: any[] = [],
-  customEmployees?: NhanSuLuongInput[]
+  customEmployees?: NhanSuLuongInput[],
+  chamCongRecords?: ChamCongRecord[],
+  danhSachThuChi?: GiaoDichThuChi[]
 ): BangLuongNV[] {
   // Lấy tasks trong tháng
   const startDate = new Date(nam, thang - 1, 1);
   const endDate = new Date(nam, thang, 0, 23, 59, 59);
+  const monthPrefix = `${nam}-${String(thang).padStart(2, "0")}`;
+  const monthAttendanceRecords = (chamCongRecords || []).filter(
+    (r) => typeof r.ngay === "string" && r.ngay.startsWith(monthPrefix)
+  );
+  const hasMonthAttendanceData = monthAttendanceRecords.length > 0;
+
+  // Lọc các giao dịch tạm ứng trong tháng từ sổ Thu Chi nội bộ (loai: "chi", danhMuc: "tam_ung")
+  const monthTamUngRecords = (danhSachThuChi || []).filter(
+    (tc) =>
+      tc.loai === "chi" &&
+      tc.danhMuc === "tam_ung" &&
+      typeof tc.ngay === "string" &&
+      tc.ngay.startsWith(monthPrefix)
+  );
 
   const tasksTrongThang = allPhieu.filter((p) => {
     const taskDate = p.ngayHoanThanh ? new Date(p.ngayHoanThanh) :
@@ -92,11 +255,21 @@ export function tinhBangLuongThang(
     // Lấy đơn giá từ NV info
     const donGia = nv.donGia || 0;
 
-    // Lấy lương cứng
+    // Lấy lương cơ bản tháng
     const luongCung = nv.luongCung !== undefined
       ? nv.luongCung
       : (LUONG_CUNG_DEFAULT[nv.boPhan] || 0);
     const isLuongSP = luongCung === 0;
+
+    // Tổng hợp chấm công tháng của NV theo chuẩn 28 ngày (không giới hạn trần, nghỉ phép = 0 công)
+    const normalizedMa = nv.ma.trim().toUpperCase();
+    const myAttendance = monthAttendanceRecords.filter(
+      (r) => r.maNV.trim().toUpperCase() === normalizedMa
+    );
+    const attSummary = tongHopChamCong(myAttendance);
+    const ngayCongChuan = CHUAN_NGAY_CONG_THANG;
+    const ngayCongThucTe = attSummary.ngayCong;
+    const tyLeNgayCong = tinhPhanTramNgayCong(ngayCongThucTe, ngayCongChuan);
 
     // Lấy tasks của NV trong tháng
     const myTasks = tasksTrongThang.filter((t) =>
@@ -110,17 +283,6 @@ export function tinhBangLuongThang(
     const soLuongLoi = myTasks.reduce((s, t) => s + (t.soLuongLoi || 0), 0);
     const soLuongVuot = Math.max(0, soLuongDat - soLuongGiao);
 
-    // Tính tiền
-    let tienCong = 0;
-    let phatLoi = 0;
-    let thuongVuot = 0;
-
-    if (isLuongSP) {
-      tienCong = soLuongDat * donGia;
-      phatLoi = soLuongLoi * donGia * PHAT_LOI_RATE;
-      thuongVuot = soLuongVuot * donGia * THUONG_VUOT_RATE;
-    }
-
     // Phạt trễ hạn: task có deadline < ngayHoanThanh (nếu có)
     let phatTreHan = 0;
     for (const t of myTasks) {
@@ -129,14 +291,51 @@ export function tinhBangLuongThang(
       }
     }
 
-    // Tính thực nhận
-    const thucNhanSP = Math.max(0, tienCong - phatLoi - phatTreHan + thuongVuot);
-    const thucNhan = isLuongSP ? thucNhanSP : luongCung;
+    // Lấy các lần tạm ứng trong tháng của NV từ Thu Chi nội bộ (khớp theo mã đối tác, người nhận hoặc nội dung chuẩn xác)
+    const myTamUngRecords = monthTamUngRecords.filter((tc) =>
+      matchNhanVienThuChi(
+        { ma: nv.ma, ten: nv.ten },
+        tc.nguoiNhan,
+        tc.noiDung,
+        tc.maDoiTac,
+        tc.tenDoiTac,
+        tc.loaiTamUng
+      )
+    );
+    const tamUng = myTamUngRecords.reduce((sum, item) => sum + (Number(item.soTien) || 0), 0);
 
-    // Ngày trả: ngày 5 tháng sau (handle rollover năm khi thang = 12)
+    // Tính tiền tăng ca:
+    // Cơ sở 28 ngày công / 1 tháng, mỗi ngày 8.5 tiếng làm việc chuẩn.
+    // Đơn giá 1 giờ = Lương cơ bản / (28 * 8.5) = Lương cơ bản / 238
+    const luongCoBanTinhTangCa = luongCung > 0 ? luongCung : (LUONG_CUNG_DEFAULT[nv.boPhan] || 0);
+    const donGiaGioTangCa = tinhDonGiaGio(luongCoBanTinhTangCa, ngayCongChuan, CHUAN_GIO_LAM_MOI_NGAY);
+    const gioTangCa = attSummary.gioTangCa || 0;
+    const tienTangCa = tinhTienTangCa(gioTangCa, luongCoBanTinhTangCa, ngayCongChuan, CHUAN_GIO_LAM_MOI_NGAY);
+
+    // Tính tiền công & thực nhận (Tiền tăng ca được cộng thêm vào bảng lương)
+    let tienCong = 0;
+    let phatLoi = 0;
+    let thuongVuot = 0;
+    let thucNhan = 0;
+
+    if (isLuongSP) {
+      tienCong = soLuongDat * donGia;
+      phatLoi = soLuongLoi * donGia * PHAT_LOI_RATE;
+      thuongVuot = soLuongVuot * donGia * THUONG_VUOT_RATE;
+      thucNhan = Math.max(0, tienCong + tienTangCa - phatLoi - phatTreHan + thuongVuot - tamUng);
+    } else if (hasMonthAttendanceData) {
+      tienCong = tinhLuongTheoNgayCong(luongCung, ngayCongThucTe, ngayCongChuan);
+      thucNhan = Math.max(0, tienCong + tienTangCa - phatTreHan - tamUng);
+    } else {
+      // Tháng chưa có dữ liệu chấm công (hoặc caller chưa truyền dữ liệu chấm công): giữ nguyên mức cơ bản để không gãy lịch sử
+      tienCong = luongCung;
+      thucNhan = Math.max(0, luongCung + tienTangCa - phatTreHan - tamUng);
+    }
+
+    // Ngày trả: ngày 10 tháng sau (handle rollover năm khi thang = 12) - Quy định MIMIN: Mùng 10 hàng tháng
     const nextThang = thang === 12 ? 1 : thang + 1;
     const nextNam = thang === 12 ? nam + 1 : nam;
-    const ngayTra = `${nextNam}-${String(nextThang).padStart(2, "0")}-05`;
+    const ngayTra = `${nextNam}-${String(nextThang).padStart(2, "0")}-10`;
 
     result.push({
       maNV: nv.ma,
@@ -146,6 +345,16 @@ export function tinhBangLuongThang(
       donVi: donGia > 0 ? "sp" : "tháng",
       luongCung,
       isLuongSP,
+      ngayCongThucTe,
+      ngayCongChuan,
+      tyLeNgayCong,
+      ngayPhep: attSummary.ngayPhep,
+      ngayKhongPhep: attSummary.ngayKhongPhep,
+      soLanDiTre: attSummary.soLanDiTre,
+      gioTangCa,
+      donGiaGioTangCa,
+      tienTangCa: Math.round(tienTangCa),
+      coDuLieuChamCong: hasMonthAttendanceData,
       soLuongGiao,
       soLuongDat,
       soLuongLoi,
@@ -154,6 +363,8 @@ export function tinhBangLuongThang(
       phatLoi: Math.round(phatLoi),
       thuongVuot: Math.round(thuongVuot),
       phatTreHan: Math.round(phatTreHan),
+      tamUng: Math.round(tamUng),
+      danhSachTamUng: myTamUngRecords,
       thucNhan: Math.round(thucNhan),
       ngayTra,
       tasks: tasksMa,
@@ -174,6 +385,10 @@ export interface TongKetBangLuong {
   tongPhatLoi: number;
   tongThuongVuot: number;
   tongPhatTreHan: number;
+  tongTamUng: number;           // Tổng số tiền tạm ứng đã chi trong tháng
+  tongSoLuotTamUng: number;     // Tổng số lượt tạm ứng trong tháng
+  tongGioTangCa: number;        // Tổng số giờ tăng ca của toàn bộ nhân viên
+  tongTienTangCa: number;       // Tổng số tiền tăng ca phải trả trong tháng
   tongThucNhan: number;
   theoBoPhan: { boPhan: string; ten: string; tongNV: number; thucNhan: number; mau: string }[];
 }
@@ -210,6 +425,10 @@ export function tongKetBangLuong(blList: BangLuongNV[]): TongKetBangLuong {
     tongPhatLoi: blList.reduce((s, b) => s + b.phatLoi, 0),
     tongThuongVuot: blList.reduce((s, b) => s + b.thuongVuot, 0),
     tongPhatTreHan: blList.reduce((s, b) => s + b.phatTreHan, 0),
+    tongTamUng: blList.reduce((s, b) => s + b.tamUng, 0),
+    tongSoLuotTamUng: blList.reduce((s, b) => s + (b.danhSachTamUng ? b.danhSachTamUng.length : 0), 0),
+    tongGioTangCa: blList.reduce((s, b) => s + (b.gioTangCa || 0), 0),
+    tongTienTangCa: blList.reduce((s, b) => s + (b.tienTangCa || 0), 0),
     tongThucNhan: blList.reduce((s, b) => s + b.thucNhan, 0),
     theoBoPhan: Object.entries(byBoPhan).map(([bp, d]) => ({
       boPhan: bp,

@@ -70,7 +70,7 @@ export function EntityCard({
   return (
     <div
       onClick={onClick}
-      className={`card ${compact ? "p-2.5" : "p-3"} transition hover:shadow-xl hover:-translate-y-0.5 ${onClick ? "cursor-pointer" : ""} ${
+      className={`card w-full max-w-full overflow-hidden ${compact ? "p-2.5" : "p-3 sm:p-4"} transition hover:shadow-xl hover:-translate-y-0.5 ${onClick ? "cursor-pointer" : ""} ${
         highlight ? "ring-2 ring-amber-500/50" : ""
       } ${warning ? "ring-2 ring-red-500/30 bg-red-500/5" : ""} ${className}`}
     >
@@ -151,16 +151,16 @@ export function EntityCard({
 
       {/* Stats grid */}
       {stats.length > 0 && (
-        <div className={`grid grid-cols-2 ${compact ? "gap-1.5 mb-2" : "gap-2.5 mb-3"}`}>
+        <div className={`grid grid-cols-2 ${compact ? "gap-1.5 mb-2" : "gap-2 mb-3"}`}>
           {stats.map((s, i) => {
             const Icon = s.icon;
             return (
-              <div key={i} className={`bg-white/30 dark:bg-white/5 rounded ${compact ? "p-2" : "p-2.5"}`}>
-                <div className={`${compact ? "text-[10px]" : "text-xs"} opacity-75 flex items-center gap-1.5`}>
-                  {Icon && <Icon className="w-3.5 h-3.5" />}
-                  {s.label}
+              <div key={i} className={`bg-slate-50/80 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/5 ${compact ? "p-1.5" : "p-2 sm:p-2.5"} min-w-0`}>
+                <div className={`${compact ? "text-[10px]" : "text-[11px] sm:text-xs"} opacity-75 flex items-center gap-1 min-w-0`}>
+                  {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="truncate">{s.label}</span>
                 </div>
-                <div className={`${compact ? "text-xs md:text-sm" : "text-sm md:text-base"} font-bold mt-1 ${s.color || ""}`}>{s.value}</div>
+                <div className={`${compact ? "text-xs md:text-sm" : "text-xs sm:text-sm md:text-base"} font-bold mt-1 truncate ${s.color || ""}`}>{s.value}</div>
               </div>
             );
           })}
@@ -170,24 +170,24 @@ export function EntityCard({
       {children}
 
       {contactPhone && (
-        <div className={`flex items-center gap-2 border-t ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderColor: "var(--border)" }}>
+        <div className={`grid grid-cols-2 gap-2 border-t ${compact ? "mt-2 pt-2" : "mt-3 pt-3"}`} style={{ borderColor: "var(--border)" }}>
           <a
             href={`https://zalo.me/${String(contactPhone).replace(/\D/g, '')}`}
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#0068FF] text-white hover:bg-blue-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs" : "py-2 text-sm"}`}
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[#0068FF] text-white hover:bg-blue-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs min-h-[36px]" : "py-2 text-xs sm:text-sm min-h-[40px]"}`}
           >
-            <MessageCircle className="w-4 h-4" />
-            Zalo
+            <MessageCircle className="w-4 h-4 shrink-0" />
+            <span>Zalo</span>
           </a>
           <a
             href={`tel:${String(contactPhone).replace(/\D/g, '')}`}
             onClick={(e) => e.stopPropagation()}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg bg-[#00A65A] text-white hover:bg-emerald-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs" : "py-2 text-sm"}`}
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-[#00A65A] text-white hover:bg-emerald-700 font-bold transition shadow-sm ${compact ? "py-1.5 text-xs min-h-[36px]" : "py-2 text-xs sm:text-sm min-h-[40px]"}`}
           >
-            <Phone className="w-4 h-4" />
-            Gọi
+            <Phone className="w-4 h-4 shrink-0" />
+            <span>Gọi</span>
           </a>
         </div>
       )}
@@ -209,10 +209,10 @@ export function EntityCard({
 
 export function EntityCardGrid({ children, cols = 3 }: { children: ReactNode; cols?: 2 | 3 | 4 | 5 }) {
   const gridClass = {
-    2: "grid md:grid-cols-2 gap-3",
-    3: "grid md:grid-cols-2 lg:grid-cols-3 gap-3",
-    4: "grid md:grid-cols-2 lg:grid-cols-4 gap-3",
-    5: "grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5",
+    2: "grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-full",
+    3: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 w-full max-w-full",
+    4: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full max-w-full",
+    5: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 w-full max-w-full",
   }[cols];
   return <div className={gridClass}>{children}</div>;
 }

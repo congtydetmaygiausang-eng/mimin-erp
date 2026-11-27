@@ -1,8 +1,8 @@
 // ============ 4 BANG CONG NO ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.5)
 
-import { Users, Scissors, AlertTriangle, Phone, CheckCircle2 } from "lucide-react";
-import { formatVND } from "@/lib/data/real-data";
+import { Users, Scissors, AlertTriangle, Phone, CheckCircle2, ChevronRight, CreditCard } from "lucide-react";
+import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { congNoTheoNguoi, congNoTheoCongDoan, tinhCongNo } from "@/lib/data/cong-no";
 import type { PhanCongCongDoan } from "@/lib/data/cong-no-store";
 import { STATUS_STYLE } from "../data";
@@ -12,59 +12,67 @@ export function BangTheoNguoi({ phanCong }: { phanCong: PhanCongCongDoan[] }) {
   const data = congNoTheoNguoi(phanCong);
   const tongNo = data.reduce((s, x) => s + x.conNo, 0);
   return (
-    <div className="card overflow-hidden">
-      <div className="p-4 border-b" style={{ borderColor: "var(--border)" }}>
-        <h3 className="font-semibold flex items-center gap-2">
-          <Users className="w-4 h-4 text-brand-500" />
-          Công nợ theo người phụ trách ({data.length} người)
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+        <h3 className="font-bold text-sm md:text-base flex items-center gap-2 text-slate-900 dark:text-white">
+          <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span>Công nợ theo người phụ trách ({data.length} người)</span>
         </h3>
-        <div className="text-xs opacity-70 mt-1">Tổng còn nợ: <b className="text-red-600">{formatVND(tongNo)}</b></div>
+        <div className="text-xs text-slate-500">
+          Tổng còn nợ: <b className="text-rose-600 dark:text-rose-400 font-mono text-sm">{formatVND(tongNo)}</b>
+        </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[700px] text-xs md:text-sm">
           <thead>
-            <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
+            <tr className="text-left bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">
               <th className="p-3">Mã</th>
-              <th className="p-3">Tên</th>
-              <th className="p-3">Loại</th>
+              <th className="p-3">Tên người PT</th>
+              <th className="p-3">Phân loại</th>
               <th className="p-3 text-center">Số PC</th>
               <th className="p-3 text-right">Thành tiền</th>
               <th className="p-3 text-right">Đã TT</th>
               <th className="p-3 text-right">Còn nợ</th>
-              <th className="p-3 text-center">% Đã TT</th>
+              <th className="p-3 text-center min-w-[130px]">% Đã TT</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.map((d) => {
               const pct = d.thanhTien > 0 ? (d.daThanhToan / d.thanhTien) * 100 : 0;
               return (
-                <tr key={d.nguoi.ma} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                  <td className="p-3 font-mono text-xs text-brand-600 font-semibold">{d.nguoi.ma}</td>
+                <tr key={d.nguoi.ma} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                  <td className="p-3 font-mono text-xs text-slate-500 font-semibold">{d.nguoi.ma}</td>
                   <td className="p-3">
-                    <div className="font-medium">{d.nguoi.ten.split(" (")[0]}</div>
+                    <div className="font-bold text-slate-900 dark:text-white">{d.nguoi.ten.split(" (")[0]}</div>
                     {d.nguoi.sdt && (
-                      <div className="text-[10px] opacity-60 flex items-center gap-1">
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                         <Phone className="w-3 h-3" /> {d.nguoi.sdt}
                       </div>
                     )}
                   </td>
                   <td className="p-3">
                     {d.nguoi.loai === "Đối tác gia công" ? (
-                      <span className="px-2 py-0.5 rounded bg-violet-500/15 text-violet-700 text-xs">Đối tác</span>
+                      <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/40 text-[11px] font-bold">
+                        Đối tác
+                      </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-700 text-xs">Nội bộ</span>
+                      <span className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/40 text-[11px] font-bold">
+                        Nội bộ
+                      </span>
                     )}
                   </td>
-                  <td className="p-3 text-center font-mono">{d.soPC}</td>
+                  <td className="p-3 text-center font-mono font-medium">{d.soPC}</td>
                   <td className="p-3 text-right font-mono">{d.thanhTien.toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono text-emerald-600">{d.daThanhToan.toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono font-semibold text-red-600">{d.conNo.toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono text-emerald-600 dark:text-emerald-400">{d.daThanhToan.toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                    {d.conNo > 0 ? d.conNo.toLocaleString() : "✓"}
+                  </td>
                   <td className="p-3 text-center">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-white/40 dark:bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                      <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-600 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[10px] opacity-60 w-10 text-right">{pct.toFixed(0)}%</span>
+                      <span className="text-[11px] font-mono text-slate-500 w-9 text-right font-medium">{pct.toFixed(0)}%</span>
                     </div>
                   </td>
                 </tr>
@@ -81,17 +89,17 @@ export function BangTheoNguoi({ phanCong }: { phanCong: PhanCongCongDoan[] }) {
 export function BangTheoCongDoan({ phanCong }: { phanCong: PhanCongCongDoan[] }) {
   const data = congNoTheoCongDoan(phanCong);
   return (
-    <div className="card overflow-hidden">
-      <div className="p-4 border-b" style={{ borderColor: "var(--border)" }}>
-        <h3 className="font-semibold flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-brand-500" />
-          Công nợ theo công đoạn
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+        <h3 className="font-bold text-sm md:text-base flex items-center gap-2 text-slate-900 dark:text-white">
+          <Scissors className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span>Công nợ theo công đoạn sản xuất</span>
         </h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[700px] text-xs md:text-sm">
           <thead>
-            <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
+            <tr className="text-left bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">
               <th className="p-3">Công đoạn</th>
               <th className="p-3 text-center">Số PC</th>
               <th className="p-3 text-right">Tổng SL</th>
@@ -100,17 +108,21 @@ export function BangTheoCongDoan({ phanCong }: { phanCong: PhanCongCongDoan[] })
               <th className="p-3 text-right">Còn nợ</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.map((d) => (
-              <tr key={d.congDoan} className="border-b last:border-0 hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                <td className="p-3">
-                  <span className="px-2 py-0.5 rounded bg-brand-500/15 text-brand-700 text-xs font-medium">{d.congDoan}</span>
+              <tr key={d.congDoan} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                  <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">
+                    {d.congDoan}
+                  </span>
                 </td>
-                <td className="p-3 text-center font-mono">{phanCong.filter(p => p.congDoan === d.congDoan).length}</td>
+                <td className="p-3 text-center font-mono font-medium">{phanCong.filter((p) => p.congDoan === d.congDoan).length}</td>
                 <td className="p-3 text-right font-mono">{d.soLuong.toLocaleString()}</td>
                 <td className="p-3 text-right font-mono">{d.thanhTien.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono text-emerald-600">{d.daThanhToan.toLocaleString()}</td>
-                <td className="p-3 text-right font-mono font-semibold text-red-600">{d.conNo.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono text-emerald-600 dark:text-emerald-400">{d.daThanhToan.toLocaleString()}</td>
+                <td className="p-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                  {d.conNo > 0 ? d.conNo.toLocaleString() : "✓"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -132,56 +144,65 @@ export function BangTheoLenhCat({ phanCong, onSelect }: { phanCong: PhanCongCong
       {Object.values(grouped).map((g) => {
         const t = tinhCongNo(g.phanCong);
         return (
-          <div key={g.lenhCatId} className="card overflow-hidden">
-            <div className="p-4 border-b flex items-center justify-between cursor-pointer hover:bg-white/30 dark:hover:bg-white/5" style={{ borderColor: "var(--border)" }} onClick={() => onSelect(g.lenhCatId)}>
+          <div key={g.lenhCatId} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div
+              className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition"
+              onClick={() => onSelect(g.lenhCatId)}
+            >
               <div>
-                <div className="text-xs text-brand-600 font-mono">{g.lenhCatId}</div>
-                <div className="text-sm font-semibold mt-0.5">{g.phanCong.length} công đoạn</div>
+                <div className="text-xs font-bold text-teal-600 dark:text-teal-400 font-mono">{g.lenhCatId}</div>
+                <div className="text-sm font-bold mt-0.5 text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>{g.phanCong.length} công đoạn</span>
+                  <span className="text-slate-400 text-xs font-normal">· Bấm để mở chi tiết</span>
+                </div>
               </div>
               <div className="text-right flex items-center gap-6">
                 <div>
-                  <div className="text-xs opacity-60">Giá GC bình quân / SP</div>
-                  <div className="text-lg font-bold text-amber-600">{formatVND(g.phanCong.reduce((sum, p) => sum + p.donGiaGiao, 0))}</div>
+                  <div className="text-[11px] text-slate-400">Giá GC bình quân / SP</div>
+                  <div className="text-base font-bold font-mono text-amber-600 dark:text-amber-400">
+                    {formatVND(g.phanCong.reduce((sum, p) => sum + p.donGiaGiao, 0))}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-xs opacity-60">Tổng còn nợ</div>
-                  <div className="text-lg font-bold text-red-600">{formatVND(t.tongConNo)}</div>
+                  <div className="text-[11px] text-slate-400">Tổng còn nợ</div>
+                  <div className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">{formatVND(t.tongConNo)}</div>
                 </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[700px] text-xs">
                 <thead>
-                  <tr className="text-left border-b bg-white/30 dark:bg-white/5" style={{ borderColor: "var(--border)" }}>
-                    <th className="p-3">Công đoạn</th>
-                    <th className="p-3">Người PT</th>
-                    <th className="p-3 text-right">SL</th>
-                    <th className="p-3 text-right">Đơn giá</th>
-                    <th className="p-3 text-right">Thành tiền</th>
-                    <th className="p-3 text-right">Đã TT</th>
-                    <th className="p-3 text-right">Còn nợ</th>
-                    <th className="p-3">Trạng thái</th>
+                  <tr className="text-left bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">
+                    <th className="p-2.5">Công đoạn</th>
+                    <th className="p-2.5">Người PT</th>
+                    <th className="p-2.5 text-right">SL</th>
+                    <th className="p-2.5 text-right">Đơn giá</th>
+                    <th className="p-2.5 text-right">Thành tiền</th>
+                    <th className="p-2.5 text-right">Đã TT</th>
+                    <th className="p-2.5 text-right">Còn nợ</th>
+                    <th className="p-2.5">Trạng thái</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {g.phanCong.map((p) => {
                     const tt = p.donGiaGiao * p.soLuongGiao;
                     const cn = tt - p.daThanhToan;
                     const s = STATUS_STYLE[p.trangThai];
                     return (
-                      <tr key={p.id} className="border-b last:border-0" style={{ borderColor: "var(--border)" }}>
-                        <td className="p-3 text-xs">{p.congDoan}</td>
-                        <td className="p-3 text-xs">
-                          <div className="font-medium">{p.nguoiPhuTrach.ten.split(" (")[0]}</div>
-                          <div className="text-[10px] opacity-60 font-mono">{p.nguoiPhuTrach.ma}</div>
+                      <tr key={p.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/30 transition">
+                        <td className="p-2.5 font-medium">{p.congDoan}</td>
+                        <td className="p-2.5">
+                          <div className="font-semibold text-slate-900 dark:text-white">{p.nguoiPhuTrach.ten.split(" (")[0]}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{p.nguoiPhuTrach.ma}</div>
                         </td>
-                        <td className="p-3 text-right text-xs">{p.soLuongGiao.toLocaleString()}</td>
-                        <td className="p-3 text-right text-xs font-mono">{p.donGiaGiao.toLocaleString()}</td>
-                        <td className="p-3 text-right text-xs font-mono">{tt.toLocaleString()}</td>
-                        <td className="p-3 text-right text-xs font-mono text-emerald-600">{p.daThanhToan.toLocaleString()}</td>
-                        <td className="p-3 text-right text-xs font-mono font-semibold text-red-600">{cn > 0 ? cn.toLocaleString() : "✓"}</td>
-                        <td className="p-3">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] ${s.bg} ${s.color}`}>
+                        <td className="p-2.5 text-right font-mono">{p.soLuongGiao.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-mono">{p.donGiaGiao.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-mono">{tt.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-mono text-emerald-600 dark:text-emerald-400">{p.daThanhToan.toLocaleString()}</td>
+                        <td className="p-2.5 text-right font-mono font-bold text-rose-600 dark:text-rose-400">{cn > 0 ? cn.toLocaleString() : "✓"}</td>
+                        <td className="p-2.5">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${s.bg} ${s.color}`}>
                             {p.trangThai}
                           </span>
                         </td>
@@ -199,28 +220,36 @@ export function BangTheoLenhCat({ phanCong, onSelect }: { phanCong: PhanCongCong
 }
 
 // ============ BANG TRE HAN ============
-export function BangTreHan({ phanCong, onThanhToan, isLate }: { phanCong: PhanCongCongDoan[]; onThanhToan: (p: PhanCongCongDoan) => void; isLate: (p: PhanCongCongDoan) => boolean }) {
+export function BangTreHan({
+  phanCong,
+  onThanhToan,
+  isLate,
+}: {
+  phanCong: PhanCongCongDoan[];
+  onThanhToan: (p: PhanCongCongDoan) => void;
+  isLate: (p: PhanCongCongDoan) => boolean;
+}) {
   if (phanCong.length === 0) {
     return (
-      <div className="card p-12 text-center">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-12 text-center">
         <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-        <div className="text-lg font-semibold text-emerald-600">Tuyệt vời! Không có công đoạn nào trễ hạn</div>
-        <div className="text-sm opacity-70 mt-1">Tất cả các công đoạn đều đang đúng tiến độ</div>
+        <div className="text-base font-bold text-emerald-600 dark:text-emerald-400">Tuyệt vời! Không có công đoạn nào trễ hạn</div>
+        <div className="text-xs text-slate-400 mt-1">Tất cả các công đoạn sản xuất & gia công đều đang đúng tiến độ cam kết.</div>
       </div>
     );
   }
   return (
-    <div className="card overflow-hidden border-red-500/40">
-      <div className="p-4 border-b bg-red-500/10 flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
-        <AlertTriangle className="w-5 h-5 text-red-600" />
-        <h3 className="font-semibold text-red-700 dark:text-red-400">
-          Công đoạn trễ hạn deadline ({phanCong.length})
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-rose-300 dark:border-rose-900 shadow-xs overflow-hidden">
+      <div className="p-4 border-b border-rose-100 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/30 flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+        <h3 className="font-bold text-sm text-rose-900 dark:text-rose-200">
+          Công đoạn trễ hạn deadline ({phanCong.length}) — Cần đôn đốc xử lý gấp
         </h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[700px] text-xs md:text-sm">
           <thead>
-            <tr className="text-left border-b" style={{ borderColor: "var(--border)" }}>
+            <tr className="text-left bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">
               <th className="p-3">Lệnh cắt</th>
               <th className="p-3">Công đoạn</th>
               <th className="p-3">Người PT</th>
@@ -232,7 +261,7 @@ export function BangTreHan({ phanCong, onThanhToan, isLate }: { phanCong: PhanCo
               <th className="p-3 text-center">Hành động</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {phanCong.map((p) => {
               const tt = p.donGiaGiao * p.soLuongGiao;
               const cn = tt - p.daThanhToan;
@@ -240,41 +269,45 @@ export function BangTreHan({ phanCong, onThanhToan, isLate }: { phanCong: PhanCo
               const deadline = new Date(p.ngayXongDuKien);
               const soNgayTre = Math.floor((today.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24));
               return (
-                <tr key={p.id} className="border-b last:border-0 bg-red-500/5" style={{ borderColor: "var(--border)" }}>
-                  <td className="p-3 font-mono text-xs text-brand-600 font-semibold">{p.lenhCatId}</td>
+                <tr key={p.id} className="hover:bg-rose-50/30 dark:hover:bg-rose-950/20 transition">
+                  <td className="p-3 font-mono text-xs font-bold text-teal-600 dark:text-teal-400">{p.lenhCatId}</td>
                   <td className="p-3">
-                    <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-700 text-xs font-medium">{p.congDoan}</span>
+                    <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 text-xs font-semibold">
+                      {p.congDoan}
+                    </span>
                   </td>
-                  <td className="p-3 text-xs font-medium">{p.nguoiPhuTrach.ten.split(" (")[0]}</td>
+                  <td className="p-3 font-semibold text-slate-900 dark:text-white">{p.nguoiPhuTrach.ten.split(" (")[0]}</td>
                   <td className="p-3 text-xs">
                     {p.nguoiPhuTrach.sdt && (
-                      <a href={`tel:${p.nguoiPhuTrach.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
+                      <a href={`tel:${p.nguoiPhuTrach.sdt}`} className="inline-flex items-center gap-1 text-sky-600 hover:underline">
                         <Phone className="w-3 h-3" /> {p.nguoiPhuTrach.sdt}
                       </a>
                     )}
                   </td>
                   <td className="p-3 text-right font-mono">{tt.toLocaleString()}</td>
-                  <td className="p-3 text-right font-mono font-semibold text-red-600">{cn.toLocaleString()}</td>
-                  <td className="p-3 text-xs text-red-600 font-medium">{p.ngayXongDuKien}</td>
+                  <td className="p-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">{cn.toLocaleString()}</td>
+                  <td className="p-3 font-mono text-xs text-rose-600 font-semibold">{p.ngayXongDuKien}</td>
                   <td className="p-3 text-center">
-                    <span className="px-2 py-0.5 rounded bg-red-500 text-white text-xs font-bold">-{soNgayTre} ngày</span>
+                    <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[11px] font-bold">
+                      -{soNgayTre} ngày
+                    </span>
                   </td>
                   <td className="p-3 text-center">
-                    <div className="flex flex-col gap-1">
+                    <div className="inline-flex items-center gap-1.5">
                       {p.nguoiPhuTrach.sdt && (
                         <a
                           href={`tel:${p.nguoiPhuTrach.sdt}`}
-                          className="text-xs px-2 py-1 rounded bg-blue-500/15 text-blue-700 hover:bg-blue-500/25"
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold border border-sky-200"
                         >
-                          📞 Gọi
+                          Gọi điện
                         </a>
                       )}
                       {cn > 0 && (
                         <button
                           onClick={() => onThanhToan(p)}
-                          className="text-xs px-2 py-1 rounded bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs"
                         >
-                          💰 Trả
+                          Trả nợ
                         </button>
                       )}
                     </div>

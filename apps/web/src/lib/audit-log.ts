@@ -184,26 +184,364 @@ export function logWorkflow(
 export function filterAuditLogs(logs: AuditLog[], filters: {
   search?: string;
   userId?: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
   module?: AuditModule | "all";
-  action?: AuditAction | "all";
+  action?: AuditAction | "all" | string;
   fromDate?: string;
   toDate?: string;
+  timePreset?: "all" | "today" | "yesterday" | "7d" | "30d";
   onlyFailed?: boolean;
 }): AuditLog[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = todayStart - 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = todayStart - 30 * 24 * 60 * 60 * 1000;
+
   return logs.filter((log) => {
     if (filters.search) {
-      const s = filters.search.toLowerCase();
-      const matches = [log.userName, log.userEmail, log.description, log.resourceName]
-        .some((x) => (x || "").toLowerCase().includes(s));
+      const s = filters.search.toLowerCase().trim();
+      const matches = [
+        log.userName,
+        log.userEmail,
+        log.description,
+        log.resourceName,
+        log.resourceId,
+        log.module,
+        log.action,
+        log.userRole
+      ].some((x) => (x || "").toLowerCase().includes(s));
       if (!matches) return false;
     }
     if (filters.userId && log.userId !== filters.userId) return false;
+    if (filters.userName && log.userName !== filters.userName) return false;
+    if (filters.userEmail && (log.userEmail || "").toLowerCase().trim() !== filters.userEmail.toLowerCase().trim()) return false;
+    if (filters.userRole && filters.userRole !== "all" && log.userRole !== filters.userRole) return false;
     if (filters.module && filters.module !== "all" && log.module !== filters.module) return false;
     if (filters.action && filters.action !== "all" && log.action !== filters.action) return false;
+    
+    // Time preset filter
+    if (filters.timePreset && filters.timePreset !== "all") {
+      const logTime = new Date(log.timestamp).getTime();
+      if (filters.timePreset === "today" && logTime < todayStart) return false;
+      if (filters.timePreset === "yesterday" && (logTime < yesterdayStart || logTime >= todayStart)) return false;
+      if (filters.timePreset === "7d" && logTime < sevenDaysAgo) return false;
+      if (filters.timePreset === "30d" && logTime < thirtyDaysAgo) return false;
+    }
+
     if (filters.fromDate && log.timestamp < filters.fromDate) return false;
     if (filters.toDate && log.timestamp > filters.toDate) return false;
     if (filters.onlyFailed && log.success) return false;
     return true;
+  });
+}
+
+// Route mapping cho tiếng Việt rõ ràng, thân thiện
+export const ROUTE_TITLE_MAP: Record<string, string> = {
+  "/dashboard/": "Bảng Điều Khiển Tổng Quan",
+  "/dashboard": "Bảng Điều Khiển Tổng Quan",
+  "/kho-vai-tinhmann/": "Kho Vải Thành Phẩm & Định Mức",
+  "/kho-vai-tinhmann": "Kho Vải Thành Phẩm & Định Mức",
+  "/kho-phu-lieu/": "Quản Lý Kho Phụ Liệu",
+  "/kho-phu-lieu": "Quản Lý Kho Phụ Liệu",
+  "/kho-thanh-pham/": "Quản Lý Kho Thành Phẩm",
+  "/kho-thanh-pham": "Quản Lý Kho Thành Phẩm",
+  "/lenh-cat/": "Quản Lý Lệnh Cắt May",
+  "/lenh-cat": "Quản Lý Lệnh Cắt May",
+  "/ke-hoach-sx/": "Kế Hoạch Sản Xuất",
+  "/ke-hoach-san-xuat/": "Kế Hoạch Sản Xuất",
+  "/ke-hoach-san-xuat": "Kế Hoạch Sản Xuất",
+  "/nhan-su/": "Danh Mục Nhân Sự",
+  "/nhan-su": "Danh Mục Nhân Sự",
+  "/cham-cong/": "Bảng Chấm Công",
+  "/cham-cong": "Bảng Chấm Công",
+  "/bang-luong/": "Bảng Lương Sản Phẩm",
+  "/bang-luong": "Bảng Lương Sản Phẩm",
+  "/bang-luong-auto/": "Bảng Lương Tự Động",
+  "/cong-no/": "Sổ Quản Lý Công Nợ",
+  "/cong-no": "Sổ Quản Lý Công Nợ",
+  "/don-hang/": "Danh Sách Đơn Hàng",
+  "/don-hang": "Danh Sách Đơn Hàng",
+  "/kiem-tra-chat-luong/": "QC - Kiểm Tra Chất Lượng",
+  "/to-may/": "Khâu Tổ May Sản Xuất",
+  "/ui-dong-goi/": "Khâu Ủi & Đóng Gói",
+  "/audit-log/": "Nhật Ký Hệ Thống (Audit Log)",
+  "/audit-log": "Nhật Ký Hệ Thống (Audit Log)",
+  "/quan-ly-tai-khoan/": "Quản Trị Tài Khoản",
+  "/phan-quyen-tuy-chinh/": "Phân Quyền Tùy Chỉnh",
+  "/nha-cung-cap/": "Danh Bạ Nhà Cung Cấp",
+  "/nha-cung-cap": "Danh Bạ Nhà Cung Cấp",
+  "/gia-cong-ngoai/": "Quản Lý Gia Công Ngoài",
+  "/danh-muc-sp/": "Danh Mục Sản Phẩm Mẫu",
+  "/bao-cao/": "Báo Cáo Tổng Hợp Doanh Thu",
+  "/ai-tinh-gia/": "AI Tính Giá Vốn",
+  "/cai-dat/": "Cài Đặt Hệ Thống",
+  "/login/": "Trang Đăng Nhập",
+  "/login": "Trang Đăng Nhập",
+};
+
+// Diễn giải hành động bằng tiếng Việt chuẩn
+export function humanizeAuditAction(action: string): string {
+  const map: Record<string, string> = {
+    create: "Tạo mới",
+    update: "Cập nhật",
+    delete: "Xoá",
+    view: "Xem trang",
+    login: "Đăng nhập",
+    logout: "Đăng xuất",
+    login_failed: "Đăng nhập thất bại",
+    permission_denied: "Bị từ chối quyền",
+    password_change: "Đổi mật khẩu",
+    role_change: "Thay đổi vai trò",
+    "2fa_enable": "Bật bảo mật 2FA",
+    "2fa_disable": "Tắt bảo mật 2FA",
+    payment: "Thanh toán",
+    approve: "Phê duyệt",
+    reject: "Từ chối",
+    import: "Nhập dữ liệu",
+    export: "Xuất dữ liệu",
+    assign: "Phân công",
+  };
+  return map[action] || action;
+}
+
+// Diễn giải mô tả thao tác thân thiện cho anh Cường
+export function humanizeAuditDescription(log: AuditLog): {
+  title: string;
+  badge?: string;
+  isView: boolean;
+} {
+  const desc = log.description || "";
+  
+  if (desc.startsWith("View ")) {
+    const route = desc.replace(/^View\s+/, "").trim();
+    const cleanRoute = route.split("?")[0];
+    const pageTitle = ROUTE_TITLE_MAP[cleanRoute] || ROUTE_TITLE_MAP[cleanRoute + "/"] || cleanRoute;
+    return {
+      title: `Xem trang ${pageTitle}`,
+      badge: cleanRoute,
+      isView: true,
+    };
+  }
+
+  if (desc.startsWith("Đăng nhập nhanh:")) {
+    return {
+      title: desc.replace("Đăng nhập nhanh:", "Đăng nhập nhanh quản trị:"),
+      badge: "Auth",
+      isView: false,
+    };
+  }
+
+  if (desc.startsWith("Tạo ") || desc.startsWith("Sửa ") || desc.startsWith("Xoá ")) {
+    return {
+      title: desc,
+      badge: log.module,
+      isView: false,
+    };
+  }
+
+  return {
+    title: desc || `${humanizeAuditAction(log.action)} ${log.module}`,
+    badge: log.module,
+    isView: false,
+  };
+}
+
+// Định dạng thời gian chi tiết và tương đối
+export function formatAuditDateTime(timestamp: string): {
+  time: string;
+  date: string;
+  full: string;
+  relative: string;
+} {
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) {
+    return { time: "--:--:--", date: "--/--/----", full: timestamp, relative: "Không xác định" };
+  }
+
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+
+  const time = `${hours}:${minutes}:${seconds}`;
+  const date = `${day}/${month}/${year}`;
+  const full = `${time} ${date}`;
+
+  // Relative time
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  let relative = "Vừa xong";
+  if (diffSec < 45) {
+    relative = "Vừa xong";
+  } else if (diffMin < 60) {
+    relative = `${diffMin} phút trước`;
+  } else if (diffHour < 24) {
+    relative = `${diffHour} giờ trước`;
+  } else if (diffDay === 1) {
+    relative = "Hôm qua";
+  } else if (diffDay < 7) {
+    relative = `${diffDay} ngày trước`;
+  } else {
+    relative = date;
+  }
+
+  return { time, date, full, relative };
+}
+
+export type UserActivitySummary = {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  lastActive: string; // ISO
+  lastAction: string;
+  lastDescription: string;
+  lastModule: string;
+  totalLogs: number;
+  todayLogs: number;
+  isOnline: boolean; // trong vòng 15 phút
+  isActiveToday: boolean;
+};
+
+// Tổng hợp hoạt động người dùng theo thời gian thực (kết hợp danh bạ người dùng hệ thống)
+export function getUserActivitySummaries(
+  logs: AuditLog[],
+  systemUsers?: Array<{ id: string; name: string; email: string; role: string; chucVu?: string }>
+): UserActivitySummary[] {
+  const now = Date.now();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  const userMap = new Map<string, UserActivitySummary>();
+
+  // 1. Duyệt qua logs và gom nhóm chuẩn theo email / userId / userName
+  for (const log of logs) {
+    const rawEmail = (log.userEmail || "").trim().toLowerCase();
+    const hasValidEmail = rawEmail && rawEmail !== "—" && rawEmail.includes("@");
+    const key = hasValidEmail
+      ? rawEmail
+      : (log.userId && log.userId !== "anonymous" ? log.userId.trim() : (log.userName || "unknown").trim());
+
+    const logTime = new Date(log.timestamp).getTime();
+    const isToday = logTime >= todayMs;
+
+    if (!userMap.has(key)) {
+      userMap.set(key, {
+        userId: log.userId,
+        userName: log.userName || (hasValidEmail ? rawEmail.split("@")[0] : "Khách"),
+        userEmail: hasValidEmail ? rawEmail : "—",
+        userRole: log.userRole || "user",
+        lastActive: log.timestamp,
+        lastAction: log.action,
+        lastDescription: log.description,
+        lastModule: log.module,
+        totalLogs: 1,
+        todayLogs: isToday ? 1 : 0,
+        isOnline: now - logTime <= 15 * 60 * 1000,
+        isActiveToday: isToday,
+      });
+    } else {
+      const existing = userMap.get(key)!;
+      existing.totalLogs += 1;
+      if (isToday) existing.todayLogs += 1;
+
+      // Cập nhật tên và email nếu log này đầy đủ hơn
+      if (existing.userName === "Khách" && log.userName && log.userName !== "Khách") {
+        existing.userName = log.userName;
+      }
+      if (existing.userEmail === "—" && hasValidEmail) {
+        existing.userEmail = rawEmail;
+      }
+
+      // Cập nhật hoạt động mới nhất nếu log này mới hơn
+      const existingTime = existing.lastActive ? new Date(existing.lastActive).getTime() : 0;
+      if (logTime > existingTime) {
+        existing.lastActive = log.timestamp;
+        existing.lastAction = log.action;
+        existing.lastDescription = log.description;
+        existing.lastModule = log.module;
+        existing.isOnline = now - logTime <= 15 * 60 * 1000;
+        if (isToday) existing.isActiveToday = true;
+      }
+    }
+  }
+
+  // 2. Tích hợp danh sách Người dùng Hệ thống (System Users) để không bỏ sót bất kỳ ai (như mrhung@mimin.vn)
+  if (systemUsers && Array.isArray(systemUsers)) {
+    for (const sys of systemUsers) {
+      if (!sys.email) continue;
+      const sysEmail = sys.email.trim().toLowerCase();
+
+      // Tìm xem user đã có trong map chưa (qua email hoặc id hoặc name)
+      let matchedKey: string | null = null;
+      if (userMap.has(sysEmail)) {
+        matchedKey = sysEmail;
+      } else {
+        for (const [k, v] of userMap.entries()) {
+          if (
+            (v.userEmail && v.userEmail.toLowerCase() === sysEmail) ||
+            (v.userId && v.userId === sys.id) ||
+            (v.userName && v.userName.toLowerCase() === sys.name.toLowerCase())
+          ) {
+            matchedKey = k;
+            break;
+          }
+        }
+      }
+
+      if (matchedKey) {
+        const item = userMap.get(matchedKey)!;
+        // Bổ sung thông tin chuẩn xác từ hệ thống
+        if (item.userName === "Khách" || item.userName === item.userEmail || item.userName.length < sys.name.length) {
+          item.userName = sys.name;
+        }
+        if (sys.role && (!item.userRole || item.userRole === "user" || item.userRole === "guest")) {
+          item.userRole = sys.role;
+        }
+        if (item.userEmail === "—" && sysEmail) {
+          item.userEmail = sysEmail;
+        }
+      } else {
+        // Tài khoản chưa phát sinh log trong đợt này -> Vẫn hiển thị trên bảng theo dõi
+        userMap.set(sysEmail, {
+          userId: sys.id || sysEmail,
+          userName: sys.name,
+          userEmail: sysEmail,
+          userRole: sys.role || "admin",
+          lastActive: "",
+          lastAction: "none",
+          lastDescription: "Chưa phát sinh thao tác trong kỳ theo dõi",
+          lastModule: "cai-dat",
+          totalLogs: 0,
+          todayLogs: 0,
+          isOnline: false,
+          isActiveToday: false,
+        });
+      }
+    }
+  }
+
+  // 3. Sắp xếp: Đang online trước -> Có hoạt động hôm nay -> Hoạt động gần nhất -> Chưa thao tác
+  return Array.from(userMap.values()).sort((a, b) => {
+    if (a.isOnline && !b.isOnline) return -1;
+    if (!a.isOnline && b.isOnline) return 1;
+    if (a.isActiveToday && !b.isActiveToday) return -1;
+    if (!a.isActiveToday && b.isActiveToday) return 1;
+    const timeA = a.lastActive ? new Date(a.lastActive).getTime() : 0;
+    const timeB = b.lastActive ? new Date(b.lastActive).getTime() : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    return a.userName.localeCompare(b.userName);
   });
 }
 

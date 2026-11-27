@@ -342,32 +342,120 @@ export default function PhieuDatNccPhuLieuPage() {
   };
 
   return <div data-order-purpose={orderPurpose} className="min-h-[calc(100vh-7rem)] space-y-4 animate-fade-in">
-    <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900">
-      <button type="button" onClick={() => setActiveTab("create")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "create" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><Plus className="h-4 w-4" /> Tạo đơn đặt</button>
-      <button type="button" onClick={() => setActiveTab("list")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "list" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><List className="h-4 w-4" /> Danh sách đơn hàng</button>
-      <button type="button" onClick={() => setActiveTab("progress")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "progress" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><ListChecks className="h-4 w-4" /> Theo dõi tiến độ</button>
+    <div className="flex gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 dark:border-slate-800 dark:bg-slate-900 shadow-xs w-full sm:w-fit">
+      <button
+        type="button"
+        onClick={() => setActiveTab("create")}
+        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${activeTab === "create"
+          ? "bg-teal-600 text-white shadow-xs"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+          }`}
+      >
+        <Plus className="h-4 w-4" /> Tạo đơn đặt
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("list")}
+        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${activeTab === "list"
+          ? "bg-teal-600 text-white shadow-xs"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+          }`}
+      >
+        <List className="h-4 w-4" /> Danh sách đơn hàng
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("progress")}
+        className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${activeTab === "progress"
+          ? "bg-teal-600 text-white shadow-xs"
+          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+          }`}
+      >
+        <ListChecks className="h-4 w-4" /> Theo dõi tiến độ
+      </button>
     </div>
     {activeTab === "list" ? <DanhSachDonHang user={user} onEdit={handleEdit} /> : activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-slate-900">
-      <header className="bg-gradient-to-r from-cyan-600 via-cyan-700 to-cyan-800 px-4 py-5 text-white md:px-7 md:py-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex gap-3"><div className="h-fit rounded-2xl bg-white/10 p-3"><ShoppingBag className="h-7 w-7 text-cyan-200" /></div><div><div className="text-xs font-bold text-cyan-200">PHIẾU ĐẶT NHÀ CUNG CẤP · NHÁP</div><h1 className="text-2xl font-bold md:text-3xl">Đặt dệt phụ liệu & vật tư</h1><p className="mt-1 text-sm text-cyan-50">Chọn hình mẫu, đặt nhà dệt và tính lợi nhuận trên cùng một phiếu.</p></div></div><div className="flex gap-2"><button onClick={() => setShowCustom(true)} className="btn-secondary border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="h-4 w-4" /> Vật tư khác</button><button onClick={saveDraft} className="btn-primary bg-white text-cyan-700 hover:bg-cyan-50"><Save className="h-4 w-4" /> Lưu phiếu</button></div></div>
-      </header>
-      <div className="border-b border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900 md:px-7">
-        <div className="grid max-w-3xl gap-2 rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800 sm:grid-cols-2">
-          <button type="button" onClick={() => switchPurpose("customer")} className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "customer" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-transparent bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}><b className="block text-sm">Đặt theo đơn khách/xưởng</b><span className={`text-xs ${orderPurpose === "customer" ? "text-blue-100" : "text-slate-500"}`}>Có giá mua, giá bán và lợi nhuận</span></button>
-          <button type="button" onClick={() => switchPurpose("internal")} className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "internal" ? "border-emerald-600 bg-emerald-600 text-white shadow-md" : "border-transparent bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}><b className="block text-sm">Đặt cho công ty MIMIN</b><span className={`text-xs ${orderPurpose === "internal" ? "text-emerald-100" : "text-slate-500"}`}>Chỉ giá mua, nhận hàng vào Kho phụ liệu</span></button>
+      <section className="overflow-hidden rounded-3xl border border-teal-800/60 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <header className="relative overflow-hidden bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900 border-b border-teal-800/60 px-5 py-5 text-white md:px-7 md:py-6 shadow-sm">
+          <div className="absolute -right-16 -top-16 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3.5">
+              <div className="h-fit rounded-2xl bg-teal-500/20 border border-teal-500/30 p-3 text-teal-300">
+                <ShoppingBag className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 uppercase tracking-wider mb-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                  PHIẾU ĐẶT NHÀ CUNG CẤP · SẢN XUẤT VẬT TƯ
+                </div>
+                <h1 className="text-2xl font-black md:text-3xl tracking-tight text-white">Đặt dệt phụ liệu & vật tư</h1>
+                <p className="mt-1 text-xs md:text-sm text-slate-300">
+                  Chọn hình mẫu, đặt xưởng dệt và đối soát doanh thu, giá vốn, lợi nhuận trên cùng một phiếu.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCustom(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-100 border border-white/20 text-xs font-medium shadow-xs transition backdrop-blur-md"
+              >
+                <Plus className="h-4 w-4 text-teal-300" /> Mẫu vật tư khác
+              </button>
+              <button
+                onClick={saveDraft}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-xs transition"
+              >
+                <Save className="h-4 w-4" /> Lưu phiếu nháp
+              </button>
+            </div>
+          </div>
+        </header>
+      <div className="border-b border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60 md:px-7">
+        <div className="grid max-w-2xl gap-2 rounded-2xl bg-slate-200/60 p-1.5 dark:bg-slate-800 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => switchPurpose("customer")}
+            className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "customer"
+              ? "border-sky-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
+          >
+            <b className="block text-xs md:text-sm">Đặt theo đơn khách / xưởng may</b>
+            <span className="text-[11px] text-slate-400 font-normal">Có giá mua, giá bán và tính lợi nhuận</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => switchPurpose("internal")}
+            className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "internal"
+              ? "border-emerald-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
+          >
+            <b className="block text-xs md:text-sm">Đặt cho công ty MIMIN</b>
+            <span className="text-[11px] text-slate-400 font-normal">Chỉ giá mua, nhập hàng vào Kho phụ liệu</span>
+          </button>
         </div>
       </div>
-      <div className={`grid border-b border-slate-200 dark:border-white/10 ${orderPurpose === "internal" ? "xl:grid-cols-[1fr_2fr]" : "xl:grid-cols-[1.2fr_1.35fr_0.9fr]"}`}>
-        <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0 xl:border-r">
+      <div className={`grid border-b border-slate-200/80 dark:border-slate-800 ${orderPurpose === "internal" ? "xl:grid-cols-[1fr_2fr]" : "xl:grid-cols-[1.2fr_1.35fr_0.9fr]"}`}>
+        <section className="border-b p-4 dark:border-slate-800 md:p-6 xl:border-b-0 xl:border-r">
           <Title icon={Package} text={orderPurpose === "customer" ? "1. Chọn mẫu sản xuất" : "1. Chọn vật tư Kho phụ liệu"} sub={orderPurpose === "customer" ? "Danh mục mẫu đặt theo đơn khách" : "Danh mục Kho phụ liệu hiện tại của MIMIN"} />
           <div className="relative mt-4"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="input pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm mã mẫu, tên hoặc màu..." /></div>
-          {filtered.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed p-6 text-center"><Package className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-sm font-semibold">Chưa có mẫu vật tư sản xuất</p><div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row"><button onClick={importWarehouseTemplates} className="btn-primary"><Package className="h-4 w-4" /> Sao chép mẫu từ Kho phụ liệu</button><button onClick={() => setShowCustom(true)} className="btn-secondary"><Plus className="h-4 w-4" /> Tạo mẫu mới</button></div><p className="mt-2 text-[11px] text-slate-500">Chỉ sao chép thông tin mẫu và giá tham khảo, không cộng tồn kho.</p></div> : <div className="mt-3 grid max-h-[560px] overflow-y-auto pr-1 grid-cols-1 gap-2">{filtered.map((item) => <button key={item.id} onClick={() => selectMaterial(item)} className={`relative flex items-center gap-3 overflow-hidden rounded-xl border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${item.id === selected?.id ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-white/10"}`}><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenMau} className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-slate-400" />}</div><div className="min-w-0 flex-1"><div className="text-xs font-bold text-emerald-700">{item.maMau}</div><div className="line-clamp-2 min-h-0 text-sm font-semibold">{item.tenMau}</div><div className="mt-1 text-xs text-slate-500">{item.mauSac} · {item.donVi}</div></div>{item.id === selected?.id && <span className="absolute right-2 top-2 rounded-full bg-emerald-500 p-1 text-white shadow"><Check className="h-3.5 w-3.5" /></span>}</button>)}</div>}
-          <div className="mt-4 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-950 p-4 text-white shadow-lg border border-emerald-900/50"><div className="text-xs text-emerald-300">ĐÃ CHỌN</div>{selected ? <><div className="font-bold">{selected.tenMau}</div><div className="mt-1 text-xs text-emerald-100/70">{selected.maMau} · {selected.mauSac}</div></> : <div className="mt-1 text-sm text-emerald-100/50">Chưa chọn mẫu</div>}</div>
+          {filtered.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed p-6 text-center"><Package className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-sm font-semibold">Chưa có mẫu vật tư sản xuất</p><div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row"><button onClick={importWarehouseTemplates} className="btn-primary"><Package className="h-4 w-4" /> Sao chép mẫu từ Kho phụ liệu</button><button onClick={() => setShowCustom(true)} className="btn-secondary"><Plus className="h-4 w-4" /> Tạo mẫu mới</button></div><p className="mt-2 text-[11px] text-slate-500">Chỉ sao chép thông tin mẫu và giá tham khảo, không cộng tồn kho.</p></div> : <div className="mt-3 grid max-h-[560px] overflow-y-auto pr-1 grid-cols-1 gap-2">{filtered.map((item) => <button key={item.id} onClick={() => selectMaterial(item)} className={`relative flex items-center gap-3 overflow-hidden rounded-xl border bg-white p-2 text-left shadow-xs transition hover:shadow-sm dark:bg-slate-900 ${item.id === selected?.id ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200/80 dark:border-slate-800"}`}><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenMau} className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-slate-400" />}</div><div className="min-w-0 flex-1"><div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{item.maMau}</div><div className="line-clamp-2 min-h-0 text-sm font-semibold">{item.tenMau}</div><div className="mt-1 text-xs text-slate-500">{item.mauSac} · {item.donVi}</div></div>{item.id === selected?.id && <span className="absolute right-2 top-2 rounded-full bg-emerald-600 p-1 text-white shadow"><Check className="h-3.5 w-3.5" /></span>}</button>)}</div>}
+          <div className="mt-4 rounded-2xl bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900 border border-teal-800/60 p-4 text-white shadow-xs">
+            <div className="text-[11px] font-semibold text-teal-400 uppercase tracking-wider mb-1">Mẫu đang chọn</div>
+            {selected ? (
+              <>
+                <div className="font-bold text-sm text-slate-100">{selected.tenMau}</div>
+                <div className="mt-1 text-xs text-slate-400 font-mono">{selected.maMau} · {selected.mauSac}</div>
+              </>
+            ) : (
+              <div className="text-xs text-slate-400">Chưa chọn mẫu vật tư</div>
+            )}
+          </div>
         </section>
 
         {orderPurpose === "internal" ? (
-          <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0">
+          <section className="border-b p-4 dark:border-slate-800 md:p-6 xl:border-b-0">
             <Title icon={UserRound} text="2. Thông tin & Chi phí đặt hàng" sub="MIMIN → nhà cung cấp → nhập kho" />
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Mã phiếu"><input className="input" value={form.maPhieu} onChange={(e) => update("maPhieu", e.target.value)} /></Field>
@@ -384,36 +472,207 @@ export default function PhieuDatNccPhuLieuPage() {
               <Field label="Ghi chú nội bộ"><textarea className="input min-h-20" value={form.ghiChu} onChange={(e) => update("ghiChu", e.target.value)} /></Field>
             </div>
             <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 dark:bg-emerald-950/10"><ImageUploader files={files} onChange={setFiles} category="Ảnh mẫu vật tư" accept="image/*" label="Hình mẫu gửi nhà dệt" hint="Ảnh bo cổ, phối màu hoặc thông số kỹ thuật." /></div>
-            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl bg-gradient-to-br from-emerald-800 to-teal-950 p-4 text-white shadow-xl border border-emerald-900/50">
-              <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-                <div><div className="text-slate-400">Tiền mua NCC</div><div className="text-xl font-bold">{formatVND(totals.tienMua)}</div></div>
-                <div><div className="text-slate-400">Tổng giá vốn</div><div className="text-xl font-bold text-emerald-400">{formatVND(totals.giaVon)}</div></div>
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-gradient-to-r from-teal-950 via-teal-900 to-slate-900 border border-teal-800/60 p-4.5 text-white shadow-sm">
+              <div className="flex flex-wrap gap-x-8 gap-y-2 text-xs">
+                <div>
+                  <div className="text-slate-400">Tiền mua NCC</div>
+                  <div className="text-lg font-bold font-mono text-slate-100">{formatVND(totals.tienMua)}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400">Tổng giá vốn</div>
+                  <div className="text-lg font-bold font-mono text-emerald-400">{formatVND(totals.giaVon)}</div>
+                </div>
               </div>
-              <button onClick={saveDraft} className="btn-primary min-w-[200px] justify-center py-3 text-center"><Save className="mr-2 h-4 w-4 inline" /> Lưu phiếu đặt NCC</button>
+              <button onClick={saveDraft} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition">
+                <Save className="h-4 w-4" /> Lưu phiếu đặt NCC
+              </button>
             </div>
           </section>
         ) : (
           <>
-            <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0 xl:border-r"><Title icon={UserRound} text="2. Thông tin đặt hàng" sub="Khách đặt → MIMIN → nhà dệt" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Mã phiếu"><input className="input" value={form.maPhieu} onChange={(e) => update("maPhieu", e.target.value)} /></Field><Field label="Khách hàng / xưởng may" required><SearchableCustomerSelect value={form.maKhachHang} onChange={(val, kh) => { update("maKhachHang", val); if (kh?.diaChi) update("diaChiGiao", kh.diaChi); }} customers={khachHangList} placeholder="-- Tìm tên khách hàng, số điện thoại hoặc mã KH --" /></Field><Field label="Nhà cung cấp dệt" required><select className="input" value={form.maNcc} onChange={(e) => update("maNcc", e.target.value)}><option value="">-- Chọn nhà cung cấp --</option>{nccList.map((ncc) => <option key={ncc.ma_ncc} value={ncc.ma_ncc}>{ncc.ma_ncc} · {ncc.ten_ncc}</option>)}</select></Field><Field label={`Số lượng (${selected?.donVi || "đơn vị"})`} required><input type="number" min="1" className="input" value={form.soLuong} onChange={(e) => update("soLuong", e.target.value)} /></Field><Field label="Ngày đặt"><input type="date" className="input" value={form.ngayDat} onChange={(e) => update("ngayDat", e.target.value)} /></Field><Field label="Hạn giao"><input type="date" className="input" value={form.ngayGiao} onChange={(e) => update("ngayGiao", e.target.value)} /></Field></div><div className="mt-4"><Field label="Quy cách dệt"><textarea className="input min-h-20" value={form.quyCach} onChange={(e) => update("quyCach", e.target.value)} placeholder="Chiều cao bo, số sọc, độ co giãn, thành phần sợi..." /></Field></div><div className="mt-4 rounded-2xl border p-4 dark:border-white/10"><label className="flex gap-3"><input type="checkbox" checked={form.giaoThangKhach} onChange={(e) => update("giaoThangKhach", e.target.checked)} className="mt-0.5 h-5 w-5" /><span><b className="flex items-center gap-1 text-sm"><Truck className="h-4 w-4 text-emerald-600" /> NCC giao thẳng cho khách</b><small className="text-slate-500">Không nhập tồn kho MIMIN, vẫn ghi mua bán và công nợ.</small></span></label><div className="mt-3"><Field label="Địa chỉ giao"><input className="input" value={form.diaChiGiao} onChange={(e) => update("diaChiGiao", e.target.value)} placeholder="Địa chỉ xưởng nhận hàng" /></Field></div></div><div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 dark:bg-emerald-950/10"><ImageUploader files={files} onChange={setFiles} category="Ảnh mẫu vật tư" accept="image/*" label="Hình mẫu gửi nhà dệt" hint="Ảnh bo cổ, phối màu hoặc thông số kỹ thuật." /></div></section>
-            <aside className="bg-slate-50/80 p-4 dark:bg-slate-950/40 md:p-6"><Title icon={Calculator} text="3. Giá & lợi nhuận" sub="Tự động tính theo số lượng" /><div className="mt-4 space-y-3"><Money label="Đơn giá mua NCC" value={form.donGiaMua} onChange={(v) => update("donGiaMua", v)} /><Money label="Đơn giá bán khách" value={form.donGiaBan} onChange={(v) => update("donGiaBan", v)} accent /><Money label="Phí vận chuyển mình chịu" value={form.phiVanChuyen} onChange={(v) => update("phiVanChuyen", v)} /><Money label="Chi phí khác" value={form.chiPhiKhac} onChange={(v) => update("chiPhiKhac", v)} /><Field label="VAT đầu ra"><select className="input" value={form.thueVat} onChange={(e) => update("thueVat", e.target.value)}>{[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}</select></Field></div><div className="mt-5 overflow-hidden rounded-3xl bg-gradient-to-b from-emerald-900 to-teal-950 text-white shadow-xl border border-emerald-900/50"><div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4"><div className="text-xs font-bold">LỢI NHUẬN DỰ KIẾN</div><div className="mt-1 text-3xl font-black">{formatVND(totals.loiNhuan)}</div><div className="text-sm text-emerald-100">Biên lợi nhuận {totals.bienLoiNhuan.toFixed(1)}%</div></div><div className="space-y-2.5 p-4 text-sm"><Row label="Tiền mua NCC" value={totals.tienMua} /><Row label="Tổng giá vốn" value={totals.giaVon} /><Row label="Doanh thu trước VAT" value={totals.doanhThu} /><Row label="VAT đầu ra" value={totals.vatDauRa} /><div className="border-t border-white/10" /><Row label="Tổng hóa đơn khách" value={totals.tongHoaDon} strong /></div></div><div className="mt-4"><Field label="Ghi chú nội bộ"><textarea className="input min-h-20" value={form.ghiChu} onChange={(e) => update("ghiChu", e.target.value)} /></Field></div><button onClick={saveDraft} className="btn-primary mt-5 flex w-full justify-center py-3"><Save className="h-4 w-4" /> Lưu phiếu đặt NCC</button></aside>
+            <section className="border-b p-4 dark:border-slate-800 md:p-6 xl:border-b-0 xl:border-r"><Title icon={UserRound} text="2. Thông tin đặt hàng" sub="Khách đặt → MIMIN → nhà dệt" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Mã phiếu"><input className="input" value={form.maPhieu} onChange={(e) => update("maPhieu", e.target.value)} /></Field><Field label="Khách hàng / xưởng may" required><SearchableCustomerSelect value={form.maKhachHang} onChange={(val, kh) => { update("maKhachHang", val); if (kh?.diaChi) update("diaChiGiao", kh.diaChi); }} customers={khachHangList} placeholder="-- Tìm tên khách hàng, số điện thoại hoặc mã KH --" /></Field><Field label="Nhà cung cấp dệt" required><select className="input" value={form.maNcc} onChange={(e) => update("maNcc", e.target.value)}><option value="">-- Chọn nhà cung cấp --</option>{nccList.map((ncc) => <option key={ncc.ma_ncc} value={ncc.ma_ncc}>{ncc.ma_ncc} · {ncc.ten_ncc}</option>)}</select></Field><Field label={`Số lượng (${selected?.donVi || "đơn vị"})`} required><input type="number" min="1" className="input" value={form.soLuong} onChange={(e) => update("soLuong", e.target.value)} /></Field><Field label="Ngày đặt"><input type="date" className="input" value={form.ngayDat} onChange={(e) => update("ngayDat", e.target.value)} /></Field><Field label="Hạn giao"><input type="date" className="input" value={form.ngayGiao} onChange={(e) => update("ngayGiao", e.target.value)} /></Field></div><div className="mt-4"><Field label="Quy cách dệt"><textarea className="input min-h-20" value={form.quyCach} onChange={(e) => update("quyCach", e.target.value)} placeholder="Chiều cao bo, số sọc, độ co giãn, thành phần sợi..." /></Field></div><div className="mt-4 rounded-2xl border border-slate-200/80 p-4 dark:border-slate-800"><label className="flex gap-3"><input type="checkbox" checked={form.giaoThangKhach} onChange={(e) => update("giaoThangKhach", e.target.checked)} className="mt-0.5 h-5 w-5 rounded text-emerald-600 focus:ring-emerald-500" /><span><b className="flex items-center gap-1 text-sm"><Truck className="h-4 w-4 text-emerald-600" /> NCC giao thẳng cho khách</b><small className="text-slate-500">Không nhập tồn kho MIMIN, vẫn ghi mua bán và công nợ.</small></span></label><div className="mt-3"><Field label="Địa chỉ giao"><input className="input" value={form.diaChiGiao} onChange={(e) => update("diaChiGiao", e.target.value)} placeholder="Địa chỉ xưởng nhận hàng" /></Field></div></div><div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 dark:bg-emerald-950/10"><ImageUploader files={files} onChange={setFiles} category="Ảnh mẫu vật tư" accept="image/*" label="Hình mẫu gửi nhà dệt" hint="Ảnh bo cổ, phối màu hoặc thông số kỹ thuật." /></div></section>
+            <aside className="bg-slate-50/80 p-4 dark:bg-slate-950/40 md:p-6">
+              <Title icon={Calculator} text="3. Giá & lợi nhuận" sub="Tự động tính theo số lượng" />
+              <div className="mt-4 space-y-3">
+                <Money label="Đơn giá mua NCC" value={form.donGiaMua} onChange={(v) => update("donGiaMua", v)} />
+                <Money label="Đơn giá bán khách" value={form.donGiaBan} onChange={(v) => update("donGiaBan", v)} accent />
+                <Money label="Phí vận chuyển mình chịu" value={form.phiVanChuyen} onChange={(v) => update("phiVanChuyen", v)} />
+                <Money label="Chi phí khác" value={form.chiPhiKhac} onChange={(v) => update("chiPhiKhac", v)} />
+                <Field label="VAT đầu ra">
+                  <select className="input" value={form.thueVat} onChange={(e) => update("thueVat", e.target.value)}>
+                    {[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}
+                  </select>
+                </Field>
+              </div>
+              <div className="mt-5 overflow-hidden rounded-2xl bg-linear-to-b from-slate-900 via-teal-950 to-slate-900 border border-teal-500/20 text-white shadow-sm">
+                <div className="bg-teal-950/60 border-b border-teal-500/20 p-4">
+                  <div className="text-xs font-semibold text-teal-400 uppercase tracking-wider">LỢI NHUẬN DỰ KIẾN</div>
+                  <div className="mt-1 text-2xl font-black font-mono tracking-tight text-teal-300">{formatVND(totals.loiNhuan)}</div>
+                  <div className="text-xs text-slate-300 mt-0.5">Biên lợi nhuận: <b className="text-teal-300 font-mono">{totals.bienLoiNhuan.toFixed(1)}%</b></div>
+                </div>
+                <div className="space-y-2.5 p-4 text-xs font-medium">
+                  <Row label="Tiền mua NCC" value={totals.tienMua} />
+                  <Row label="Tổng giá vốn" value={totals.giaVon} />
+                  <Row label="Doanh thu trước VAT" value={totals.doanhThu} />
+                  <Row label="VAT đầu ra" value={totals.vatDauRa} />
+                  <div className="border-t border-teal-500/10 my-1" />
+                  <Row label="Tổng hóa đơn khách" value={totals.tongHoaDon} strong />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Field label="Ghi chú nội bộ">
+                  <textarea className="input min-h-20" value={form.ghiChu} onChange={(e) => update("ghiChu", e.target.value)} />
+                </Field>
+              </div>
+              <button onClick={saveDraft} className="btn-primary mt-5 flex w-full justify-center py-2.5 text-xs font-semibold">
+                <Save className="h-4 w-4 mr-1.5" /> Lưu phiếu đặt NCC
+              </button>
+            </aside>
           </>
         )}
       </div>
 
       <section className="order-items-table p-4 md:px-7 md:py-5">
-        <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-bold">Danh sách vật tư trong đơn</h2><p className="text-xs text-slate-500">{orderPurpose === "customer" ? "Bấm mẫu bên dưới để thêm nhiều vật tư; mỗi dòng có giá mua và giá bán riêng." : "Bấm vật tư Kho phụ liệu bên dưới để thêm vào phiếu; mỗi dòng chỉ có giá mua NCC."}</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{orderItems.length} vật tư</span></div>
-        {orderItems.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">Chưa chọn vật tư nào.</div> : <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10"><table className="w-full min-w-[880px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-white/5"><tr><th className="p-3">Vật tư/phụ liệu</th><th className="p-3">Số lượng</th><th className="p-3">Đơn giá mua NCC</th>{orderPurpose === "customer" && <th className="p-3">Đơn giá bán khách</th>}{orderPurpose === "customer" && <th className="p-3 text-right">Lợi nhuận</th>}<th className="w-12 p-3" /></tr></thead><tbody>{orderItems.map((item) => <tr key={item.id} className="border-t border-slate-100 dark:border-white/10"><td className="p-3"><button type="button" onClick={() => { const material = materials.find((entry) => entry.maMau === item.maVatTu); if (material) selectMaterial(material); }} className="flex items-center gap-2 text-left">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenVatTu} className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 object-cover dark:border-white/10" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800"><ImageIcon className="h-5 w-5 text-slate-400" /></span>}<span><b className="block text-emerald-700">{item.maVatTu}</b><span className="font-semibold">{item.tenVatTu}</span><small className="block text-slate-500">{item.mauSac} · {item.donVi}</small></span></button></td><td className="p-3"><input type="number" min="1" className="input w-28" value={item.soLuong} onChange={(e) => updateLine(item.id, "soLuong", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 font-semibold" value={item.donGiaMua} onChange={(e) => updateLine(item.id, "donGiaMua", e.target.value)} /></td>{orderPurpose === "customer" && <td className="p-3"><input type="number" min="0" className="input w-36 border-emerald-300 bg-emerald-50 font-semibold dark:bg-emerald-950/20" value={item.donGiaBan} onChange={(e) => updateLine(item.id, "donGiaBan", e.target.value)} /></td>}{orderPurpose === "customer" && <td className={`p-3 text-right font-bold ${item.soLuong * (item.donGiaBan - item.donGiaMua) >= 0 ? "text-emerald-700" : "text-rose-600"}`}>{formatVND(item.soLuong * (item.donGiaBan - item.donGiaMua))}</td>}<td className="p-3"><button type="button" onClick={() => removeLine(item.id)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50" title="Xóa vật tư"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>}
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-sm md:text-base text-slate-900 dark:text-white">Danh sách vật tư trong đơn</h2>
+            <p className="text-xs text-slate-500">
+              {orderPurpose === "customer"
+                ? "Bấm mẫu bên trên để thêm nhiều vật tư; mỗi dòng có giá mua và giá bán riêng."
+                : "Bấm vật tư Kho phụ liệu bên trên để thêm vào phiếu; mỗi dòng chỉ có giá mua NCC."}
+            </p>
+          </div>
+          <span className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+            {orderItems.length} vật tư
+          </span>
+        </div>
+        {orderItems.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-5 text-center text-xs md:text-sm text-slate-500">
+            Chưa chọn vật tư nào.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <table className="w-full min-w-[880px] text-xs md:text-sm">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <tr>
+                  <th className="p-3">Vật tư / phụ liệu</th>
+                  <th className="p-3">Số lượng</th>
+                  <th className="p-3">Đơn giá mua NCC</th>
+                  {orderPurpose === "customer" && <th className="p-3">Đơn giá bán khách</th>}
+                  {orderPurpose === "customer" && <th className="p-3 text-right">Lợi nhuận</th>}
+                  <th className="w-12 p-3 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {orderItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                    <td className="p-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const material = materials.find((entry) => entry.maMau === item.maVatTu);
+                          if (material) selectMaterial(material);
+                        }}
+                        className="flex items-center gap-2.5 text-left"
+                      >
+                        {item.hinhAnh ? (
+                          <img
+                            src={item.hinhAnh}
+                            alt={item.tenVatTu}
+                            className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 object-cover dark:border-slate-700 shadow-xs"
+                          />
+                        ) : (
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                            <ImageIcon className="h-5 w-5 text-slate-400" />
+                          </span>
+                        )}
+                        <span>
+                          <b className="block text-emerald-600 dark:text-emerald-400 font-mono text-xs">{item.maVatTu}</b>
+                          <span className="font-semibold text-slate-900 dark:text-white">{item.tenVatTu}</span>
+                          <small className="block text-slate-400 text-[11px]">{item.mauSac} · {item.donVi}</small>
+                        </span>
+                      </button>
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="number"
+                        min="1"
+                        className="input w-28 text-xs font-mono font-semibold"
+                        value={item.soLuong}
+                        onChange={(e) => updateLine(item.id, "soLuong", e.target.value)}
+                      />
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="number"
+                        min="0"
+                        className="input w-36 text-xs font-mono font-semibold"
+                        value={item.donGiaMua}
+                        onChange={(e) => updateLine(item.id, "donGiaMua", e.target.value)}
+                      />
+                    </td>
+                    {orderPurpose === "customer" && (
+                      <td className="p-3">
+                        <input
+                          type="number"
+                          min="0"
+                          className="input w-36 text-xs font-mono font-semibold border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20"
+                          value={item.donGiaBan}
+                          onChange={(e) => updateLine(item.id, "donGiaBan", e.target.value)}
+                        />
+                      </td>
+                    )}
+                    {orderPurpose === "customer" && (
+                      <td className={`p-3 text-right font-mono font-bold text-xs md:text-sm ${item.soLuong * (item.donGiaBan - item.donGiaMua) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        {formatVND(item.soLuong * (item.donGiaBan - item.donGiaMua))}
+                      </td>
+                    )}
+                    <td className="p-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeLine(item.id)}
+                        className="rounded-lg p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                        title="Xóa vật tư"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
-      <div className="grid gap-3 border-t border-slate-200 bg-emerald-50/60 p-4 dark:border-white/10 dark:bg-emerald-950/20 md:grid-cols-2 md:px-7">
-        <button type="button" onClick={() => printOrder("ncc")} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"><Send className="h-5 w-5" /> In phiếu đặt sản xuất gửi NCC</button>
-        {orderPurpose === "customer" ? <button type="button" onClick={() => printOrder("customer")} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><Printer className="h-5 w-5" /> In phiếu bán hàng gửi khách/xưởng</button> : <div className="flex min-h-12 items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 dark:bg-slate-900">Hàng hoàn thành sẽ nhập Kho phụ liệu MIMIN</div>}
+      <div className="grid gap-3 border-t border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/60 md:grid-cols-2 md:px-7">
+        <button
+          type="button"
+          onClick={() => printOrder("ncc")}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs md:text-sm font-semibold text-white shadow-xs transition"
+        >
+          <Send className="h-4 w-4" /> In phiếu đặt sản xuất gửi NCC
+        </button>
+        {orderPurpose === "customer" ? (
+          <button
+            type="button"
+            onClick={() => printOrder("customer")}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-500 px-4 py-2.5 text-xs md:text-sm font-semibold text-white shadow-xs transition"
+          >
+            <Printer className="h-4 w-4" /> In phiếu bán hàng gửi khách/xưởng
+          </button>
+        ) : (
+          <div className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-emerald-400">
+            Hàng hoàn thành sẽ nhập trực tiếp vào Kho phụ liệu MIMIN
+          </div>
+        )}
       </div>
     </section>
     {orderPurpose === "customer" ? <div className="grid gap-3 md:grid-cols-3"><Flow icon={UserRound} title="Khách hàng đặt" detail="Chốt mẫu, số lượng và giá bán" /><Flow icon={Building2} title="Nhà dệt sản xuất" detail="Nhận mẫu và giá mua từ phiếu" /><Flow icon={Truck} title="Giao hàng & hóa đơn" detail="Chốt số đạt và công nợ" /></div> : <div className="grid gap-3 md:grid-cols-3"><Flow icon={Package} title="Chọn hàng trong kho" detail="Dùng danh mục Kho phụ liệu hiện tại" /><Flow icon={Building2} title="Đặt nhà cung cấp" detail="Phiếu chỉ hiển thị giá mua NCC" /><Flow icon={Truck} title="Nhập kho MIMIN" detail="Nhận hàng về Kho phụ liệu công ty" /></div>}
-    </>}
-    <CrudModal open={showCustom} onClose={() => setShowCustom(false)} title="Tạo nhanh mẫu vật tư sản xuất" fields={customFields} onSubmit={addCustom} submitLabel="Lưu vào danh mục và chọn" onImageUpload={(file) => uploadProductFile(file, "vat-tu-dat-san-xuat")} />
-  </div>;
+  </>
+}
+<CrudModal open={showCustom} onClose={() => setShowCustom(false)} title="Tạo nhanh mẫu vật tư sản xuất" fields={customFields} onSubmit={addCustom} submitLabel="Lưu vào danh mục và chọn" onImageUpload={(file) => uploadProductFile(file, "vat-tu-dat-san-xuat")} />
+  </div >;
 }
 
 function Title({ icon: Icon, text, sub }: { icon: typeof Package; text: string; sub: string }) { return <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950"><Icon className="h-5 w-5" /></div><div><h2 className="font-bold">{text}</h2><p className="text-xs text-slate-500">{sub}</p></div></div>; }
@@ -423,7 +682,7 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
 function Flow({ icon: Icon, title, detail }: { icon: typeof Package; title: string; detail: string }) { return <div className="card flex items-center gap-3 p-4"><div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700 dark:bg-emerald-950"><Icon className="h-5 w-5" /></div><div><b className="text-sm">{title}</b><div className="text-xs text-slate-500">{detail}</div></div></div>; }
 
 
-function SearchableSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: {value: string; label: string}[]; placeholder: string }) {
+function SearchableSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; placeholder: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const filtered = options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()));

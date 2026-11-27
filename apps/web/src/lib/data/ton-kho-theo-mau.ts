@@ -24,6 +24,7 @@ export interface SanPhamTuKho {
   giaTikTok: number;
   giaShopee: number;
   kenhBan: KenhBanKho[];
+  hinhAnh?: string;
   mau: { ten: string; img: string; sizes: TonKhoTheoSize }[];
 }
 
@@ -35,37 +36,97 @@ function congDonSize(vao: TonKhoTheoSize, them: TonKhoTheoSize): TonKhoTheoSize 
   return Array.from(map.entries()).map(([size, sl]) => ({ size, sl }));
 }
 
+function damBaoChiTietSize(chiTiet: TonKhoTheoSize, soLuongThat: number, sizeDefault?: string): TonKhoTheoSize {
+  if (soLuongThat <= 0) return chiTiet.map((x) => ({ size: x.size, sl: 0 }));
+  const tongChiTiet = chiTiet.reduce((sum, x) => sum + (Number(x.sl) || 0), 0);
+  if (tongChiTiet > 0) {
+    if (tongChiTiet === soLuongThat) return chiTiet;
+    let conLai = soLuongThat;
+    return chiTiet.map((x, i) => {
+      if (i === chiTiet.length - 1) return { size: x.size, sl: Math.max(0, conLai) };
+      const slMoi = Math.round(((Number(x.sl) || 0) / tongChiTiet) * soLuongThat);
+      conLai -= slMoi;
+      return { size: x.size, sl: Math.max(0, slMoi) };
+    });
+  }
+  // Nếu các size có sl = 0 mà soLuongThat > 0: Phân bổ đều vào các size
+  if (chiTiet.length > 0) {
+    const soSize = chiTiet.length;
+    let conLai = soLuongThat;
+    return chiTiet.map((x, i) => {
+      if (i === soSize - 1) return { size: x.size, sl: Math.max(0, conLai) };
+      const chia = Math.floor(soLuongThat / soSize);
+      conLai -= chia;
+      return { size: x.size, sl: Math.max(0, chia) };
+    });
+  }
+  return [{ size: (sizeDefault && sizeDefault.trim()) || "Freesize", sl: soLuongThat }];
+}
+
+function getDeletedKhoIds(): Set<string> {
+  try {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem("mimin_kho_tp_deleted_ids");
+      if (raw) return new Set(JSON.parse(raw));
+    }
+  } catch {}
+  return new Set();
+}
+
+function extractImage(r: any): string {
+  if (r.hinh_anh && Array.isArray(r.hinh_anh) && r.hinh_anh.length > 0) return r.hinh_anh[0];
+  if (r.hinhAnh && Array.isArray(r.hinhAnh) && r.hinhAnh.length > 0) return r.hinhAnh[0];
+  if (typeof r.hinh_anh === "string" && r.hinh_anh) return r.hinh_anh;
+  if (typeof r.hinhAnh === "string" && r.hinhAnh) return r.hinhAnh;
+  return r.img_quan || r.imgQuan || "";
+}
+
 export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
   if (!checkSupabase()) return layTonKhoTheoSanPhamSync();
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
+  const deletedIds = getDeletedKhoIds();
   
-  // Khi online, Supabase là nguồn sự thật chính thức.
-  // Chỉ bổ sung từ localKho nếu sản phẩm đó hoàn toàn chưa có trong Supabase (tránh cộng dồn 2 nguồn làm x2 số lượng tồn).
-  let effectiveRows: any[] = [];
+  // Hợp nhất dữ liệu: Supabase là Single Source of Truth
+  // Các sản phẩm đã có trên Supabase thì lấy hoàn toàn từ server, loại bỏ triệt để các dòng local cũ khác ID tránh nhân đôi số lượng
+  const rowsMap = new Map<string, any>();
+  const remoteProductCodes = new Set<string>();
   if (rows && rows.length > 0) {
-    effectiveRows = [...rows];
-    const dbMaSPs = new Set(rows.map((r: any) => String(r.ma_sp || r.maSP || "").trim().toUpperCase()).filter(Boolean));
-    const localOnly = localKho.filter((r: any) => {
-      const ma = String(r.maSP || r.ma_sp || "").trim().toUpperCase();
-      return ma && !dbMaSPs.has(ma);
-    });
-    effectiveRows.push(...localOnly);
-  } else {
-    effectiveRows = localKho;
+    for (const r of rows) {
+      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
+      if (rawMa) remoteProductCodes.add(rawMa);
+      if (r.id) rowsMap.set(String(r.id), r);
+    }
+  }
+  if (localKho && localKho.length > 0) {
+    for (const r of localKho) {
+      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
+      if (rawMa && remoteProductCodes.has(rawMa)) continue; // Bỏ qua cache local nếu server đã có sản phẩm này
+      if (r.id && !rowsMap.has(String(r.id))) rowsMap.set(String(r.id), r);
+    }
+  }
+  const effectiveRows = rowsMap.size > 0 ? Array.from(rowsMap.values()) : (rows && rows.length > 0 ? rows : localKho);
+
+  // Tự động làm mới cache localStorage từ dữ liệu hợp nhất mới nhất
+  if (typeof window !== "undefined" && rows && rows.length > 0) {
+    try {
+      localStorage.setItem("mimin_kho_thanh_pham_v2", JSON.stringify(effectiveRows));
+    } catch {}
   }
 
-  const uniqueRowsById = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values());
-
   const result: TonKhoTheoSanPham = {};
-  for (const r of uniqueRowsById) {
-    const maSP = r.ma_sp || r.maSP;
-    const mau = r.mau || "";
-    if (!maSP) continue;
+  for (const r of effectiveRows) {
+    if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+    const rawMaSP = String(r.ma_sp || r.maSP || "").trim();
+    if (!rawMaSP) continue;
+    const maSPUpper = rawMaSP.toUpperCase();
+    const mau = String(r.mau || "").trim();
     
-    // Khởi tạo trước để dù hết hàng (trang_thai = "het") thì danh sách màu vẫn có (ít nhất là {} object trống)
-    // Từ đó bên Danh mục SP nhận diện được là có dữ liệu kho nhưng SL = 0 -> Hết hàng
-    if (!result[maSP]) result[maSP] = {};
+    // Khởi tạo trước cho cả mã gốc và mã in hoa
+    if (!result[rawMaSP]) result[rawMaSP] = {};
+    if (!result[maSPUpper]) result[maSPUpper] = result[rawMaSP];
 
     const isCon = r.trang_thai === "con" || r.trangThai === "con";
     if (!isCon) continue;
@@ -80,35 +141,31 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
       ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
       : (size ? [{ size: size, sl: soLuongThat }] : []);
       
-    const tongChiTiet = chiTiet.reduce((sum, x) => sum + x.sl, 0);
-    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-      let conLai = soLuongThat;
-      chiTiet = chiTiet.map((x, i) => {
-        if (i === chiTiet.length - 1) return { size: x.size, sl: conLai };
-        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-        conLai -= slMoi;
-        return { size: x.size, sl: Math.max(0, slMoi) };
-      });
-    } else if (tongChiTiet === 0 && soLuongThat > 0) {
-      chiTiet = size ? [{ size: size, sl: soLuongThat }] : [];
-    }
+    chiTiet = damBaoChiTietSize(chiTiet, soLuongThat, size);
     
-    result[maSP][mau] = congDonSize(result[maSP][mau] || [], chiTiet);
+    result[rawMaSP][mau] = congDonSize(result[rawMaSP][mau] || [], chiTiet);
+    if (maSPUpper !== rawMaSP) {
+      result[maSPUpper][mau] = result[rawMaSP][mau];
+    }
   }
   return result;
 }
 
 export function layTonKhoTheoSanPhamSync(): TonKhoTheoSanPham {
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
-  const uniqueRows = Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[];
+  const deletedIds = getDeletedKhoIds();
+  const uniqueRows = (Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[])
+    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
 
   const result: TonKhoTheoSanPham = {};
   for (const r of uniqueRows) {
-    const maSP = r.ma_sp || r.maSP;
-    const mau = r.mau || "";
-    if (!maSP) continue;
+    const rawMaSP = String(r.ma_sp || r.maSP || "").trim();
+    if (!rawMaSP) continue;
+    const maSPUpper = rawMaSP.toUpperCase();
+    const mau = String(r.mau || "").trim();
     
-    if (!result[maSP]) result[maSP] = {};
+    if (!result[rawMaSP]) result[rawMaSP] = {};
+    if (!result[maSPUpper]) result[maSPUpper] = result[rawMaSP];
 
     const isCon = r.trang_thai === "con" || r.trangThai === "con";
     if (!isCon) continue;
@@ -123,20 +180,12 @@ export function layTonKhoTheoSanPhamSync(): TonKhoTheoSanPham {
       ? ctSize.map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
       : (size ? [{ size: size, sl: soLuongThat }] : []);
       
-    const tongChiTiet = chiTiet.reduce((sum, x) => sum + x.sl, 0);
-    if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-      let conLai = soLuongThat;
-      chiTiet = chiTiet.map((x, i) => {
-        if (i === chiTiet.length - 1) return { size: x.size, sl: conLai };
-        const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-        conLai -= slMoi;
-        return { size: x.size, sl: Math.max(0, slMoi) };
-      });
-    } else if (tongChiTiet === 0 && soLuongThat > 0) {
-      chiTiet = size ? [{ size: size, sl: soLuongThat }] : [];
-    }
+    chiTiet = damBaoChiTietSize(chiTiet, soLuongThat, size);
     
-    result[maSP][mau] = congDonSize(result[maSP][mau] || [], chiTiet);
+    result[rawMaSP][mau] = congDonSize(result[rawMaSP][mau] || [], chiTiet);
+    if (maSPUpper !== rawMaSP) {
+      result[maSPUpper][mau] = result[rawMaSP][mau];
+    }
   }
   return result;
 }
@@ -146,23 +195,32 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   if (!checkSupabase()) return layDanhMucKhoThanhPhamSync();
   const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham", "ngay_nhap", false);
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
+  const deletedIds = getDeletedKhoIds();
   
-  // Khi online, Supabase là nguồn sự thật chính thức.
-  // Chỉ bổ sung từ localKho nếu sản phẩm đó hoàn toàn chưa có trong Supabase (tránh cộng dồn 2 nguồn làm x2 số lượng tồn).
-  let effectiveRows: any[] = [];
+  // Hợp nhất dữ liệu: Supabase là Single Source of Truth
+  // Các sản phẩm đã có trên Supabase thì lấy hoàn toàn từ server, loại bỏ các dòng local cũ tránh nhân đôi số lượng
+  const rowsMap = new Map<string, any>();
+  const remoteProductCodes = new Set<string>();
   if (rows && rows.length > 0) {
-    effectiveRows = [...rows];
-    const dbMaSPs = new Set(rows.map((r: any) => String(r.ma_sp || r.maSP || "").trim().toUpperCase()).filter(Boolean));
-    const localOnly = localKho.filter((r: any) => {
-      const ma = String(r.maSP || r.ma_sp || "").trim().toUpperCase();
-      return ma && !dbMaSPs.has(ma);
-    });
-    effectiveRows.push(...localOnly);
-  } else {
-    effectiveRows = localKho;
+    for (const r of rows) {
+      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
+      if (rawMa) remoteProductCodes.add(rawMa);
+      if (r.id) rowsMap.set(String(r.id), r);
+    }
   }
+  if (localKho && localKho.length > 0) {
+    for (const r of localKho) {
+      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
+      if (rawMa && remoteProductCodes.has(rawMa)) continue; // Bỏ qua cache local nếu server đã có sản phẩm này
+      if (r.id && !rowsMap.has(String(r.id))) rowsMap.set(String(r.id), r);
+    }
+  }
+  const effectiveRows = rowsMap.size > 0 ? Array.from(rowsMap.values()) : (rows && rows.length > 0 ? rows : localKho);
 
-  const uniqueRows = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values());
+  const uniqueRows = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values())
+    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
 
   const result: DanhMucKhoThanhPham = {};
   for (const r of uniqueRows) {
@@ -177,18 +235,7 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
         ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
         : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
         
-      const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
-      if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-        let conLai = soLuongThat;
-        sizes = sizes.map((x, i) => {
-          if (i === sizes.length - 1) return { size: x.size, sl: conLai };
-          const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-          conLai -= slMoi;
-          return { size: x.size, sl: Math.max(0, slMoi) };
-        });
-      } else if (tongChiTiet === 0 && soLuongThat > 0) {
-        sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
-      }
+      sizes = damBaoChiTietSize(sizes, soLuongThat, r.size);
     } else {
       const rawSizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) ? (r.chi_tiet_size || r.chiTietSize) : [];
       sizes = rawSizes.map((x: any) => ({ size: x.size, sl: 0 }));
@@ -232,30 +279,40 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
     }
     const item = result[maSP];
     item.kenhBan = Array.from(new Set([...item.kenhBan, ...channels]));
-    const color = String(r.mau || "Mặc định");
-    const existing = item.mau.find((x) => x.ten === color);
+    const color = String(r.mau || "Mặc định").trim();
+    const existing = item.mau.find((x) => x.ten.trim().toLowerCase() === color.toLowerCase());
     
-    // Support hinhAnh array in new format
-    let imgToUse = "";
-    if (r.hinh_anh && Array.isArray(r.hinh_anh) && r.hinh_anh.length > 0) imgToUse = r.hinh_anh[0];
-    else if (r.hinhAnh && Array.isArray(r.hinhAnh) && r.hinhAnh.length > 0) imgToUse = r.hinhAnh[0];
-    else imgToUse = r.img_quan || r.imgQuan || "";
+    const imgToUse = extractImage(r);
 
     if (existing) {
       if (soLuongThat > 0 && isCon) {
         existing.sizes = congDonSize(existing.sizes, sizes);
       }
-      if (imgToUse) existing.img = imgToUse; // Ưu tiên ảnh mới từ kho
+      if (imgToUse) {
+        if (!existing.img || existing.img.startsWith("/product-models/") || !imgToUse.startsWith("/product-models/")) {
+          existing.img = imgToUse;
+        }
+      }
     } else {
       item.mau.push({ ten: color, img: imgToUse, sizes });
     }
   }
+
+  // Thiết lập ảnh đại diện tổng của sản phẩm từ ảnh thật trong kho
+  for (const item of Object.values(result)) {
+    const realStockImg = item.mau.find(m => m.img && !m.img.startsWith("/product-models/") && m.sizes.some(s => s.sl > 0))?.img;
+    const realImg = item.mau.find(m => m.img && !m.img.startsWith("/product-models/"))?.img;
+    item.hinhAnh = realStockImg || realImg || item.mau[0]?.img || "";
+  }
+
   return result;
 }
 
 export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
-  const uniqueRows = Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[];
+  const deletedIds = getDeletedKhoIds();
+  const uniqueRows = (Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[])
+    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
 
   const result: DanhMucKhoThanhPham = {};
   for (const r of uniqueRows) {
@@ -270,18 +327,7 @@ export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
         ? (r.chi_tiet_size || r.chiTietSize).map((x: any) => ({ size: x.size, sl: Number(x.sl) || 0 }))
         : (r.size ? [{ size: r.size, sl: soLuongThat }] : []);
         
-      const tongChiTiet = sizes.reduce((sum, x) => sum + x.sl, 0);
-      if (tongChiTiet > 0 && tongChiTiet !== soLuongThat) {
-        let conLai = soLuongThat;
-        sizes = sizes.map((x, i) => {
-          if (i === sizes.length - 1) return { size: x.size, sl: conLai };
-          const slMoi = Math.round((x.sl / tongChiTiet) * soLuongThat);
-          conLai -= slMoi;
-          return { size: x.size, sl: Math.max(0, slMoi) };
-        });
-      } else if (tongChiTiet === 0 && soLuongThat > 0) {
-        sizes = r.size ? [{ size: r.size, sl: soLuongThat }] : [];
-      }
+      sizes = damBaoChiTietSize(sizes, soLuongThat, r.size);
     } else {
       const rawSizes = Array.isArray(r.chi_tiet_size || r.chiTietSize) ? (r.chi_tiet_size || r.chiTietSize) : [];
       sizes = rawSizes.map((x: any) => ({ size: x.size, sl: 0 }));
@@ -325,22 +371,31 @@ export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
     }
     const item = result[maSP];
     item.kenhBan = Array.from(new Set([...item.kenhBan, ...channels]));
-    const color = String(r.mau || "Mặc định");
-    const existing = item.mau.find((x) => x.ten === color);
+    const color = String(r.mau || "Mặc định").trim();
+    const existing = item.mau.find((x) => x.ten.trim().toLowerCase() === color.toLowerCase());
     
-    let imgToUse = "";
-    if (r.hinh_anh && Array.isArray(r.hinh_anh) && r.hinh_anh.length > 0) imgToUse = r.hinh_anh[0];
-    else if (r.hinhAnh && Array.isArray(r.hinhAnh) && r.hinhAnh.length > 0) imgToUse = r.hinhAnh[0];
-    else imgToUse = r.img_quan || r.imgQuan || "";
+    const imgToUse = extractImage(r);
 
     if (existing) {
       if (soLuongThat > 0 && isCon) {
         existing.sizes = congDonSize(existing.sizes, sizes);
       }
-      if (imgToUse) existing.img = imgToUse; // Ưu tiên ảnh mới từ kho
+      if (imgToUse) {
+        if (!existing.img || existing.img.startsWith("/product-models/") || !imgToUse.startsWith("/product-models/")) {
+          existing.img = imgToUse;
+        }
+      }
     } else {
       item.mau.push({ ten: color, img: imgToUse, sizes });
     }
   }
+
+  // Thiết lập ảnh đại diện tổng của sản phẩm từ ảnh thật trong kho
+  for (const item of Object.values(result)) {
+    const realStockImg = item.mau.find(m => m.img && !m.img.startsWith("/product-models/") && m.sizes.some(s => s.sl > 0))?.img;
+    const realImg = item.mau.find(m => m.img && !m.img.startsWith("/product-models/"))?.img;
+    item.hinhAnh = realStockImg || realImg || item.mau[0]?.img || "";
+  }
+
   return result;
 }

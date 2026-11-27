@@ -2,9 +2,9 @@
 // Tach tu page.tsx (2026-08-05 - toi uu B.7)
 
 import { useState } from "react";
-import { Edit3, Trash2 } from "lucide-react";
+import { Edit3, Trash2, Search, X, Layers, Building2, User, ArrowUpDown, RotateCcw, Filter } from "lucide-react";
 import { toast } from "sonner";
-import { TRANG_THAI_LC_LABELS, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
+import { TRANG_THAI_LC_LABELS, LOAI_SP_LABELS, type TrangThaiLenhCat } from "@/lib/data/lenh-cat-store";
 import { FILTER_STATUSES } from "../data";
 
 interface FilterBarProps {
@@ -14,44 +14,188 @@ interface FilterBarProps {
   counts: Record<string, number>;
   onCreateCD: () => void;
   onCreateCP: () => void;
+  searchTerm?: string;
+  setSearchTerm?: (v: string) => void;
+  selectedLoaiSP?: string;
+  setSelectedLoaiSP?: (v: string) => void;
+  danhSachLoaiSP?: string[];
+  selectedGiaCong?: string;
+  setSelectedGiaCong?: (v: string) => void;
+  danhSachGiaCong?: string[];
+  sortBy?: string;
+  setSortBy?: (v: any) => void;
+  hasActiveFilters?: boolean;
+  onResetFilters?: () => void;
 }
 
-export function FilterBar({ filterTrangThai, setFilterTrangThai, totalCount, counts, onCreateCD, onCreateCP }: FilterBarProps) {
+export function FilterBar({ 
+  filterTrangThai, 
+  setFilterTrangThai, 
+  totalCount, 
+  counts, 
+  onCreateCD, 
+  onCreateCP,
+  searchTerm = "",
+  setSearchTerm,
+  selectedLoaiSP = "ALL",
+  setSelectedLoaiSP,
+  danhSachLoaiSP = [],
+  selectedGiaCong = "ALL",
+  setSelectedGiaCong,
+  danhSachGiaCong = [],
+  sortBy = "id_desc",
+  setSortBy,
+  hasActiveFilters = false,
+  onResetFilters
+}: FilterBarProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200/60 shadow-sm mb-4">
-      {/* Segmented Control for Tabs */}
-      <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto hide-scrollbar">
-        {FILTER_STATUSES.map((tt) => {
-          const count = tt === "ALL" ? totalCount : counts[tt] || 0;
-          const active = filterTrangThai === tt;
-          return (
-            <button
-              key={tt}
-              onClick={() => setFilterTrangThai(tt)}
-              className={`relative px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 ${
-                active 
-                  ? "bg-white text-teal-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)]" 
-                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-              }`}
-            >
-              {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]}
-              <span className={`ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] ${active ? "bg-teal-50 text-teal-600" : "bg-slate-200 text-slate-500"}`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+    <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm mb-4 space-y-3">
+      {/* Hàng 1: Tabs Trạng thái và Nút tạo mẫu */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* Segmented Control for Tabs */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar tab-scroll-mobile">
+          {FILTER_STATUSES.map((tt) => {
+            const count = tt === "ALL" ? totalCount : counts[tt] || 0;
+            const active = filterTrangThai === tt;
+            return (
+              <button
+                key={tt}
+                onClick={() => setFilterTrangThai(tt)}
+                className={`relative px-3.5 sm:px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-300 shrink-0 ${
+                  active 
+                    ? "bg-white text-teal-700 shadow-[0_2px_8px_rgba(0,0,0,0.08)]" 
+                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                }`}
+              >
+                {tt === "ALL" ? "Tất cả" : TRANG_THAI_LC_LABELS[tt as TrangThaiLenhCat]}
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] ${active ? "bg-teal-50 text-teal-600" : "bg-slate-200 text-slate-500"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
+          <button onClick={onCreateCD} className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100 hover:border-violet-300 text-center whitespace-nowrap">
+            + Mẫu công đoạn
+          </button>
+          <button onClick={onCreateCP} className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 text-center whitespace-nowrap">
+            + Bảng chi phí
+          </button>
+        </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-        <button onClick={onCreateCD} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all border border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100 hover:border-violet-300">
-          + Mẫu công đoạn
-        </button>
-        <button onClick={onCreateCP} className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all border border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300">
-          + Bảng chi phí
-        </button>
-      </div>
+      {/* Hàng 2: Thanh tìm kiếm Mã SP, Mã Lệnh, Phân loại, Gia công nhận, Sắp xếp */}
+      {setSearchTerm && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-2 border-t border-slate-100">
+          {/* Ô tìm kiếm */}
+          <div className="lg:col-span-5 relative">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm mã SP (VD: M01), mã lệnh cắt (LC-...), tên SP..."
+                className="w-full pl-9 pr-8 py-2 text-xs md:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-medium placeholder:text-slate-400 transition"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Phân loại SP */}
+          {setSelectedLoaiSP && (
+            <div className="lg:col-span-3 relative">
+              <div className="relative flex items-center">
+                <Layers className="w-3.5 h-3.5 text-teal-600 absolute left-3 pointer-events-none" />
+                <select
+                  value={selectedLoaiSP}
+                  onChange={(e) => setSelectedLoaiSP(e.target.value)}
+                  className="w-full pl-8 pr-7 py-2 text-xs md:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 transition appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Tất cả loại SP ({danhSachLoaiSP.length})</option>
+                  {danhSachLoaiSP.map((loai) => (
+                    <option key={loai} value={loai}>
+                      {LOAI_SP_LABELS[loai as keyof typeof LOAI_SP_LABELS] || loai}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-2.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
+              </div>
+            </div>
+          )}
+
+          {/* Người phụ trách */}
+          {setSelectedGiaCong && (
+            <div className="lg:col-span-2 relative">
+              <div className="relative flex items-center">
+                <User className="w-3.5 h-3.5 text-indigo-600 absolute left-3 pointer-events-none" />
+                <select
+                  value={selectedGiaCong}
+                  onChange={(e) => setSelectedGiaCong(e.target.value)}
+                  className="w-full pl-8 pr-7 py-2 text-xs md:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 transition appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Người phụ trách ({danhSachGiaCong.length})</option>
+                  {danhSachGiaCong.map((gc) => (
+                    <option key={gc} value={gc}>
+                      {gc}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-2.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
+              </div>
+            </div>
+          )}
+
+          {/* Sắp xếp theo mã mới nhất / cũ nhất */}
+          {setSortBy && (
+            <div className="lg:col-span-2 relative">
+              <div className="relative flex items-center">
+                <ArrowUpDown className="w-3.5 h-3.5 text-amber-600 absolute left-3 pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full pl-8 pr-7 py-2 text-xs md:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-medium text-slate-700 transition appearance-none cursor-pointer"
+                >
+                  <option value="id_desc">Mã mới nhất ↓</option>
+                  <option value="id_asc">Mã cũ nhất ↑</option>
+                  <option value="deadline_asc">Hạn giao gần nhất</option>
+                  <option value="deadline_desc">Hạn giao xa nhất</option>
+                  <option value="sl_desc">Số lượng nhiều nhất</option>
+                  <option value="sl_asc">Số lượng ít nhất</option>
+                </select>
+                <div className="absolute right-2.5 pointer-events-none text-slate-400 text-[10px]">▼</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Dòng đặt lại bộ lọc */}
+      {hasActiveFilters && onResetFilters && (
+        <div className="flex items-center justify-between pt-1 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+            <Filter className="w-3 h-3" /> Đang lọc danh sách
+          </span>
+          <button
+            type="button"
+            onClick={onResetFilters}
+            className="inline-flex items-center gap-1 text-slate-500 hover:text-rose-600 font-bold transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" /> Đặt lại bộ lọc
+          </button>
+        </div>
+      )}
     </div>
   );
 }

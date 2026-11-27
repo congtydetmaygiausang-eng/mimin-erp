@@ -40,6 +40,15 @@ export function ChiTietNhanSuModal({ nv, luongSP, onClose, onEdit, onLuong }: { 
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{nv.hoTen}</h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/15 text-violet-700">{nv.boPhan}</span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/15 text-sky-700">{nv.chucVu}</span>
+              {nv.trangThai === "nghi_viec" ? (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                  ⛔ Đã nghỉ việc
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  ✓ Đang làm việc
+                </span>
+              )}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center justify-center sm:justify-start gap-3">
               <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5 text-teal-600" /> {nv.sdt || "Chưa có SĐT"}</span>

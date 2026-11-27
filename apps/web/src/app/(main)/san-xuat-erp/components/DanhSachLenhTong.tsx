@@ -13,7 +13,7 @@ import { formatVND, formatVNDShort } from "@/lib/data/real-data";
 import { Modal } from "./ui-blocks";
 import PhieuNhapSoiPrint from "./PhieuNhapSoiPrint";
 import PhieuGiaoDetPrint from "./PhieuGiaoDetPrint";
-import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 import {
   FABRIC_DYE_LOTS_CHANGED_EVENT,
   type FabricDyeLot,
@@ -661,10 +661,12 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
   }, [danhSach, search, filterTrangThai]);
 
   const handleOpenLightbox = (images: any[], startIndex = 0) => {
-    const urls = images.map((img) => img.dataUrl || img.url || img).filter(Boolean);
+    const urls = images
+      .map((img) => (typeof img === "string" ? img : img?.dataUrl || img?.url || ""))
+      .filter((url): url is string => typeof url === "string" && url.length > 0);
     if (urls.length > 0) {
       setLightboxImages(urls);
-      setLightboxIndex(startIndex);
+      setLightboxIndex(Math.min(startIndex, urls.length - 1));
     }
   };
 
@@ -1530,12 +1532,15 @@ export function DanhSachLenhTong({ onTaoLenhMoi, selectedLenhId }: Props) {
       )}
 
       {/* LIGHTBOX PHÓNG TO HÌNH ẢNH */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && lightboxImages.length > 0 && (
         <ImageLightbox
           src={lightboxImages[lightboxIndex] || null}
           gallery={lightboxImages}
           onChange={(_newSrc, newIdx) => setLightboxIndex(newIdx)}
-          onClose={() => setLightboxIndex(null)}
+          onClose={() => {
+            setLightboxIndex(null);
+            setLightboxImages([]);
+          }}
         />
       )}
     </div>

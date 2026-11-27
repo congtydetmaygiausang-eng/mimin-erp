@@ -6,6 +6,7 @@ import {
   Filter, Calculator, FileText, BarChart3, Clock,
 } from "lucide-react";
 import { fmtVND } from "@/lib/bang-luong-engine";
+import { CHUAN_NGAY_CONG_THANG } from "@/lib/cham-cong";
 import { useBangLuongData } from "@/lib/use-bang-luong";
 import { REAL_NHAN_VIEN } from "@/lib/real-workflow-data";
 import { CONG_NHAN_13 } from "@/lib/congnhan-13";
@@ -36,9 +37,10 @@ export default function BangLuongAutoPage() {
 
   const exportCSV = () => {
     const rows = [
-      ["Mã NV", "Tên NV", "Module", "Đơn giá", "SL Giao", "SL Đạt", "SL Lỗi", "SL Vượt", "Tiền công", "Phạt lỗi", "Thưởng", "Phạt trễ", "Thực nhận", "Ngày trả"],
+      ["Mã NV", "Tên NV", "Module", "Ngày công", "Công chuẩn", "Tỷ lệ (%)", "Nghỉ phép (0 công)", "Đơn giá", "SL Giao", "SL Đạt", "SL Lỗi", "SL Vượt", "Tiền công", "Phạt lỗi", "Thưởng", "Phạt trễ", "Thực nhận", "Ngày trả"],
       ...filtered.map((bl) => [
-        bl.maNV, bl.tenNV, bl.boPhan, bl.donGia, bl.soLuongGiao, bl.soLuongDat, bl.soLuongLoi, bl.soLuongVuot,
+        bl.maNV, bl.tenNV, bl.boPhan, bl.ngayCongThucTe, bl.ngayCongChuan, `${bl.tyLeNgayCong}%`, bl.ngayPhep,
+        bl.donGia, bl.soLuongGiao, bl.soLuongDat, bl.soLuongLoi, bl.soLuongVuot,
         bl.tienCong, bl.phatLoi, bl.thuongVuot, bl.phatTreHan, bl.thucNhan, bl.ngayTra,
       ]),
     ];
@@ -61,7 +63,7 @@ export default function BangLuongAutoPage() {
           <h1 className="text-2xl md:text-3xl font-bold">Bảng lương tháng {thang}/{nam}</h1>
           <p className="text-sm opacity-95 mt-1 max-w-3xl">
             Tính lương tự động cho <b>{tongKet.tongNV} nhân sự</b> đồng bộ từ cơ sở dữ liệu Supabase. 
-            Áp dụng: <b>Lương cứng / Sản phẩm</b>, <b>Phạt lỗi 30%</b>, <b>Thưởng vượt 20%</b>, <b>Phạt trễ hạn 50K/task</b>.
+            Áp dụng: <b>Lương ngày công chuẩn {CHUAN_NGAY_CONG_THANG} ngày/tháng</b> (không trần, nghỉ phép 0 công) / <b>Sản phẩm</b>, <b>Phạt lỗi 30%</b>, <b>Thưởng vượt 20%</b>.
           </p>
           <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
             <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{tongKet.tongNV}</div><div className="opacity-90">CN</div></div>
@@ -132,12 +134,14 @@ export default function BangLuongAutoPage() {
                 <th className="px-2 py-2 text-left">Mã NV</th>
                 <th className="px-2 py-2 text-left">Tên</th>
                 <th className="px-2 py-2 text-left">Module</th>
-                <th className="px-2 py-2 text-right">Đơn giá</th>
+                <th className="px-2 py-2 text-center">Công/{CHUAN_NGAY_CONG_THANG}</th>
+                <th className="px-2 py-2 text-right">Đơn giá / Mức tháng</th>
                 <th className="px-2 py-2 text-right">Giao</th>
                 <th className="px-2 py-2 text-right">Đạt</th>
                 <th className="px-2 py-2 text-right">Lỗi</th>
                 <th className="px-2 py-2 text-right">Vượt</th>
                 <th className="px-2 py-2 text-right">Tiền công</th>
+                <th className="px-2 py-2 text-right bg-amber-50 text-amber-800">Tăng ca</th>
                 <th className="px-2 py-2 text-right">Phạt lỗi</th>
                 <th className="px-2 py-2 text-right">Thưởng</th>
                 <th className="px-2 py-2 text-right">Trễ hạn</th>
@@ -154,15 +158,24 @@ export default function BangLuongAutoPage() {
                     <td className="px-2 py-1.5 font-semibold">{bl.tenNV}</td>
                     <td className="px-2 py-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: info?.color + "20", color: info?.color }}>
-                        {info?.icon || "📦"} {info?.name || "Module"}
+                        {info?.icon || "📦"} {info?.name || bl.boPhan || "Module"}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5 text-right">{bl.donGia.toLocaleString("vi-VN")}đ/{bl.donVi}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <span className="font-semibold text-teal-700">{bl.ngayCongThucTe}/{bl.ngayCongChuan}</span>
+                      <span className="block text-[10px] text-slate-500">
+                        {bl.coDuLieuChamCong ? `${bl.tyLeNgayCong}%` : "Chưa CC"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {bl.isLuongSP ? `${bl.donGia.toLocaleString("vi-VN")}đ/${bl.donVi}` : fmtVND(bl.luongCung)}
+                    </td>
                     <td className="px-2 py-1.5 text-right font-semibold">{bl.soLuongGiao}</td>
                     <td className="px-2 py-1.5 text-right text-emerald-600 font-bold">{bl.soLuongDat}</td>
                     <td className="px-2 py-1.5 text-right text-rose-600">{bl.soLuongLoi > 0 ? bl.soLuongLoi : "—"}</td>
                     <td className="px-2 py-1.5 text-right text-blue-600">{bl.soLuongVuot > 0 ? `+${bl.soLuongVuot}` : "—"}</td>
                     <td className="px-2 py-1.5 text-right font-semibold">{fmtVND(bl.tienCong)}</td>
+                    <td className="px-2 py-1.5 text-right text-amber-800 font-semibold">{bl.gioTangCa > 0 ? `+${fmtVND(bl.tienTangCa)} (${bl.gioTangCa}h)` : "—"}</td>
                     <td className="px-2 py-1.5 text-right text-rose-600">{bl.phatLoi > 0 ? `-${fmtVND(bl.phatLoi)}` : "—"}</td>
                     <td className="px-2 py-1.5 text-right text-emerald-600">{bl.thuongVuot > 0 ? `+${fmtVND(bl.thuongVuot)}` : "—"}</td>
                     <td className="px-2 py-1.5 text-right text-rose-600">{bl.phatTreHan > 0 ? `-${fmtVND(bl.phatTreHan)}` : "—"}</td>
@@ -174,8 +187,9 @@ export default function BangLuongAutoPage() {
             </tbody>
             <tfoot className="bg-slate-200 font-bold">
               <tr>
-                <td colSpan={8} className="px-2 py-2 text-right">TỔNG CỘNG ({filtered.length} CN):</td>
+                <td colSpan={9} className="px-2 py-2 text-right">TỔNG CỘNG ({filtered.length} CN):</td>
                 <td className="px-2 py-2 text-right">{fmtVND(filtered.reduce((s, b) => s + b.tienCong, 0))}</td>
+                <td className="px-2 py-2 text-right text-amber-800">+{fmtVND(filtered.reduce((s, b) => s + b.tienTangCa, 0))}</td>
                 <td className="px-2 py-2 text-right text-rose-600">-{fmtVND(filtered.reduce((s, b) => s + b.phatLoi, 0))}</td>
                 <td className="px-2 py-2 text-right text-emerald-600">+{fmtVND(filtered.reduce((s, b) => s + b.thuongVuot, 0))}</td>
                 <td className="px-2 py-2 text-right text-rose-600">-{fmtVND(filtered.reduce((s, b) => s + b.phatTreHan, 0))}</td>
@@ -191,9 +205,17 @@ export default function BangLuongAutoPage() {
           <h3 className="font-bold text-sm text-amber-800 mb-2 flex items-center gap-2">
             <Calculator className="w-4 h-4" /> 📊 Công thức tính lương
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-slate-700">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-slate-700">
             <div className="bg-white p-2 rounded">
-              <b className="text-emerald-700">Tiền công</b> = SL Đạt × Đơn giá<br/>
+              <b className="text-teal-700">Lương ngày công</b> = Lương tháng × (Công / {CHUAN_NGAY_CONG_THANG})<br/>
+              <span className="text-[10px] text-slate-500">Không giới hạn trần · Nghỉ phép tính 0 công</span>
+            </div>
+            <div className="bg-white p-2 rounded">
+              <b className="text-amber-700">Lương tăng ca</b> = Giờ TC × (Lương CB / 238)<br/>
+              <span className="text-[10px] text-slate-500">Cơ sở 28 ngày × 8.5h · Cộng vào lương</span>
+            </div>
+            <div className="bg-white p-2 rounded">
+              <b className="text-emerald-700">Tiền công SP</b> = SL Đạt × Đơn giá<br/>
               <span className="text-[10px] text-slate-500">VD: NV Ruộng đính 200 nút × 750đ = 150K</span>
             </div>
             <div className="bg-white p-2 rounded">

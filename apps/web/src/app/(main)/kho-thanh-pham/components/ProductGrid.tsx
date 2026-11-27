@@ -32,24 +32,27 @@ interface ProductGridProps {
   onRebuildFromLC: (group: ProductGroup) => void;
   onSuaTong?: (group: ProductGroup) => void;
   onXoaTong?: (group: ProductGroup) => void;
+  onDeleteVariant?: (id: string) => void;
   dsLenhCat: any[];
+  highlightedMaSP?: string | null;
 }
 
 export function ProductGrid({ 
   groups, productImages, productVariantImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
   setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, 
-  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, dsLenhCat 
+  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, onDeleteVariant, dsLenhCat, highlightedMaSP 
 }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
       {groups.map(group => {
-        const totalQty = group.items.reduce((s, x) => s + x.soLuong, 0);
-        const totalValue = group.items.reduce((s, x) => s + x.giaTri, 0);
-        const priceRange = Array.from(new Set(group.items.map(x => x.giaBanLe || x.donGia).filter(Boolean)));
+        if (!group || !group.items || group.items.length === 0) return null;
+        const totalQty = group.items.reduce((s, x) => s + (Number(x?.soLuong) || 0), 0);
+        const totalValue = group.items.reduce((s, x) => s + (Number(x?.giaTri) || 0), 0);
+        const priceRange = Array.from(new Set(group.items.map(x => x?.giaBanLe || x?.donGia).filter(Boolean)));
         const priceDisplay = priceRange.length === 0 ? null
-          : priceRange.length === 1 ? priceRange[0].toLocaleString()
-          : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
+          : priceRange.length === 1 ? (Number(priceRange[0]) || 0).toLocaleString()
+          : `${(Number(Math.min(...priceRange)) || 0).toLocaleString()} - ${(Number(Math.max(...priceRange)) || 0).toLocaleString()}`;
 
         const lsx = group.items[0]?.maLenhCat || group.maSP;
         const lc = dsLenhCat.find((l) => l.id === lsx);
@@ -59,7 +62,15 @@ export function ProductGrid({
         const canRebuild = soMauThat > 0 && (group.items.length < soMauThat || maSPSai);
 
         return (
-          <div key={group.maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div 
+            key={group.maSP} 
+            id={`product-group-${group.maSP}`}
+            className={`bg-white rounded-2xl border ${
+              highlightedMaSP === group.maSP 
+                ? "border-emerald-500 ring-4 ring-emerald-300 shadow-xl bg-emerald-50/10" 
+                : "border-slate-200 shadow-sm"
+            } overflow-hidden transition-all duration-500`}
+          >
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
               <div>
@@ -94,6 +105,7 @@ export function ProductGrid({
                     onOpen={() => onOpenVariant(s)}
                     onEdit={() => setEditing(s)}
                     onXuatKho={() => handleXuatKho(s.id)}
+                    onDelete={onDeleteVariant ? () => onDeleteVariant(s.id) : undefined}
                   />
                 ))}
               </div>
@@ -146,7 +158,7 @@ const TRANG_THAI_STYLE: Record<string, { label: string; bg: string; text: string
   "khong-dat": { label: "Không đạt", bg: "bg-rose-500", text: "text-white" },
 };
 
-function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: SanPhamTP; image?: string; imageQuan?: string; onOpen: () => void; onEdit: () => void; onXuatKho: () => void }) {
+function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho, onDelete }: { sp: SanPhamTP; image?: string; imageQuan?: string; onOpen: () => void; onEdit: () => void; onXuatKho: () => void; onDelete?: () => void }) {
   const trangThai = TRANG_THAI_STYLE[sp.trangThai] || TRANG_THAI_STYLE["con"];
 
   return (
@@ -197,6 +209,11 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           <button onClick={(e) => { e.stopPropagation(); onXuatKho(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Xuất kho">
             <Truck className="w-3.5 h-3.5" />
           </button>
+          {onDelete && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1.5 bg-rose-600/80 hover:bg-rose-600 backdrop-blur rounded-lg text-white" title="Xóa">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -208,7 +225,7 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
           <div className="flex flex-wrap gap-1.5 mb-3">
             {sp.chiTietSize.map((s) => (
               <span key={s.size} className="px-2 py-0.5 rounded-md shadow-sm border bg-sky-50 border-sky-200 text-sky-800 text-xs">
-                <strong className="text-sky-900">{s.size}:</strong> {s.sl.toLocaleString()}
+                <strong className="text-sky-900">{s.size}:</strong> {(Number(s.sl) || 0).toLocaleString()}
               </span>
             ))}
           </div>
@@ -224,7 +241,7 @@ function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: 
 
         <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
           <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
-            <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
+            <Box className="w-3.5 h-3.5" /> {(Number(sp.soLuong) || 0).toLocaleString()} sp
           </span>
         </div>
         {sp.viTri && (
@@ -251,7 +268,7 @@ function PriceChip({ label, price }: { label: string; price?: number }) {
           : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
       }`}
     >
-      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+      {label}{show ? `: ${(Number(price) || 0).toLocaleString()}đ` : ''}
     </button>
   );
 }

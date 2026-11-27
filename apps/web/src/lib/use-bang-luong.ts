@@ -11,6 +11,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { tinhBangLuongThang, tongKetBangLuong, type BangLuongNV, type TongKetBangLuong, type NhanSuLuongInput } from "./bang-luong-engine";
 import { supabaseFetchAll, isSupabaseEnabled, supabase } from "@/lib/supabase/client";
+import { mergeChamCongRecords, normalizeChamCongFromDB, type ChamCongRecord } from "./cham-cong";
+import { getDanhSachThuChi, syncFromSupabase, type GiaoDichThuChi } from "@/lib/data/thu-chi";
 
 // ============ TYPES ============
 type WorkflowRow = {
@@ -140,11 +142,37 @@ function hoanThienToWorkflow(r: HoanThienRow): WorkflowRow | null {
 export function useBangLuongData(thang: number, nam: number) {
   const [allPhieu, setAllPhieu] = useState<WorkflowRow[]>([]);
   const [employees, setEmployees] = useState<NhanSuLuongInput[]>([]);
+  const [chamCongRecords, setChamCongRecords] = useState<ChamCongRecord[]>([]);
+  const [danhSachThuChi, setDanhSachThuChi] = useState<GiaoDichThuChi[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"supabase" | "localStorage" | "empty">("empty");
 
   useEffect(() => {
     let cancelled = false;
+
+    // 0c. Load danh sách Thu Chi nội bộ (Tạm ứng) ngay lập tức từ localStorage
+    const localTC = getDanhSachThuChi();
+    if (!cancelled) setDanhSachThuChi(localTC);
+
+    // Đồng bộ thêm từ Supabase nếu có
+    if (isSupabaseEnabled) {
+      void syncFromSupabase().then((res) => {
+        if (!cancelled && res.data && res.data.length > 0) {
+          setDanhSachThuChi(res.data);
+        }
+      });
+    }
+
+    // Lắng nghe sự kiện cập nhật thu chi (khi nhập phiếu tạm ứng mới ở tab Thu chi)
+    const handleThuChiUpdate = () => {
+      const updated = getDanhSachThuChi();
+      if (!cancelled) setDanhSachThuChi(updated);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("mimin_thu_chi_updated", handleThuChiUpdate);
+      window.addEventListener("storage", handleThuChiUpdate);
+    }
+
     (async () => {
       setLoading(true);
       try {
@@ -158,7 +186,9 @@ export function useBangLuongData(thang: number, nam: number) {
             }
           }
           if (rawEmployees.length === 0) {
-            const cached = typeof window !== "undefined" ? localStorage.getItem("mimin_nhan_su_v1") : null;
+            const cached = typeof window !== "undefined"
+              ? (localStorage.getItem("mimin_nhan_su_v2") || localStorage.getItem("mimin_nhan_su_v1"))
+              : null;
             if (cached) {
               try {
                 const parsed = JSON.parse(cached);
@@ -166,11 +196,14 @@ export function useBangLuongData(thang: number, nam: number) {
               } catch {}
             }
           }
-          // Lọc danh sách: chỉ nhận các nhân sự chính thức NV01-NV05 (loại bỏ toàn bộ nhân viên test cũ như GS002..GS018 nếu còn sót trong cache)
-          const officialCodes = new Set(["NV01", "NV02", "NV03", "NV04", "NV05"]);
-          if (rawEmployees.some(r => officialCodes.has((r.ma_nv || r.maNV || "").toUpperCase().trim()))) {
-            rawEmployees = rawEmployees.filter(r => officialCodes.has((r.ma_nv || r.maNV || "").toUpperCase().trim()));
-          }
+          // Loại bỏ nhân viên test cũ GS... hoặc nhân sự đã nghỉ việc, giữ toàn bộ NV chính thức (kể cả NV06+)
+          rawEmployees = rawEmployees.filter((r) => {
+            const code = String(r.ma_nv || r.maNV || "").toUpperCase().trim();
+            const status = String(r.trang_thai || r.trangThai || "").toLowerCase();
+            if (!code || /^GS\d+$/i.test(code)) return false;
+            if (status === "nghi_viec") return false;
+            return true;
+          });
 
           if (rawEmployees.length > 0) {
             const parsedEmployees: NhanSuLuongInput[] = rawEmployees.map((r) => {
@@ -200,6 +233,55 @@ export function useBangLuongData(thang: number, nam: number) {
           }
         } catch (err) {
           console.warn("[useBangLuongData] Fetch nhan_su error:", err);
+        }
+
+        // 0b. Load dữ liệu chấm công trong tháng (Supabase + hàng đợi local chưa đồng bộ)
+        try {
+          const monthPrefix = `${nam}-${String(thang).padStart(2, "0")}`;
+          const lastDay = new Date(nam, thang, 0).getDate();
+          const startIso = `${monthPrefix}-01`;
+          const endIso = `${monthPrefix}-${String(lastDay).padStart(2, "0")}`;
+
+          const readLocalAtt = (key: string): ChamCongRecord[] => {
+            if (typeof window === "undefined") return [];
+            try {
+              const raw = localStorage.getItem(key);
+              const parsed = raw ? JSON.parse(raw) : [];
+              if (!Array.isArray(parsed)) return [];
+              return parsed
+                .map((row) => normalizeChamCongFromDB(row as Record<string, unknown>))
+                .filter((row) => row.maNV && row.ngay.startsWith(monthPrefix));
+            } catch {
+              return [];
+            }
+          };
+
+          const localCached = readLocalAtt("mimin_cham_cong_v1");
+          const localPending = readLocalAtt("mimin_cham_cong_pending_v1");
+
+          let remoteAtt: ChamCongRecord[] = [];
+          let remoteOk = false;
+          if (isSupabaseEnabled && supabase) {
+            const { data, error } = await supabase
+              .from("cham_cong")
+              .select("*")
+              .gte("ngay", startIso)
+              .lte("ngay", endIso);
+            if (!error && Array.isArray(data)) {
+              remoteOk = true;
+              remoteAtt = data
+                .map((row) => normalizeChamCongFromDB(row as Record<string, unknown>))
+                .filter((row) => row.maNV && row.ngay.startsWith(monthPrefix));
+            }
+          }
+
+          const mergedAtt = remoteOk
+            ? mergeChamCongRecords(remoteAtt, localPending)
+            : mergeChamCongRecords(localCached, localPending);
+          if (!cancelled) setChamCongRecords(mergedAtt);
+        } catch (attErr) {
+          console.warn("[useBangLuongData] Fetch cham_cong error:", attErr);
+          if (!cancelled) setChamCongRecords([]);
         }
 
         const allRows: WorkflowRow[] = [];
@@ -299,15 +381,29 @@ export function useBangLuongData(thang: number, nam: number) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mimin_thu_chi_updated", handleThuChiUpdate);
+        window.removeEventListener("storage", handleThuChiUpdate);
+      }
+    };
   }, [thang, nam]);
 
-  // Tính bảng lương
+  // Tính bảng lương (kết hợp dữ liệu chấm công chuẩn 28 ngày & khấu trừ tạm ứng từ Thu Chi nội bộ)
   const bangLuong = useMemo(
-    () => tinhBangLuongThang(thang, nam, allPhieu, employees.length > 0 ? employees : undefined),
-    [thang, nam, allPhieu, employees]
+    () =>
+      tinhBangLuongThang(
+        thang,
+        nam,
+        allPhieu,
+        employees.length > 0 ? employees : undefined,
+        chamCongRecords,
+        danhSachThuChi
+      ),
+    [thang, nam, allPhieu, employees, chamCongRecords, danhSachThuChi]
   );
   const tongKet = useMemo(() => tongKetBangLuong(bangLuong), [bangLuong]);
 
-  return { bangLuong, tongKet, loading, allPhieuCount: allPhieu.length, source };
+  return { bangLuong, tongKet, loading, allPhieuCount: allPhieu.length, source, danhSachThuChi };
 }

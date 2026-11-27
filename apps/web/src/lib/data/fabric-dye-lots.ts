@@ -9,6 +9,7 @@ export interface FabricDyeLot {
   sku: string;
   mauSac: string;
   ngayNhap: string;
+  ngayNhuom?: string;
   xuongNhuom: string;
   donGia: number;
   soKgNhap: number;
@@ -37,6 +38,7 @@ export const FABRIC_DYE_LOTS_CHANGED_EVENT = "mimin:fabric-dye-lots-changed";
 
 type DyeLotRow = {
   id: string; ma_me: string; sku: string; mau_sac: string; ngay_nhap: string;
+  ngay_nhuom: string | null;
   xuong_nhuom: string | null; don_gia: number; so_kg_nhap: number; ton_kg: number;
   so_cay: number; khu: KhuMeNhuom; ke: string | null; tang: string | null; o: string | null;
   trang_thai: TrangThaiMeNhuom; ghi_chu: string | null; created_at: string; updated_at: string;
@@ -45,6 +47,7 @@ type DyeLotRow = {
 function fromRow(row: DyeLotRow): FabricDyeLot {
   return {
     id: row.id, maMe: row.ma_me, sku: row.sku, mauSac: row.mau_sac, ngayNhap: row.ngay_nhap,
+    ngayNhuom: row.ngay_nhuom || "",
     xuongNhuom: row.xuong_nhuom || "", donGia: Number(row.don_gia), soKgNhap: Number(row.so_kg_nhap),
     tonKg: Number(row.ton_kg), soCay: Number(row.so_cay), khu: row.khu, ke: row.ke || "", tang: row.tang || "",
     o: row.o || "", trangThai: row.trang_thai, ghiChu: row.ghi_chu || "", createdAt: row.created_at,
@@ -55,6 +58,7 @@ function fromRow(row: DyeLotRow): FabricDyeLot {
 function toRow(lot: Omit<FabricDyeLot, "id" | "createdAt" | "updatedAt">) {
   return {
     ma_me: lot.maMe, sku: lot.sku, mau_sac: lot.mauSac, ngay_nhap: lot.ngayNhap,
+    ngay_nhuom: lot.ngayNhuom || null,
     xuong_nhuom: lot.xuongNhuom || null, don_gia: lot.donGia, so_kg_nhap: lot.soKgNhap,
     ton_kg: lot.tonKg, so_cay: lot.soCay, khu: lot.khu, ke: lot.ke || null, tang: lot.tang || null,
     o: lot.o || null, trang_thai: lot.trangThai, ghi_chu: lot.ghiChu || null,

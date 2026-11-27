@@ -33,7 +33,7 @@ async function resolveEmployeeImageUrls(items: NhanSuExt[]): Promise<NhanSuExt[]
 
   let urls: Record<string, string> = {};
   try {
-    const res = await authFetch("/api/employee-uploads/sign", {
+    const res = await authFetch("/api/employee-uploads/sign/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ paths: Array.from(paths) }),
@@ -328,4 +328,65 @@ export function useNhanSu() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("useNhanSu must be used within NhanSuProvider");
   return ctx;
+}
+
+// Bảng ánh xạ mã NV sang họ tên nhân sự chuẩn để hiển thị nhất quán trên toàn hệ thống
+export const FALLBACK_NHAN_SU_MAP: Record<string, string> = {
+  NV01: "Hồ Minh Sang",
+  NV02: "Lê Định",
+  NV03: "Nguyễn Triết Khang",
+  NV04: "Lương Hoàng Phi",
+  NV05: "Mr Hùng",
+  NV07: "Trần Thái Hào",
+  NV08: "Nguyễn Hoàng Giang",
+  NV09: "Lê Tuấn Thành",
+  NV10: "Trần Hoàng Lâm",
+  "NV-011": "Lục Thị Kim Chi",
+  NV11: "Lục Thị Kim Chi",
+  "NV-012": "Hồ Lê Khánh Duy",
+  NV12: "Hồ Lê Khánh Duy",
+  "NV-013": "Dương Tuyết Nhung",
+  NV13: "Dương Tuyết Nhung",
+  "NV-014": "Nguyễn Tuấn Tú",
+  NV14: "Nguyễn Tuấn Tú",
+  "NV-015": "Đoàn Văn Lý",
+  NV15: "Đoàn Văn Lý",
+  "NV-016": "Dương Hoàng Long",
+  NV16: "Dương Hoàng Long",
+  XUONG_NHA: "Xưởng nhà",
+  "XUONG-NHA": "Xưởng nhà",
+  XUONGNHA: "Xưởng nhà",
+};
+
+export function resolveTenNhanSu(
+  rawCodeOrName: string | undefined | null,
+  dsNhanSu?: Array<{ maNV?: string; hoTen?: string }>
+): string {
+  if (!rawCodeOrName) return "Chưa phân công";
+  const trimmed = String(rawCodeOrName).trim();
+  if (!trimmed) return "Chưa phân công";
+
+  const upper = trimmed.toUpperCase();
+  if (upper === "XUONG_NHA" || upper === "XUONG-NHA" || upper === "XUONGNHA") {
+    return "Xưởng nhà";
+  }
+
+  // 1. Tìm trong danh sách nhân sự từ store nếu có
+  if (dsNhanSu && Array.isArray(dsNhanSu) && dsNhanSu.length > 0) {
+    const cleanRaw = upper.replace(/[^A-Z0-9]/g, "");
+    const found = dsNhanSu.find((nv) => {
+      const ma = String(nv.maNV || "").trim().toUpperCase();
+      const ten = String(nv.hoTen || "").trim();
+      const cleanMa = ma.replace(/[^A-Z0-9]/g, "");
+      return ma === upper || cleanMa === cleanRaw || ten.toLowerCase() === trimmed.toLowerCase();
+    });
+    if (found?.hoTen) return found.hoTen;
+  }
+
+  // 2. Tra cứu từ FALLBACK_NHAN_SU_MAP
+  const cleanKey = upper.replace(/[^A-Z0-9]/g, "");
+  if (FALLBACK_NHAN_SU_MAP[upper]) return FALLBACK_NHAN_SU_MAP[upper];
+  if (FALLBACK_NHAN_SU_MAP[cleanKey]) return FALLBACK_NHAN_SU_MAP[cleanKey];
+
+  return trimmed;
 }

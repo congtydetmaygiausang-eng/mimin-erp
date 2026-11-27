@@ -1,17 +1,78 @@
 // ============ BANG LUONG NV MODAL ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.3)
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X, Wallet, Shield } from "lucide-react";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { usePhanCong } from "@/lib/data/cong-no-store";
+import {
+  CHUAN_NGAY_CONG_THANG,
+  mergeChamCongRecords,
+  normalizeChamCongFromDB,
+  tinhLuongTheoNgayCong,
+  tinhPhanTramNgayCong,
+  tongHopChamCong,
+  type ChamCongRecord,
+} from "@/lib/cham-cong";
+import { isSupabaseEnabled, supabase } from "@/lib/supabase/client";
 import type { NhanSuExt } from "../data";
 
 export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: number; onClose: () => void }) {
+  const [monthRecords, setMonthRecords] = useState<ChamCongRecord[]>([]);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = "auto"; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const startIso = `${monthPrefix}-01`;
+    const endIso = `${monthPrefix}-${String(lastDay).padStart(2, "0")}`;
+
+    const readLocal = (key: string): ChamCongRecord[] => {
+      try {
+        const raw = typeof window !== "undefined" ? localStorage.getItem(key) : null;
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .map((row) => normalizeChamCongFromDB(row as Record<string, unknown>))
+          .filter((row) => row.maNV && row.ngay.startsWith(monthPrefix));
+      } catch {
+        return [];
+      }
+    };
+
+    const localCached = readLocal("mimin_cham_cong_v1");
+    const localPending = readLocal("mimin_cham_cong_pending_v1");
+    setMonthRecords(mergeChamCongRecords(localCached, localPending));
+
+    (async () => {
+      if (!isSupabaseEnabled || !supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from("cham_cong")
+          .select("*")
+          .gte("ngay", startIso)
+          .lte("ngay", endIso);
+        if (!cancelled && !error && Array.isArray(data)) {
+          const remote = data
+            .map((row) => normalizeChamCongFromDB(row as Record<string, unknown>))
+            .filter((row) => row.maNV && row.ngay.startsWith(monthPrefix));
+          setMonthRecords(mergeChamCongRecords(remote, localPending));
+        }
+      } catch {
+        // giữ fallback local
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nv.maNV]);
 
   const { phanCong } = usePhanCong();
   const pcNV = phanCong.filter((p) => {
@@ -21,8 +82,19 @@ export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: 
   const tongCongDoan = pcNV.reduce((s, p) => s + (p.donGiaGiao || 0) * (p.soLuongGiao || 0), 0);
   const daThanhToan = pcNV.reduce((s, p) => s + (p.daThanhToan || 0), 0);
   const conNo = tongCongDoan - daThanhToan;
-  const baoHiem = (nv.luongCung || 0) * 0.105;
-  const thucNhan = (nv.luongCung || 0) - baoHiem + (luongSP || 0);
+
+  const hasAttendance = monthRecords.length > 0;
+  const empRecords = monthRecords.filter(
+    (r) => r.maNV.trim().toUpperCase() === nv.maNV.trim().toUpperCase()
+  );
+  const attSummary = tongHopChamCong(empRecords);
+  const tyLeCong = tinhPhanTramNgayCong(attSummary.ngayCong, CHUAN_NGAY_CONG_THANG);
+  const luongCoBanThang = nv.luongCung || 0;
+  const luongTheoCong = hasAttendance
+    ? tinhLuongTheoNgayCong(luongCoBanThang, attSummary.ngayCong, CHUAN_NGAY_CONG_THANG)
+    : luongCoBanThang;
+  const baoHiem = luongCoBanThang * 0.105;
+  const thucNhan = Math.max(0, luongTheoCong - baoHiem + (luongSP || 0));
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
@@ -35,10 +107,22 @@ export function BangLuongNV({ nv, luongSP, onClose }: { nv: NhanSuExt; luongSP: 
           <button onClick={onClose} className="p-1 hover:bg-white/40 rounded"><X className="w-5 h-5" /></button>
         </div>
         <div className="bg-emerald-500/10 rounded p-3 mb-4 text-sm">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
             <div>
-              <div className="text-xs opacity-70">Lương cứng</div>
-              <div className="text-lg font-bold">{formatVNDShort(nv.luongCung || 0)}</div>
+              <div className="text-xs opacity-70">Ngày công ({CHUAN_NGAY_CONG_THANG} chuẩn)</div>
+              <div className="text-lg font-bold text-teal-700">
+                {attSummary.ngayCong}/{CHUAN_NGAY_CONG_THANG}
+              </div>
+              <div className="text-[11px] opacity-70">
+                {hasAttendance ? `${tyLeCong}% · Phép ${attSummary.ngayPhep}` : "Chưa có chấm công"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs opacity-70">Lương theo công</div>
+              <div className="text-lg font-bold">{formatVNDShort(luongTheoCong)}</div>
+              {luongCoBanThang > 0 && luongTheoCong !== luongCoBanThang && (
+                <div className="text-[11px] opacity-70">Mức 28 công: {formatVNDShort(luongCoBanThang)}</div>
+              )}
             </div>
             <div>
               <div className="text-xs opacity-70">Lương SP</div>

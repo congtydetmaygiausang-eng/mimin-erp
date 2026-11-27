@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 
 import { useSession } from "@/components/session-provider";
+import { getDefaultLandingRoute } from "@/lib/permissions";
 
 const BACKGROUNDS = [
   { id: "teal", src: "/bg/login-teal.jpg", label: "Teal" },
@@ -93,7 +94,7 @@ export default function RegisterPage() {
       setLoading(false);
 
       if (loginRes.ok) {
-        router.replace("/dashboard");
+        router.replace(getDefaultLandingRoute(loginRes.user?.role));
       } else {
         router.push(`/login?email=${encodeURIComponent(cleanEmail)}`);
       }
