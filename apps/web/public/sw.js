@@ -1,14 +1,10 @@
 // MIMIN ERP Service Worker
 // Handles: caching, offline, push notifications
 
-<<<<<<< HEAD
-const CACHE_NAME = "mimin-erp-v1792031327992";
-=======
-const CACHE_NAME = "mimin-erp-v1790073343715";
->>>>>>> origin/main
+const CACHE_NAME = "mimin-erp-v1795789602181";
 const VAPID_PUBLIC_KEY = "BLc4xRzKlKORKG0LZ4W3c-OMmFhbS3rRnZYzLgJs1aL9MVp1EihP4o2jAgMTxb5-B6h0QFyTbApdRRG3eFcALXs";
 
-// Cache assets
+// Static assets to pre-cache
 const STATIC_ASSETS = [
   "/",
   "/manifest.json",
@@ -33,26 +29,72 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Cache-first cho assets
+// Fetch event handler: An toàn tuyệt đối, không can thiệp API & không trả về HTML cho JS chunks
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (!url.protocol.startsWith("http")) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response && response.status === 200) {
-          // Do not cache version.json to prevent cache bloat
-          if (!url.pathname.endsWith("version.json")) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+  const url = new URL(event.request.url);
+
+  // 1. TUYỆT ĐỐI KHÔNG can thiệp vào request cross-origin (như Supabase, Google Fonts, v.v.)
+  if (url.origin !== self.location.origin) return;
+
+  // 2. Không can thiệp các file nhạy cảm: version.json, sw.js, API routes
+  if (
+    url.pathname.endsWith("version.json") ||
+    url.pathname.endsWith("sw.js") ||
+    url.pathname.startsWith("/api/")
+  ) {
+    return;
+  }
+
+  // 3. Với các file tĩnh hình ảnh/icon: Cache-first
+  const isStaticFile =
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/fonts/") ||
+    url.pathname === "/favicon.ico" ||
+    url.pathname === "/manifest.json";
+
+  if (isStaticFile) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((res) => {
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
-        }
-        return response;
+          return res;
+        });
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
-  );
+    );
+    return;
+  }
+
+  // 4. Với JS / CSS chunks của Next.js: Network-first KHÔNG BAO GIỜ fallback về HTML "/"
+  if (url.pathname.startsWith("/_next/")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 5. Với HTML Navigation (khi người dùng mở trang mà mất mạng hoàn toàn):
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match("/").then((cached) => cached || Response.error())
+      )
+    );
+    return;
+  }
 });
 
 // ============ PUSH NOTIFICATION HANDLERS ============
@@ -85,14 +127,12 @@ self.addEventListener("notificationclick", (event) => {
   const link = event.notification.data?.link || "/dashboard";
   event.waitUntil(
     clients.matchAll({ type: "window" }).then((clientList) => {
-      // Focus existing window if available
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           client.navigate(link);
           return client.focus();
         }
       }
-      // Otherwise open new window
       if (clients.openWindow) {
         return clients.openWindow(link);
       }
@@ -100,7 +140,6 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// Handle push subscription change
 self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
     self.registration.pushManager.subscribe({

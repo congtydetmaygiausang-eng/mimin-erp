@@ -4,6 +4,7 @@
 import type { PhieuWorkflow } from "./workflow-data";
 import { KHO_VAI, KHO_VAT_TU, formatVND, type KhoVai, type ThuongHieuVai } from "./data/real-data";
 import { logAudit } from "./audit-log";
+import { getFabricSwatchImage, VAI_28_SWATCH_MAP } from "./fabric-swatches";
 
 
 // ============ ĐỊNH MỨC VẢI (m/cái) theo sản phẩm + size ============
@@ -248,7 +249,7 @@ function fromSupabaseKhoRow(row: KhoSupabaseRow, current?: KhoVai): KhoVai {
     tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
     kho: row.kho || "Kho vải",
     ghiChu: metadata.note,
-    imageUrl: metadata.imageUrl || (current as KhoVaiWithImage | undefined)?.imageUrl || "",
+    imageUrl: metadata.imageUrl || (current as KhoVaiWithImage | undefined)?.imageUrl || getFabricSwatchImage(row.mau_sac || row.ten_vt, row.sku),
     thuongHieu,
   } as KhoVaiWithImage;
 }
@@ -502,11 +503,19 @@ export function addNewVai(vai: Omit<KhoVai, "tonKho"> & { tonKho?: number }): bo
 const KHO_VAI_IMAGES_KEY = "mimin_kho_vai_images";
 
 export function getVaiImages(): Record<string, string> {
-  if (typeof window === "undefined") return {};
+  if (typeof window === "undefined") return { ...VAI_28_SWATCH_MAP };
   try {
     const raw = localStorage.getItem(KHO_VAI_IMAGES_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+    const stored: Record<string, string> = raw ? JSON.parse(raw) : {};
+    // Swatch chuẩn hóa in tên màu luôn được áp dụng
+    const result: Record<string, string> = { ...VAI_28_SWATCH_MAP };
+    for (const [k, v] of Object.entries(stored)) {
+      if (typeof v === "string" && !v.includes("1787667") && !v.includes("1787648")) {
+        result[k] = v;
+      }
+    }
+    return result;
+  } catch { return { ...VAI_28_SWATCH_MAP }; }
 }
 
 export function saveVaiImage(maVT: string, base64: string): void {
