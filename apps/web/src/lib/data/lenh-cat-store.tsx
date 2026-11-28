@@ -625,26 +625,31 @@ export function syncOrderWithDefault(item: LenhCat, defaultVer?: LenhCat): LenhC
     ghiChuInTheu: res.ghiChuInTheu || defaultVer.ghiChuInTheu,
     ghiChuKyThuat: res.ghiChuKyThuat || defaultVer.ghiChuKyThuat,
     phuTrachSoDo: res.phuTrachSoDo || defaultVer.phuTrachSoDo,
-    hinhAnh: res.hinhAnh || defaultVer.hinhAnh || res.dsMau?.[0]?.img || defaultVer.dsMau?.[0]?.img,
+    hinhAnh: (defaultVer.hinhAnh && defaultVer.hinhAnh.startsWith("http")) ? defaultVer.hinhAnh : (res.hinhAnh || defaultVer.hinhAnh || res.dsMau?.[0]?.img || defaultVer.dsMau?.[0]?.img),
   };
 
   // 3. Danh sách màu & Vải quần
-  if (Array.isArray(defaultVer.dsMau)) {
-    res.dsMau = (res.dsMau || []).map((m: any, idx: number) => {
-      const defM = defaultVer.dsMau[idx];
-      return {
-        ...m,
-        img: defM?.img || m.img,
-        imgQuan: defM?.imgQuan || m.imgQuan,
-        maVai: m.maVai || defM?.maVai || "",
-        donGiaVai: (m.donGiaVai && m.donGiaVai > 0) ? m.donGiaVai : (defM?.donGiaVai || 0),
-        maVaiQuan: defM?.maVaiQuan || m.maVaiQuan || "",
-        tenVaiQuan: defM?.tenVaiQuan || m.tenVaiQuan || "",
-        donGiaVaiQuan: (defM?.donGiaVaiQuan && defM.donGiaVaiQuan > 0) ? defM.donGiaVaiQuan : (m.donGiaVaiQuan || 0),
-        dinhMucQuan: (defM?.dinhMucQuan && defM.dinhMucQuan > 0) ? defM.dinhMucQuan : (m.dinhMucQuan || 0.18),
-        phanBoSizeQuan: (defM?.phanBoSizeQuan && defM.phanBoSizeQuan.length > 0) ? defM.phanBoSizeQuan : (m.phanBoSizeQuan && m.phanBoSizeQuan.length > 0 ? m.phanBoSizeQuan : m.phanBoSize),
-      };
-    });
+  if (Array.isArray(defaultVer.dsMau) && defaultVer.dsMau.length > 0) {
+    if (res.dsMau && res.dsMau.length === defaultVer.dsMau.length) {
+      res.dsMau = res.dsMau.map((m: any, idx: number) => {
+        const defM = defaultVer.dsMau[idx];
+        return {
+          ...m,
+          ten: defM?.ten || m.ten,
+          img: (defM?.img && defM.img.startsWith("http")) ? defM.img : (defM?.img || m.img),
+          imgQuan: (defM?.imgQuan && defM.imgQuan.startsWith("http")) ? defM.imgQuan : (defM?.imgQuan || m.imgQuan),
+          maVai: m.maVai || defM?.maVai || "",
+          donGiaVai: (m.donGiaVai && m.donGiaVai > 0) ? m.donGiaVai : (defM?.donGiaVai || 0),
+          maVaiQuan: defM?.maVaiQuan || m.maVaiQuan || "",
+          tenVaiQuan: defM?.tenVaiQuan || m.tenVaiQuan || "",
+          donGiaVaiQuan: (defM?.donGiaVaiQuan && defM.donGiaVaiQuan > 0) ? defM.donGiaVaiQuan : (m.donGiaVaiQuan || 0),
+          dinhMucQuan: (defM?.dinhMucQuan && defM.dinhMucQuan > 0) ? defM.dinhMucQuan : (m.dinhMucQuan || 0.18),
+          phanBoSizeQuan: (defM?.phanBoSizeQuan && defM.phanBoSizeQuan.length > 0) ? defM.phanBoSizeQuan : (m.phanBoSizeQuan && m.phanBoSizeQuan.length > 0 ? m.phanBoSizeQuan : m.phanBoSize),
+        };
+      });
+    } else {
+      res.dsMau = defaultVer.dsMau;
+    }
   }
 
   return res;

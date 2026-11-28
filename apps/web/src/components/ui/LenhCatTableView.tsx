@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import type { LenhCat, MauVai, CongDoanItem, TrangThaiCongDoan } from "@/lib/data/lenh-cat-store";
-import { LOAI_SP_LABELS, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE } from "@/lib/data/lenh-cat-store";
+import { LOAI_SP_LABELS, TRANG_THAI_CD_LABELS, TRANG_THAI_CD_STYLE, detectLoaiSP } from "@/lib/data/lenh-cat-store";
 import { useNhanSu, resolveTenNhanSu } from "@/lib/data/nhan-su-store";
 import { DateDisplay } from "./DateDisplay";
 import { inPhieuLenhCatA4 } from "@/lib/phieu-lenh-cat-print";
@@ -37,6 +37,108 @@ interface Props {
   renderExpandedRow?: (lc: LenhCat) => React.ReactNode;
 }
 
+export function resolveLenhCatImage(lc: LenhCat): string {
+  // 1. Kiểm tra ảnh đại diện chính của lệnh cắt (loại trừ các file pdf/phiếu cắt)
+  if (lc.hinhAnh && typeof lc.hinhAnh === "string" && !lc.hinhAnh.includes("/phieu-cat/")) {
+    return lc.hinhAnh;
+  }
+  // 2. Tìm ảnh màu thật của lệnh cắt
+  const colorImg = lc.dsMau?.find((m) => m.img && typeof m.img === "string" && !m.img.includes("/phieu-cat/"))?.img;
+  if (colorImg) return colorImg;
+
+  // 3. Hình mẫu in thêu nếu có
+  if ((lc as any).hinhMauInTheu && typeof (lc as any).hinhMauInTheu === "string") {
+    return (lc as any).hinhMauInTheu;
+  }
+
+  // 4. Fallback theo mã sản phẩm chuẩn (M01 -> M28, M288, M336, FCASA04, AAS02, v.v.)
+  if (lc.maSP) {
+    const clean = String(lc.maSP).trim().toUpperCase();
+    return `/product-models/${clean}.png`;
+  }
+
+  return "";
+}
+
+export function resolveSpCode(lc: LenhCat): string {
+  if (lc.maSP && typeof lc.maSP === "string" && lc.maSP.trim()) {
+    return lc.maSP.trim();
+  }
+  if (lc.tenSP) {
+    const match = lc.tenSP.match(/\b(M\d+|BPJ-[\w-]+|PBJ-[\w-]+|TINA-[\w-]+|[A-Z]{2,6}\d{1,4})\b/i);
+    if (match) return match[0].toUpperCase();
+  }
+  return "";
+}
+
+export function isChuyenNhietOrder(lc?: Partial<LenhCat> | null, spCode?: string): boolean {
+  if (!lc && !spCode) return false;
+  const IN_CHUYEN_NHIET_CODES = new Set([
+    "FCASA04", "AAS02", "AAS03", "KLAS17", "KLAS16", "DYAS04", 
+    "HKAS5", "HKAS6", "KLAS14", "KLAS15", "NTAS4", "FCASA03", "NTAS5"
+  ]);
+  const code = (spCode || lc?.maSP || "").trim().toUpperCase();
+  if (IN_CHUYEN_NHIET_CODES.has(code)) return true;
+  if (lc?.ghiChuInTheu?.toLowerCase().includes("chuyển nhiệt")) return true;
+  if (lc?.ghiChuInTheu?.toLowerCase().includes("chuyen nhiet")) return true;
+  if (lc?.tenSP?.toLowerCase().includes("chuyển nhiệt")) return true;
+  if (lc?.tenSP?.toLowerCase().includes("chuyen nhiet")) return true;
+  if (Array.isArray(lc?.phanCong) && lc.phanCong.some((pc: any) => 
+    pc?.nguoiMa === "GC-IN-004" || 
+    pc?.tenCongDoan?.toLowerCase().includes("chuyển nhiệt") || 
+    pc?.tenCongDoan?.toLowerCase().includes("chuyen nhiet")
+  )) return true;
+  return false;
+}
+
+export function getLoaiSPInfo(lc: Partial<LenhCat>): { label: string; style: string } {
+  const loaiKey = lc.loaiSP || detectLoaiSP(lc.tenSP || "");
+  const rawLabel = (LOAI_SP_LABELS as any)[loaiKey] || loaiKey || "";
+
+  let label = rawLabel;
+  if (!label || label === "AoTru" || (label.toLowerCase().includes("trụ") && !label.toLowerCase().includes("bộ"))) {
+    label = "Áo Trụ";
+  } else if (label === "AoCoTron" || (label.toLowerCase().includes("tròn") && !label.toLowerCase().includes("bộ"))) {
+    label = "Áo Cổ Tròn";
+  } else if (label === "BoTru" || (label.toLowerCase().includes("bộ") && label.toLowerCase().includes("trụ"))) {
+    label = "Bộ Trụ";
+  } else if (label === "BoCoTron" || (label.toLowerCase().includes("bộ") && label.toLowerCase().includes("tròn"))) {
+    label = "Bộ Cổ Tròn";
+  } else if (label === "AoPolo") {
+    label = "Áo Trụ";
+  }
+
+  if (label === "Áo Trụ" || label === "AoTru" || label === "Áo Polo") {
+    return {
+      label: "Áo Trụ",
+      style: "bg-blue-50 text-blue-800 border-blue-200/90",
+    };
+  }
+  if (label === "Áo Cổ Tròn" || label === "AoCoTron" || label.includes("Cổ Tròn")) {
+    return {
+      label: "Áo Cổ Tròn",
+      style: "bg-teal-50 text-teal-800 border-teal-200/90",
+    };
+  }
+  if (label === "Bộ Trụ" || label === "BoTru") {
+    return {
+      label: "Bộ Trụ",
+      style: "bg-purple-50 text-purple-800 border-purple-200/90",
+    };
+  }
+  if (label === "Bộ Cổ Tròn" || label === "Bộ Tròn" || label === "BoCoTron") {
+    return {
+      label: "Bộ Cổ Tròn",
+      style: "bg-amber-50 text-amber-800 border-amber-200/90",
+    };
+  }
+
+  return {
+    label: label || "---",
+    style: "bg-slate-50 text-slate-700 border-slate-200",
+  };
+}
+
 export function LenhCatListView({
   stage,
   list,
@@ -47,7 +149,7 @@ export function LenhCatListView({
   getStagePC,
   renderExpandedRow,
 }: Props) {
-  const [zoomImg, setZoomImg] = useState<{ url: string; alt?: string } | null>(null);
+  const [zoomImg, setZoomImg] = useState<{ url: string; alt?: string; badge?: string } | null>(null);
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [printModalLC, setPrintModalLC] = useState<LenhCat | null>(null);
   let dsNhanSu: any[] = [];
@@ -136,7 +238,21 @@ export function LenhCatListView({
           </div>
         ) : (
           list.map((lc, index) => {
-            const mainImg = (lc.dsMau?.find(m => m.img && !m.img.includes('/phieu-cat/'))?.img) || (lc as any).hinhMauInTheu || (lc.maSP ? `/product-models/${lc.maSP}.png` : "");
+            const mainImg = resolveLenhCatImage(lc);
+            const spCode = resolveSpCode(lc);
+            const isChuyenNhiet = isChuyenNhietOrder(lc, spCode);
+            const loaiInfo = getLoaiSPInfo(lc);
+            const logoUrl = (() => {
+              if (!lc.hinhMauInTheu) return "";
+              const raw = String(lc.hinhMauInTheu).trim();
+              if (raw.startsWith("/") || raw.startsWith("http") || raw.startsWith("data:")) return raw;
+              try {
+                const parsed = JSON.parse(raw);
+                return parsed?.url || (typeof parsed === "string" ? parsed : "");
+              } catch {
+                return raw;
+              }
+            })();
             const metrics = getStageMetrics(lc);
             const style = TRANG_THAI_CD_STYLE[metrics.tt] || TRANG_THAI_CD_STYLE["cho_giao"];
             const isExpanded = expandedRowId === lc.id;
@@ -145,7 +261,7 @@ export function LenhCatListView({
 
             return (
               <div key={lc.id} className="p-3 space-y-2.5 bg-white">
-                {/* Row 1: STT + Mã LC + Cột Mã SP riêng + Trạng Thái */}
+                {/* Row 1: STT + Mã LC + Cột Mã SP riêng + Loại SP riêng + Trạng Thái */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
@@ -153,10 +269,13 @@ export function LenhCatListView({
                       {lc.id}
                     </span>
                     {lc.maSP && (
-                      <span className="font-mono font-black text-xs text-violet-700 bg-violet-50 px-2 py-0.5 rounded border border-violet-200 shadow-2xs">
+                      <span className="font-mono font-black text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 shadow-2xs">
                         {lc.maSP}
                       </span>
                     )}
+                    <span className={`font-bold text-[11px] px-2 py-0.5 rounded border shadow-2xs whitespace-nowrap ${loaiInfo.style}`}>
+                      {loaiInfo.label}
+                    </span>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-black rounded-md shrink-0 border ${style.bg} ${style.text}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
@@ -167,7 +286,7 @@ export function LenhCatListView({
                 {/* Row 2: Thumbnail kích thước chuẩn + Tên SP + Phân Loại + Hạn Giao + Gia Công */}
                 <div className="flex items-start gap-3">
                   <div
-                    onClick={() => mainImg && setZoomImg({ url: mainImg, alt: lc.tenSP })}
+                    onClick={() => mainImg && setZoomImg({ url: mainImg, alt: lc.tenSP, badge: isChuyenNhiet ? undefined : spCode })}
                     style={{ width: "50px", height: "62px", minWidth: "50px", maxWidth: "50px", minHeight: "62px", maxHeight: "62px" }}
                     className="rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 cursor-zoom-in shadow-2xs relative group"
                     title="Bấm để xem ảnh to phóng lớn"
@@ -178,8 +297,25 @@ export function LenhCatListView({
                           src={mainImg} 
                           alt={lc.tenSP} 
                           style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} 
+                          onError={(e) => {
+                            if (spCode && !e.currentTarget.src.includes(`/product-models/${spCode}.png`)) {
+                              e.currentTarget.src = `/product-models/${spCode}.png`;
+                            } else {
+                              e.currentTarget.style.display = 'none';
+                            }
+                          }}
                         />
-                        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+
+                        {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH (trừ 13 mã in chuyển nhiệt vì đã có sẵn mã trong ảnh gốc) */}
+                        {spCode && !isChuyenNhiet && (
+                          <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-0.5 px-0.5 text-center pointer-events-none z-10 border-t border-amber-400/40">
+                            <span className="font-mono font-black text-[9px] text-amber-300 tracking-tight block truncate leading-tight drop-shadow-xs">
+                              {spCode}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white z-20">
                           <Maximize2 className="w-3.5 h-3.5 drop-shadow" />
                         </div>
                       </>
@@ -197,9 +333,6 @@ export function LenhCatListView({
                       {lc.tenSP}
                     </div>
                     <div className="text-xs text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
-                      <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/60 font-semibold text-[11px]">
-                        {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP || "Bộ/Áo"}
-                      </span>
                       <span className={`flex items-center gap-1 font-semibold ${isOverdue ? "text-rose-600 font-bold" : "text-slate-600"}`}>
                         <Calendar className={`w-3 h-3 ${isOverdue ? "text-rose-500" : "text-slate-400"} shrink-0`} />
                         <DateDisplay value={lc.hanHoanThanh} format="dd/MM/yyyy" />
@@ -270,6 +403,30 @@ export function LenhCatListView({
                       >
                         +{lc.dsMau!.length - 4}
                       </span>
+                    )}
+
+                    {/* Ô Logo trên mobile nếu có */}
+                    {logoUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setZoomImg({
+                            url: logoUrl,
+                            alt: `Hình In/Thêu - ${lc.tenSP}`,
+                          });
+                        }}
+                        style={{ width: "26px", height: "32px", minWidth: "26px", maxWidth: "26px" }}
+                        className="rounded-md border border-purple-300 bg-purple-50 p-0.5 overflow-hidden shrink-0 shadow-2xs hover:scale-110 transition-transform relative cursor-pointer"
+                        title="Logo In/Thêu - Bấm xem to"
+                      >
+                        <img
+                          src={logoUrl}
+                          alt="Logo"
+                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </button>
                     )}
                   </div>
 
@@ -343,28 +500,31 @@ export function LenhCatListView({
       </div>
 
       {/* ===== DESKTOP LIST VIEW (>= md) ===== */}
-      {/* Tách cột Mã SP riêng, ảnh rõ nét bấm vào xem to, chữ rõ ràng dễ đọc */}
+      {/* Tách cột Mã SP và In/Thêu riêng, ảnh rõ nét bấm vào xem to, chữ rõ ràng dễ đọc */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-left border-collapse text-xs min-w-[1150px] table-fixed">
+        <table className="w-full text-left border-collapse text-xs min-w-[1250px] table-fixed">
           <colgroup>
-            <col style={{ width: "40px" }} />  {/* STT */}
-            <col style={{ width: "68px" }} />  {/* Cột Ảnh (Bấm để xem to) */}
-            <col style={{ width: "85px" }} />  {/* CỘT RIÊNG: Mã Sản Phẩm */}
-            <col style={{ width: "250px" }} /> {/* Lệnh & Tên SP */}
-            <col style={{ width: "110px" }} /> {/* Hạn Giao */}
-            <col style={{ width: "90px" }} />  {/* Kế Hoạch */}
-            <col style={{ width: "95px" }} />  {/* SL Đạt */}
-            <col style={{ width: "85px" }} />  {/* Lỗi/Hụt */}
-            <col style={{ width: "155px" }} /> {/* Người phụ trách */}
-            <col style={{ width: "115px" }} /> {/* Trạng Thái */}
-            <col style={{ width: "125px" }} /> {/* Màu sắc */}
-            <col style={{ width: "175px" }} /> {/* Thao tác */}
+            <col style={{ width: "38px" }} />  {/* STT */}
+            <col style={{ width: "65px" }} />  {/* Cột Ảnh (Bấm để xem to) */}
+            <col style={{ width: "80px" }} />  {/* CỘT RIÊNG: Mã Sản Phẩm */}
+            <col style={{ width: "105px" }} /> {/* CỘT RIÊNG: Loại Sản Phẩm */}
+            <col style={{ width: "215px" }} /> {/* Lệnh & Tên SP */}
+            <col style={{ width: "105px" }} /> {/* Hạn Giao */}
+            <col style={{ width: "85px" }} />  {/* Kế Hoạch */}
+            <col style={{ width: "90px" }} />  {/* SL Đạt */}
+            <col style={{ width: "80px" }} />  {/* Lỗi/Hụt */}
+            <col style={{ width: "145px" }} /> {/* Người phụ trách */}
+            <col style={{ width: "110px" }} /> {/* Trạng Thái */}
+            <col style={{ width: "115px" }} /> {/* Màu sắc */}
+            <col style={{ width: "85px" }} />  {/* CỘT RIÊNG: Logo In/Thêu */}
+            <col style={{ width: "170px" }} /> {/* Thao tác */}
           </colgroup>
           <thead>
             <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-600 tracking-wider">
               <th className="py-3 px-2 text-center">#</th>
               <th className="py-3 px-2 text-center">Ảnh</th>
               <th className="py-3 px-2 text-center">Mã SP</th>
+              <th className="py-3 px-2 text-center">Loại SP</th>
               <th className="py-3 px-2">Lệnh Cắt & Sản Phẩm</th>
               <th className="py-3 px-2">Hạn Giao</th>
               <th className="py-3 px-2 text-right">Kế Hoạch</th>
@@ -373,20 +533,35 @@ export function LenhCatListView({
               <th className="py-3 px-2">Người phụ trách</th>
               <th className="py-3 px-2 text-center">Trạng Thái</th>
               <th className="py-3 px-2">Màu Sắc</th>
+              <th className="py-3 px-2 text-center">In / Thêu</th>
               <th className="py-3 px-2 text-right">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {list.length === 0 ? (
               <tr>
-                <td colSpan={12} className="py-16 text-center text-slate-400">
+                <td colSpan={14} className="py-16 text-center text-slate-400">
                   <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
                   <div className="font-bold text-sm text-slate-600">Không có lệnh sản xuất nào ở khâu này</div>
                 </td>
               </tr>
             ) : (
               list.map((lc, index) => {
-                const mainImg = (lc.dsMau?.find(m => m.img && !m.img.includes('/phieu-cat/'))?.img) || (lc as any).hinhMauInTheu || (lc.maSP ? `/product-models/${lc.maSP}.png` : "");
+                const mainImg = resolveLenhCatImage(lc);
+                const spCode = resolveSpCode(lc);
+                const isChuyenNhiet = isChuyenNhietOrder(lc, spCode);
+                const loaiInfo = getLoaiSPInfo(lc);
+                const logoUrl = (() => {
+                  if (!lc.hinhMauInTheu) return "";
+                  const raw = String(lc.hinhMauInTheu).trim();
+                  if (raw.startsWith("/") || raw.startsWith("http") || raw.startsWith("data:")) return raw;
+                  try {
+                    const parsed = JSON.parse(raw);
+                    return parsed?.url || (typeof parsed === "string" ? parsed : "");
+                  } catch {
+                    return raw;
+                  }
+                })();
                 const metrics = getStageMetrics(lc);
                 const style = TRANG_THAI_CD_STYLE[metrics.tt] || TRANG_THAI_CD_STYLE["cho_giao"];
                 const isExpanded = expandedRowId === lc.id;
@@ -403,7 +578,7 @@ export function LenhCatListView({
                       {/* CỘT ẢNH: Khung chữ nhật đứng (tỷ lệ 4:5) chuẩn thời trang, click để xem phóng lớn */}
                       <td className="py-2 px-2 text-center">
                         <div
-                          onClick={() => mainImg && setZoomImg({ url: mainImg, alt: lc.tenSP })}
+                          onClick={() => mainImg && setZoomImg({ url: mainImg, alt: lc.tenSP, badge: isChuyenNhiet ? undefined : spCode })}
                           style={{ width: "48px", height: "60px", minWidth: "48px", maxWidth: "48px", minHeight: "60px", maxHeight: "60px" }}
                           className="mx-auto rounded-lg bg-slate-100 border border-slate-200/90 overflow-hidden shrink-0 cursor-zoom-in hover:border-teal-500 hover:shadow-md transition-all shadow-2xs group relative"
                           title="Bấm để xem ảnh to phóng lớn"
@@ -414,9 +589,26 @@ export function LenhCatListView({
                                 src={mainImg} 
                                 alt={lc.tenSP} 
                                 style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} 
-                                className="group-hover:scale-110 transition-transform duration-300" 
+                                className="group-hover:scale-110 transition-transform duration-300"
+                                onError={(e) => {
+                                  if (spCode && !e.currentTarget.src.includes(`/product-models/${spCode}.png`)) {
+                                    e.currentTarget.src = `/product-models/${spCode}.png`;
+                                  } else {
+                                    e.currentTarget.style.display = 'none';
+                                  }
+                                }}
                               />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+
+                              {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH (trừ 13 mã in chuyển nhiệt vì đã có sẵn mã trong ảnh gốc) */}
+                              {spCode && !isChuyenNhiet && (
+                                <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-0.5 px-0.5 text-center pointer-events-none z-10 border-t border-amber-400/40">
+                                  <span className="font-mono font-black text-[9px] text-amber-300 tracking-tight block truncate leading-tight drop-shadow-xs">
+                                    {spCode}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white z-20">
                                 <Maximize2 className="w-3.5 h-3.5 drop-shadow" />
                               </div>
                             </>
@@ -437,15 +629,19 @@ export function LenhCatListView({
                         )}
                       </td>
 
+                      {/* CỘT RIÊNG: LOẠI SẢN PHẨM (Áo trụ, Áo cổ tròn, Bộ trụ, Bộ tròn...) */}
+                      <td className="py-2.5 px-2 text-center">
+                        <span className={`font-bold text-xs px-2.5 py-1 rounded-md border shadow-2xs inline-block tracking-wide whitespace-nowrap ${loaiInfo.style}`}>
+                          {loaiInfo.label}
+                        </span>
+                      </td>
+
                       {/* Lệnh cắt & Tên sản phẩm */}
                       <td className="py-2.5 px-2">
                         <div className="min-w-0 pr-1">
-                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                            <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded text-[11px] border border-teal-200/80">
                               {lc.id}
-                            </span>
-                            <span className="bg-slate-50 text-slate-600 text-[10px] px-1.5 py-0.5 rounded border border-slate-200/70 font-medium">
-                              {LOAI_SP_LABELS[lc.loaiSP] || lc.loaiSP || "Bộ/Áo"}
                             </span>
                           </div>
                           <div 
@@ -516,7 +712,7 @@ export function LenhCatListView({
                         </span>
                       </td>
 
-                      {/* Màu sắc */}
+                      {/* Màu sắc (Chỉ swatches màu áo / quần) */}
                       <td className="py-2.5 px-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {lc.dsMau?.slice(0, 3).map((mau, mi) => {
@@ -553,6 +749,39 @@ export function LenhCatListView({
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* CỘT RIÊNG: LOGO IN / THÊU (Kế cột Màu Sắc) */}
+                      <td className="py-2.5 px-2 text-center">
+                        {logoUrl ? (
+                          <div className="flex flex-col items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setZoomImg({
+                                  url: logoUrl,
+                                  alt: `Hình In/Thêu - ${lc.tenSP}`,
+                                });
+                              }}
+                              style={{ width: "30px", height: "36px", minWidth: "30px", maxWidth: "30px" }}
+                              className="rounded-lg border border-purple-300 bg-white hover:border-purple-500 shadow-2xs p-0.5 flex items-center justify-center overflow-hidden hover:scale-110 transition-transform cursor-pointer group relative"
+                              title="Logo In/Thêu - Bấm xem to rõ nét"
+                            >
+                              <img
+                                src={logoUrl}
+                                alt="Logo"
+                                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                              />
+                              <div className="absolute inset-0 bg-purple-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-purple-700">
+                                <Maximize2 className="w-2.5 h-2.5 drop-shadow" />
+                              </div>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 font-medium">---</span>
+                        )}
                       </td>
 
                       {/* Thao tác */}
@@ -601,7 +830,7 @@ export function LenhCatListView({
                     {/* DÒNG MỞ RỘNG (EXPANDED ROW) */}
                     {isExpanded && (
                       <tr className="bg-slate-50/70 border-b border-slate-200">
-                        <td colSpan={12} className="p-4">
+                        <td colSpan={14} className="p-4">
                           <div className="space-y-3.5">
                             <div>
                               <div className="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -628,7 +857,7 @@ export function LenhCatListView({
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setZoomImg({ url: mau.img!, alt: `${mau.ten} - ${lc.tenSP}` });
+                                              setZoomImg({ url: mau.img!, alt: `${mau.ten} - ${lc.tenSP}`, badge: isChuyenNhiet ? undefined : spCode });
                                             }}
                                             className="absolute bottom-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Xem to ảnh màu"
@@ -646,6 +875,40 @@ export function LenhCatListView({
                                     </span>
                                   </div>
                                 ))}
+
+                                {/* Ô LOGO IN / THÊU TRONG DÒNG MỞ RỘNG */}
+                                {logoUrl && (
+                                  <div
+                                    onClick={() => setZoomImg({ url: logoUrl, alt: `Hình In/Thêu - ${lc.tenSP}` })}
+                                    className="bg-purple-50/60 p-2.5 rounded-lg border border-purple-200 hover:border-purple-400 hover:shadow-sm transition-all cursor-pointer flex flex-col items-center group relative"
+                                    title="Logo In/Thêu - Nhấp để xem ảnh to rõ nét"
+                                  >
+                                    <div style={{ width: "54px", height: "66px" }} className="rounded bg-white border border-purple-200/80 mb-1.5 p-1 flex items-center justify-center relative overflow-hidden">
+                                      <img
+                                        src={logoUrl}
+                                        alt="Logo In/Thêu"
+                                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                        className="group-hover:scale-105 transition-transform"
+                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setZoomImg({ url: logoUrl, alt: `Hình In/Thêu - ${lc.tenSP}` });
+                                        }}
+                                        className="absolute bottom-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Xem to logo"
+                                      >
+                                        <Maximize2 className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                    <span className="font-bold text-xs text-purple-900 truncate w-full text-center">Logo In/Thêu</span>
+                                    <span className="text-[10px] text-purple-700 font-bold mt-1 bg-white px-2 py-0.5 rounded border border-purple-200">
+                                      Xem ảnh to
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -685,7 +948,7 @@ export function LenhCatListView({
           {list.length > 0 && (
             <tfoot>
               <tr className="bg-slate-100 border-t-2 border-slate-300 text-xs font-bold text-slate-800">
-                <td colSpan={5} className="py-3 px-3 uppercase tracking-wider font-black text-slate-700">
+                <td colSpan={6} className="py-3 px-3 uppercase tracking-wider font-black text-slate-700">
                   Tổng cộng ({list.length} lệnh sản xuất)
                 </td>
                 <td className="py-3 px-2 text-right font-mono font-black text-slate-800 text-sm">
@@ -704,7 +967,7 @@ export function LenhCatListView({
                 <td colSpan={2} className="py-3 px-2 text-center text-xs font-bold text-slate-600">
                   Tiến độ: <span className="text-teal-700 font-mono font-black">{summary.tyLe}%</span>
                 </td>
-                <td colSpan={2} className="py-3 px-2 text-right text-[11px] text-slate-500 font-medium">
+                <td colSpan={3} className="py-3 px-2 text-right text-[11px] text-slate-500 font-medium">
                   MIMIN ERP
                 </td>
               </tr>
@@ -714,7 +977,7 @@ export function LenhCatListView({
       </div>
 
       {zoomImg && (
-        <ImageLightbox src={zoomImg.url} alt={zoomImg.alt} onClose={() => setZoomImg(null)} />
+        <ImageLightbox src={zoomImg.url} alt={zoomImg.alt} badge={zoomImg.badge} onClose={() => setZoomImg(null)} />
       )}
 
       {printModalLC && (

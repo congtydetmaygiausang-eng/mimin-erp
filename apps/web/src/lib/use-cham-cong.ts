@@ -240,6 +240,9 @@ export function useChamCong() {
 
     // 2. Đồng bộ lên Supabase
     const syncRes = await upsertRecordToSupabase(record);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("mimin_cham_cong_updated"));
+    }
     if (syncRes.synced) {
       const latestPending = loadPendingMap();
       delete latestPending[key];
@@ -268,6 +271,9 @@ export function useChamCong() {
     saveLocal([]);
     savePendingMap({});
     setPendingCount(0);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("mimin_cham_cong_updated"));
+    }
     return { ok: true };
   }, []);
 
@@ -298,6 +304,10 @@ export function useChamCong() {
       saveLocal(next);
       return next;
     });
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("mimin_cham_cong_updated"));
+    }
 
     if (user) {
       const { logCRUD } = await import("@/lib/audit-log");

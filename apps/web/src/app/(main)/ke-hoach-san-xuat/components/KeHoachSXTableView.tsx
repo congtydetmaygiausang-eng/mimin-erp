@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { KHSX, TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { isChuyenNhietOrder } from "@/components/ui/LenhCatTableView";
 
 interface KeHoachSXTableViewProps {
   list: KHSX[];
@@ -26,7 +27,7 @@ interface KeHoachSXTableViewProps {
   onDelete: (item: KHSX) => void;
   onViewLenhCat: (lenhCatId: string) => void;
   onTaoLenhCat: (item: KHSX) => void;
-  onZoomImg: (url: string) => void;
+  onZoomImg: (url: string, alt?: string, badge?: string) => void;
 }
 
 const TRANG_THAI_BADGE: Record<TrangThaiKHSX, { bg: string; text: string; dot: string; label: string }> = {
@@ -80,12 +81,38 @@ export function KeHoachSXTableView({
 }: KeHoachSXTableViewProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Helper lấy ảnh đại diện tối ưu
-  const getDisplayImage = (item: KHSX) => {
+  // Helper lấy mã sản phẩm chuẩn (ưu tiên item.maSP, sau đó dò từ KHSX, Lệnh Cắt hoặc Danh mục SP)
+  const getSPCode = (item: KHSX) => {
+    if (item.maSP) return item.maSP.trim();
+    if (item.maKHSX) {
+      const match = item.maKHSX.match(/M\d+/i);
+      if (match) return match[0].toUpperCase();
+    }
     const matchedLC = dsLenhCat.find(
       (lc: any) =>
         (item.lenhCatId && lc.id === item.lenhCatId) ||
-        (item.maSP && (lc.maSP === item.maSP || lc.id.endsWith(item.maSP)))
+        (item.id && lc.id.includes(item.id.replace("KHSX-2026-", ""))) ||
+        (item.sanPham && (lc.tenSP === item.sanPham || lc.id === item.sanPham))
+    );
+    if (matchedLC?.maSP) return matchedLC.maSP.trim();
+    const sp = dsSanPham.find(
+      (s: any) =>
+        (item.sanPham && (s.tenSP === item.sanPham || s.ten_sp === item.sanPham)) ||
+        (item.tenSP && s.tenSP === item.tenSP)
+    );
+    if (sp?.maSP || sp?.ma_sp) return (sp.maSP || sp.ma_sp).trim();
+    return "";
+  };
+
+  // Helper lấy ảnh đại diện tối ưu
+  const getDisplayImage = (item: KHSX) => {
+    const spCode = getSPCode(item);
+    const matchedLC = dsLenhCat.find(
+      (lc: any) =>
+        (item.lenhCatId && lc.id === item.lenhCatId) ||
+        (spCode && (lc.maSP === spCode || lc.id.endsWith(spCode))) ||
+        (item.id && lc.id.includes(item.id.replace("KHSX-2026-", ""))) ||
+        (item.sanPham && (lc.tenSP === item.sanPham || lc.id === item.sanPham))
     );
 
     if (matchedLC?.dsMau && matchedLC.dsMau.length > 0) {
@@ -101,8 +128,8 @@ export function KeHoachSXTableView({
       if (item.dsMau[0]?.img) return item.dsMau[0].img;
     }
 
-    if (item.maSP) {
-      return `/product-models/${item.maSP}.png`;
+    if (spCode) {
+      return `/product-models/${spCode}.png`;
     }
 
     const sp = dsSanPham.find(
@@ -143,6 +170,14 @@ export function KeHoachSXTableView({
       <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
         {list.map((item, index) => {
           const imgUrl = getDisplayImage(item);
+          const spCode = getSPCode(item);
+          const matchedLC = dsLenhCat.find(
+            (lc) =>
+              (item.lenhCatId && lc.id === item.lenhCatId) ||
+              (spCode && (lc.maSP === spCode || lc.id.endsWith(spCode))) ||
+              (item.maKHSX && lc.tenSP && lc.tenSP.includes(item.maKHSX))
+          );
+          const isChuyenNhiet = isChuyenNhietOrder(matchedLC, spCode);
           const st = TRANG_THAI_BADGE[item.trangThai] || TRANG_THAI_BADGE["Lên kế hoạch"];
           const isOverdue = item.denNgay && item.denNgay < todayStr && item.trangThai !== "Hoàn thành";
           const hasEditor = item.lenhCatId && activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0;
@@ -159,9 +194,9 @@ export function KeHoachSXTableView({
                   <span className="font-mono font-bold text-teal-800 dark:text-emerald-400 bg-teal-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded text-xs border border-teal-200/70 dark:border-emerald-800/60">
                     {item.maKHSX}
                   </span>
-                  {item.maSP && (
+                  {spCode && (
                     <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200/70 dark:border-indigo-800/60">
-                      {item.maSP}
+                      {spCode}
                     </span>
                   )}
                 </div>
@@ -174,15 +209,34 @@ export function KeHoachSXTableView({
               {/* Row 2: Ảnh + Tên sản phẩm + Thời gian + Xưởng */}
               <div className="flex items-start gap-3">
                 <div
-                  onClick={() => imgUrl && onZoomImg(imgUrl)}
+                  onClick={() => imgUrl && onZoomImg(imgUrl, item.sanPham, isChuyenNhiet ? undefined : spCode)}
                   style={{ width: "52px", height: "68px", minWidth: "52px", maxWidth: "52px" }}
                   className="rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 cursor-zoom-in shadow-2xs relative group"
                   title="Nhấp để xem ảnh to"
                 >
                   {imgUrl ? (
                     <>
-                      <img src={imgUrl} alt={item.sanPham} className="w-full h-full object-cover object-top" />
-                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                      <img
+                        src={imgUrl}
+                        alt={item.sanPham}
+                        className="w-full h-full object-cover object-top"
+                        onError={(e) => {
+                          if (spCode && !e.currentTarget.src.includes(`/product-models/${spCode}.png`)) {
+                            e.currentTarget.src = `/product-models/${spCode}.png`;
+                          }
+                        }}
+                      />
+
+                      {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH NHƯ LỆNH CẮT (trừ 13 mã in chuyển nhiệt) */}
+                      {spCode && !isChuyenNhiet && (
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-0.5 px-0.5 text-center pointer-events-none z-10 border-t border-amber-400/40">
+                          <span className="font-mono font-black text-[9px] text-amber-300 tracking-tight block truncate leading-tight drop-shadow-xs">
+                            {spCode}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white z-20">
                         <Maximize2 className="w-3.5 h-3.5 drop-shadow" />
                       </div>
                     </>
@@ -285,6 +339,14 @@ export function KeHoachSXTableView({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900">
             {list.map((item, index) => {
               const imgUrl = getDisplayImage(item);
+              const spCode = getSPCode(item);
+              const matchedLC = dsLenhCat.find(
+                (lc) =>
+                  (item.lenhCatId && lc.id === item.lenhCatId) ||
+                  (spCode && (lc.maSP === spCode || lc.id.endsWith(spCode))) ||
+                  (item.maKHSX && lc.tenSP && lc.tenSP.includes(item.maKHSX))
+              );
+              const isChuyenNhiet = isChuyenNhietOrder(matchedLC, spCode);
               const st = TRANG_THAI_BADGE[item.trangThai] || TRANG_THAI_BADGE["Lên kế hoạch"];
               const isOverdue = item.denNgay && item.denNgay < todayStr && item.trangThai !== "Hoàn thành";
               const hasEditor = item.lenhCatId && activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0;
@@ -302,7 +364,7 @@ export function KeHoachSXTableView({
                   {/* 2. Ảnh Thumbnail chữ nhật đứng (44px x 58px) */}
                   <td className="py-2 px-2 text-center">
                     <div
-                      onClick={() => imgUrl && onZoomImg(imgUrl)}
+                      onClick={() => imgUrl && onZoomImg(imgUrl, item.sanPham, isChuyenNhiet ? undefined : spCode)}
                       style={{ width: "44px", height: "58px" }}
                       className="mx-auto rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 overflow-hidden cursor-zoom-in shadow-2xs relative group/img shrink-0"
                       title="Nhấp để xem ảnh to"
@@ -313,8 +375,25 @@ export function KeHoachSXTableView({
                             src={imgUrl}
                             alt={item.sanPham}
                             className="w-full h-full object-cover object-top group-hover/img:scale-110 transition-transform duration-300"
+                            onError={(e) => {
+                              if (spCode && !e.currentTarget.src.includes(`/product-models/${spCode}.png`)) {
+                                e.currentTarget.src = `/product-models/${spCode}.png`;
+                              } else {
+                                e.currentTarget.style.display = 'none';
+                              }
+                            }}
                           />
-                          <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white">
+
+                          {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH NHƯ LỆNH CẮT (trừ 13 mã in chuyển nhiệt) */}
+                          {spCode && !isChuyenNhiet && (
+                            <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-0.5 px-0.5 text-center pointer-events-none z-10 border-t border-amber-400/40">
+                              <span className="font-mono font-black text-[9px] text-amber-300 tracking-tight block truncate leading-tight drop-shadow-xs">
+                                {spCode}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white z-20">
                             <Maximize2 className="w-3.5 h-3.5 drop-shadow" />
                           </div>
                         </>
@@ -336,9 +415,9 @@ export function KeHoachSXTableView({
 
                   {/* 4. Mã Sản Phẩm */}
                   <td className="py-3 px-2.5 text-center">
-                    {item.maSP ? (
+                    {spCode ? (
                       <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs inline-block">
-                        {item.maSP}
+                        {spCode}
                       </span>
                     ) : (
                       <span className="text-slate-300 font-mono text-xs">---</span>

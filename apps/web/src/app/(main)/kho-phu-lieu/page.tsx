@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 import { useKho } from "@/lib/data/kho-store";
 import { KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
+import { getInventory } from "@/lib/inventory-engine";
 import type { Tab, LoaiKho } from "./data";
 import { Header } from "./components/Header";
 import { FilterBar } from "./components/FilterBar";
@@ -66,6 +67,73 @@ export default function KhoPhuLieuPage() {
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | "con-hang" | "canh-bao" | "het-hang">("all");
   const [filterDvt, setFilterDvt] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"ma" | "ton-desc" | "ton-asc" | "giatri-desc" | "dongia-desc" | "ten">("ma");
+  const [isSyncingBo, setIsSyncingBo] = useState(false);
+
+  const cleanAndMergeInventory = (rawList: KhoVai[]): KhoVai[] => {
+    // 1. Phụ liệu khác (không phải bo và không phải nút)
+    const otherItems = rawList.filter(
+      (item) =>
+        item.loai !== "Bo cổ" &&
+        !item.maVT.startsWith("BO-") &&
+        !item.maVT.startsWith("B2D-") &&
+        item.loai !== "Nút" &&
+        !item.maVT.startsWith("NUT-")
+    );
+    const finalOther =
+      otherItems.length > 0
+        ? otherItems
+        : KHO_VAT_TU.filter(
+            (item) =>
+              item.loai !== "Bo cổ" &&
+              !item.maVT.startsWith("BO-") &&
+              item.loai !== "Nút" &&
+              !item.maVT.startsWith("NUT-")
+          );
+
+    // 2. 28 bo chuẩn từ KHO_VAT_TU
+    const standardBo = KHO_VAT_TU.filter((item) => /^BO-(0[1-9]|[12][0-9])$/.test(item.maVT));
+
+    // 3. 28 nút chuẩn từ KHO_VAT_TU
+    const standardNut = KHO_VAT_TU.filter((item) => /^NUT-(0[1-9]|[12][0-9])$/.test(item.maVT));
+
+    // Giữ lại số lượng tồn kho hoặc thông tin đã cập nhật nếu có
+    const existingMap = new Map<string, KhoVai>();
+    rawList.forEach((item) => {
+      if (/^(BO|NUT)-(0[1-9]|[12][0-9])$/.test(item.maVT)) {
+        existingMap.set(item.maVT, item);
+      }
+    });
+
+    const mergedBo = standardBo.map((bo) => {
+      const existing = existingMap.get(bo.maVT);
+      if (existing) {
+        return {
+          ...bo,
+          tonKho: existing.tonKho ?? bo.tonKho,
+          donGia: existing.donGia ?? bo.donGia,
+          tonToiThieu: existing.tonToiThieu ?? bo.tonToiThieu,
+          hinhAnh: existing.hinhAnh || bo.hinhAnh,
+        };
+      }
+      return bo;
+    });
+
+    const mergedNut = standardNut.map((nut) => {
+      const existing = existingMap.get(nut.maVT);
+      if (existing) {
+        return {
+          ...nut,
+          tonKho: existing.tonKho ?? nut.tonKho,
+          donGia: existing.donGia ?? nut.donGia,
+          tonToiThieu: existing.tonToiThieu ?? nut.tonToiThieu,
+          hinhAnh: existing.hinhAnh || nut.hinhAnh,
+        };
+      }
+      return nut;
+    });
+
+    return [...mergedBo, ...mergedNut, ...finalOther];
+  };
 
   const [inventory, setInventory] = useState<KhoVai[]>(() => {
     if (typeof window !== "undefined") {
@@ -73,11 +141,26 @@ export default function KhoPhuLieuPage() {
         const raw = localStorage.getItem("mimin_kho_phuLieu_custom");
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const hasOldBo = parsed.some(
+              (item) => (item.maVT.startsWith("BO-0") && item.maVT.length === 6) ||
+                        item.maVT.startsWith("B2D-") ||
+                        (item.loai === "Bo cổ" && !/^BO-(0[1-9]|[12][0-9])$/.test(item.maVT))
+            );
+            const hasOldNut = parsed.some(
+              (item) => (item.loai === "Nút" || item.maVT.startsWith("NUT-")) && !/^NUT-(0[1-9]|[12][0-9])$/.test(item.maVT)
+            );
+            if (hasOldBo || hasOldNut) {
+              const cleaned = cleanAndMergeInventory(parsed);
+              localStorage.setItem("mimin_kho_phuLieu_custom", JSON.stringify(cleaned));
+              return cleaned;
+            }
+            return parsed;
+          }
         }
       } catch {}
     }
-    return [];
+    return KHO_VAT_TU;
   });
   const [editingVT, setEditingVT] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<KhoVai>>({});
@@ -112,6 +195,131 @@ export default function KhoPhuLieuPage() {
     return "";
   };
 
+  // Hàm đồng bộ danh sách Bo & Nút theo 28 màu Vải thành phẩm
+  const dongBoBoTuKhoVai = async () => {
+    setIsSyncingBo(true);
+    try {
+      // 1. Lấy danh sách 28 loại vải từ Vải thành phẩm (Supabase hoặc local)
+      let dsVai: any[] = [];
+      if (isSupabaseEnabled && supabase) {
+        const { data, error } = await supabase
+          .from("kho")
+          .select("sku, ten_vt, mau_sac, ghi_chu")
+          .eq("loai", "Vai")
+          .order("sku");
+        if (!error && data && data.length > 0) {
+          dsVai = data;
+        }
+      }
+      if (dsVai.length === 0) {
+        const invObj = getInventory();
+        const localList = Object.values(invObj);
+        if (localList.length > 0) {
+          dsVai = localList.map((v) => ({
+            sku: v.maVT,
+            ten_vt: v.tenVT,
+            mau_sac: v.mauSac,
+            ghi_chu: v.ghiChu,
+            hinh_anh: (v as any).imageUrl || v.hinhAnh,
+          }));
+        }
+      }
+
+      // Tạo map 28 bo & 28 nút theo vải
+      const standard28Bo = KHO_VAT_TU.filter((item) => /^BO-(0[1-9]|[12][0-9])$/.test(item.maVT));
+      const standard28Nut = KHO_VAT_TU.filter((item) => /^NUT-(0[1-9]|[12][0-9])$/.test(item.maVT));
+
+      const newBoList: KhoVai[] = standard28Bo.map((defaultBo, idx) => {
+        const vaiItem = dsVai[idx];
+        const colorName = vaiItem?.mau_sac || vaiItem?.ten_vt || defaultBo.mauSac;
+        const img = vaiItem?.hinh_anh || readSharedImage(vaiItem?.ghi_chu) || defaultBo.hinhAnh;
+        return {
+          ...defaultBo,
+          tenVT: `Bo Cổ Trơn - ${colorName}`,
+          mauSac: colorName,
+          hinhAnh: img,
+          ghiChu: `Đồng bộ từ vải ${vaiItem?.sku || `VAI-${String(idx + 1).padStart(2, "0")}`} (${colorName})`,
+        };
+      });
+
+      const newNutList: KhoVai[] = standard28Nut.map((defaultNut, idx) => {
+        const vaiItem = dsVai[idx];
+        const colorName = vaiItem?.mau_sac || vaiItem?.ten_vt || defaultNut.mauSac;
+        const img = vaiItem?.hinh_anh || readSharedImage(vaiItem?.ghi_chu) || defaultNut.hinhAnh;
+        return {
+          ...defaultNut,
+          tenVT: `Nút - ${colorName}`,
+          mauSac: colorName,
+          hinhAnh: img,
+          ghiChu: `Đồng bộ từ vải ${vaiItem?.sku || `VAI-${String(idx + 1).padStart(2, "0")}`} (${colorName})`,
+        };
+      });
+
+      // Lọc bỏ toàn bộ bo cũ và nút cũ trong inventory hiện tại
+      const otherItems = inventory.filter(
+        (item) =>
+          item.loai !== "Bo cổ" &&
+          !item.maVT.startsWith("BO-") &&
+          !item.maVT.startsWith("B2D-") &&
+          item.loai !== "Nút" &&
+          !item.maVT.startsWith("NUT-")
+      );
+      const finalOther =
+        otherItems.length > 0
+          ? otherItems
+          : KHO_VAT_TU.filter(
+              (item) =>
+                item.loai !== "Bo cổ" &&
+                !item.maVT.startsWith("BO-") &&
+                item.loai !== "Nút" &&
+                !item.maVT.startsWith("NUT-")
+            );
+
+      const combined = [...newBoList, ...newNutList, ...finalOther];
+      setInventory(combined);
+      localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(combined));
+
+      // Cập nhật ảnh bo và nút
+      const newImages: Record<string, string> = { ...inventoryImages };
+      [...newBoList, ...newNutList].forEach((item) => {
+        if (item.hinhAnh) newImages[item.maVT] = item.hinhAnh;
+      });
+      setInventoryImages(newImages);
+      localStorage.setItem(PL_IMAGES_KEY, JSON.stringify(newImages));
+
+      // Đồng bộ lên Supabase nếu có
+      if (isSupabaseEnabled && supabase) {
+        for (const item of [...newBoList, ...newNutList]) {
+          const payload = {
+            sku: item.maVT,
+            ten_vt: item.tenVT,
+            loai: "Phu lieu",
+            loai_chi_tiet: item.loai,
+            mau_sac: item.mauSac,
+            dvt: item.dvt,
+            don_gia: item.donGia,
+            ton_kho: item.tonKho || 0,
+            ton_toi_thieu: item.tonToiThieu || 0,
+            so_cay_nhap: 0,
+            ton_cay: 0,
+            ty_le_hao_hut: 0,
+            kho: "Kho phụ liệu",
+            ghi_chu: JSON.stringify({ note: item.ghiChu, imageUrl: item.hinhAnh }),
+            updated_at: new Date().toISOString(),
+          };
+          await supabase.from("kho").upsert(payload, { onConflict: "sku" });
+        }
+      }
+
+      toast.success("Đã đồng bộ 28 màu Bo và 28 màu Nút chuẩn theo 28 màu vải thành phẩm!");
+    } catch (err: any) {
+      console.error("Lỗi đồng bộ bo & nút:", err);
+      toast.error(`Đồng bộ thất bại: ${err?.message || "Lỗi không xác định"}`);
+    } finally {
+      setIsSyncingBo(false);
+    }
+  };
+
   // Supabase là nguồn dữ liệu chính
   useEffect(() => {
     let mounted = true;
@@ -121,7 +329,10 @@ export default function KhoPhuLieuPage() {
       const inventoryRaw = localStorage.getItem(PL_INVENTORY_KEY);
       if (inventoryRaw) {
         const cached = JSON.parse(inventoryRaw);
-        if (Array.isArray(cached) && cached.length > 0) setInventory(cached);
+        if (Array.isArray(cached) && cached.length > 0) {
+          const cleaned = cleanAndMergeInventory(cached);
+          setInventory(cleaned);
+        }
       }
     } catch {}
 
@@ -134,10 +345,10 @@ export default function KhoPhuLieuPage() {
 
         const fetchPromise = supabase
           .from("kho")
-          .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu, hinh_anh")
+          .select("sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu")
           .eq("loai", "Phu lieu")
           .order("sku")
-          .limit(100);
+          .limit(150);
 
         let { data, error }: { data: any; error: any } = await Promise.race([fetchPromise, timeoutPromise]);
 
@@ -159,7 +370,6 @@ export default function KhoPhuLieuPage() {
         }
 
         if (error || !data || data.length === 0) {
-          // Im lặng dùng dữ liệu cache đã lưu trong localStorage, không làm phiền người dùng
           return;
         }
 
@@ -181,18 +391,20 @@ export default function KhoPhuLieuPage() {
             tyLeHaoHut: Number(row.ty_le_hao_hut) || 0,
             kho: row.kho || "Kho phụ liệu",
             ghiChu: row.ghi_chu || "",
-            hinhAnh: row.hinh_anh || readSharedImage(row.ghi_chu),
+            hinhAnh: row.hinh_anh || readSharedImage(row.ghi_chu) || fallback?.hinhAnh,
           } satisfies KhoVai;
         });
+
+        const cleanedRemote = cleanAndMergeInventory(remote);
         const remoteImages = Object.fromEntries(
-          data
-            .map((row: any) => [row.sku, row.hinh_anh || readSharedImage(row.ghi_chu)])
-            .filter(([, image]: [string, string]) => Boolean(image))
+          cleanedRemote
+            .map((item) => [item.maVT, item.hinhAnh || readSharedImage(item.ghiChu)])
+            .filter(([, image]) => Boolean(image))
         );
         setInventoryImages((current) => ({ ...current, ...remoteImages }));
-        if (remote.length > 0) {
-          setInventory(remote);
-          localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(remote));
+        if (cleanedRemote.length > 0) {
+          setInventory(cleanedRemote);
+          localStorage.setItem(PL_INVENTORY_KEY, JSON.stringify(cleanedRemote));
         }
       } catch (err) {
         console.warn("[KhoPhuLieu] loadRemote exception:", err);
@@ -552,6 +764,8 @@ export default function KhoPhuLieuPage() {
           tongNhap={tongNhap}
           onAdd={() => setShowAdd(true)}
           onExportCSV={exportCSV}
+          onSyncBo={dongBoBoTuKhoVai}
+          isSyncingBo={isSyncingBo}
           tab={tab}
           setTab={setTab}
         />

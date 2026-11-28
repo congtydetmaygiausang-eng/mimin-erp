@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Maximize2, X, Shirt, Scissors, Sparkles, Clock, FileText, ExternalLink } from "lucide-react";
 import type { LenhCat, MauVai } from "@/lib/data/lenh-cat-store";
 import { formatVND } from "@/lib/data/real-data";
+import ImageLightbox from "@/components/ui/ImageLightbox";
+import { resolveSpCode, isChuyenNhietOrder } from "@/components/ui/LenhCatTableView";
 
 interface Props {
   lc: LenhCat;
@@ -16,14 +18,16 @@ function ColorImageItem({
   badgeColor = "teal",
   onZoom,
   aspectClass = "aspect-[3/4]",
+  spCode,
 }: {
   src?: string;
   alt: string;
   title: string;
   badgeText?: string;
   badgeColor?: "teal" | "indigo" | "purple";
-  onZoom: (url: string, title: string) => void;
+  onZoom: (url: string, title: string, badge?: string) => void;
   aspectClass?: string;
+  spCode?: string;
 }) {
   const [hasError, setHasError] = useState(false);
 
@@ -81,7 +85,11 @@ function ColorImageItem({
   }
 
   return (
-    <div className={`w-full ${aspectClass} relative overflow-hidden rounded-xl shadow-2xs border border-slate-200/90 bg-slate-100 flex items-center justify-center group/img`}>
+    <div 
+      onClick={() => onZoom(src, title, spCode)}
+      className={`w-full ${aspectClass} relative overflow-hidden rounded-xl shadow-2xs border border-slate-200/90 bg-slate-100 flex items-center justify-center group/img cursor-pointer`}
+      title={`${title} - Bấm để xem ảnh to rõ nét`}
+    >
       <img 
         src={src} 
         alt={alt} 
@@ -93,18 +101,27 @@ function ColorImageItem({
       />
 
       {badgeText && (
-        <span className={`absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider backdrop-blur-xs shadow-xs ${badgeBg}`}>
+        <span className={`absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider backdrop-blur-xs shadow-xs z-10 ${badgeBg}`}>
           {badgeText}
         </span>
+      )}
+
+      {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH GIỐNG MỤC DANH SÁCH */}
+      {spCode && (
+        <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-1 px-1 text-center pointer-events-none z-10 border-t border-amber-400/40">
+          <span className="font-mono font-black text-xs sm:text-sm text-amber-300 tracking-wide block truncate leading-tight drop-shadow-xs">
+            {spCode}
+          </span>
+        </div>
       )}
 
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          onZoom(src, title);
+          onZoom(src, title, spCode);
         }}
-        className="absolute bottom-1.5 right-1.5 p-1 sm:p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs flex items-center gap-1 text-[10px] sm:text-[11px] font-bold shadow-md cursor-pointer"
+        className="absolute top-1.5 right-1.5 p-1 sm:p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs flex items-center gap-1 text-[10px] sm:text-[11px] font-bold shadow-md cursor-pointer z-20"
         title="Nhấp để xem ảnh to rõ nét"
       >
         <Maximize2 className="w-3.5 h-3.5" />
@@ -121,13 +138,15 @@ function ColorCardItem({
   isOrderSetBo,
   onClickColor,
   onZoom,
+  spCode,
 }: {
   mau: MauVai;
   idx: number;
   lc: LenhCat;
   isOrderSetBo: boolean;
   onClickColor?: (mauIdx: number) => void;
-  onZoom: (url: string, title: string) => void;
+  onZoom: (url: string, title: string, badge?: string) => void;
+  spCode?: string;
 }) {
   const [viewMode, setViewMode] = useState<"ao" | "quan" | "both">("ao");
 
@@ -208,7 +227,8 @@ function ColorCardItem({
                     title={`Áo ${mau.ten || idx + 1}`}
                     badgeText="Áo"
                     badgeColor="teal"
-                    onZoom={(url, title) => onZoom(url, `${title} - ${lc.tenSP}`)}
+                    spCode={spCode}
+                    onZoom={(url, title, badge) => onZoom(url, `${title} - ${lc.tenSP}`, badge || spCode)}
                   />
                 </div>
                 <div className="min-w-0">
@@ -218,7 +238,8 @@ function ColorCardItem({
                     title={`Quần ${mau.ten || idx + 1}`}
                     badgeText="Quần"
                     badgeColor="indigo"
-                    onZoom={(url, title) => onZoom(url, `${title} - ${lc.tenSP}`)}
+                    spCode={spCode}
+                    onZoom={(url, title, badge) => onZoom(url, `${title} - ${lc.tenSP}`, badge || spCode)}
                   />
                 </div>
               </div>
@@ -229,7 +250,8 @@ function ColorCardItem({
                 title={`Quần ${mau.ten || idx + 1}`}
                 badgeText="Quần"
                 badgeColor="indigo"
-                onZoom={(url, title) => onZoom(url, `${title} - ${lc.tenSP}`)}
+                spCode={spCode}
+                onZoom={(url, title, badge) => onZoom(url, `${title} - ${lc.tenSP}`, badge || spCode)}
               />
             ) : (
               <ColorImageItem
@@ -238,7 +260,8 @@ function ColorCardItem({
                 title={`Áo ${mau.ten || idx + 1}`}
                 badgeText="Áo"
                 badgeColor="teal"
-                onZoom={(url, title) => onZoom(url, `${title} - ${lc.tenSP}`)}
+                spCode={spCode}
+                onZoom={(url, title, badge) => onZoom(url, `${title} - ${lc.tenSP}`, badge || spCode)}
               />
             )}
           </div>
@@ -250,7 +273,8 @@ function ColorCardItem({
             title={`${mau.ten || idx + 1}`}
             badgeText={isOrderSetBo ? "Bộ (Áo + Quần)" : "Áo"}
             badgeColor="teal"
-            onZoom={(url, title) => onZoom(url, `${title} - ${lc.tenSP}`)}
+            spCode={spCode}
+            onZoom={(url, title, badge) => onZoom(url, `${title} - ${lc.tenSP}`, badge || spCode)}
           />
         )}
       </div>
@@ -394,8 +418,8 @@ function LogoInTheuCard({
               e.stopPropagation();
               onZoom(logoUrl, `Hình In/Thêu - ${lc.tenSP}`);
             }}
-            className="absolute bottom-1.5 right-1.5 p-1 rounded-lg bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover/logo:opacity-100 transition-opacity backdrop-blur-xs flex items-center gap-1 text-[10px] font-bold shadow-md cursor-pointer"
-            title="Nhấp để xem ảnh to rõ nét"
+            className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover/logo:opacity-100 transition-opacity backdrop-blur-xs flex items-center gap-1 text-[10px] font-bold shadow-md cursor-pointer z-20"
+            title="Nhấp để xem logo to rõ nét"
           >
             <Maximize2 className="w-3 h-3" />
             <span>Xem to</span>
@@ -465,7 +489,9 @@ function LogoInTheuCard({
 }
 
 export function LenhCatColorCards({ lc, onClickColor }: Props) {
-  const [zoomImg, setZoomImg] = useState<{ url: string; title: string } | null>(null);
+  const [zoomImg, setZoomImg] = useState<{ url: string; title: string; badge?: string } | null>(null);
+  const spCode = resolveSpCode(lc) || lc.maSP || "";
+  const isChuyenNhiet = isChuyenNhietOrder(lc, spCode);
 
   if (!lc.dsMau || lc.dsMau.length === 0) return null;
 
@@ -505,7 +531,8 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
             lc={lc}
             isOrderSetBo={isOrderSetBo}
             onClickColor={onClickColor}
-            onZoom={(url, title) => setZoomImg({ url, title })}
+            spCode={isChuyenNhiet ? undefined : spCode}
+            onZoom={(url, title, badge) => setZoomImg({ url, title, badge: isChuyenNhiet ? undefined : (badge || spCode) })}
           />
         ))}
 
@@ -520,37 +547,14 @@ export function LenhCatColorCards({ lc, onClickColor }: Props) {
         )}
       </div>
 
-      {/* Modal phóng to xem ảnh full rõ nét */}
+      {/* Lightbox phóng to xem ảnh full rõ nét chuẩn hệ thống có Watermark */}
       {zoomImg && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setZoomImg(null)}
-        >
-          <div 
-            className="relative max-w-4xl max-h-[92vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-slate-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-              <div className="font-bold text-slate-800 text-sm">{zoomImg.title}</div>
-              <button 
-                type="button"
-                onClick={() => setZoomImg(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
-                title="Đóng"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-3 flex items-center justify-center bg-slate-900/5 overflow-auto max-h-[82vh]">
-              <img 
-                src={zoomImg.url} 
-                alt={zoomImg.title} 
-                className="max-h-[78vh] w-auto max-w-full object-contain rounded-lg shadow-md"
-                style={{ imageRendering: "-webkit-optimize-contrast" }}
-              />
-            </div>
-          </div>
-        </div>
+        <ImageLightbox
+          src={zoomImg.url}
+          alt={zoomImg.title}
+          badge={zoomImg.badge}
+          onClose={() => setZoomImg(null)}
+        />
       )}
     </>
   );

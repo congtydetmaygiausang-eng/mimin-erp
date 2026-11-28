@@ -81,7 +81,9 @@ export function InventoryGrid({
             v.ghiChu,
             v.hinhAnh,
             v.maVT,
-            inventoryImages
+            inventoryImages,
+            v.mauSac,
+            v.tenVT
           );
 
           const editing = editingVT === v.maVT;

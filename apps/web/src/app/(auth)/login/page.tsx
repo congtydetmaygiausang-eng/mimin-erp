@@ -61,6 +61,7 @@ const ALL_USERS = [
   { email: "duc1@mimin.vn",   name: "Nguyễn Minh Đức",         role: "finishing" },
   { email: "ruong@mimin.vn",  name: "Nguyễn Văn Ruộng",        role: "sewing" },
   // Chấm công (Attendance)
+  { email: "long@mimin.vn",      name: "Long (NV16 - Chấm công)",               role: "attendance" },
   { email: "dinh@mimin.vn",      name: "Lê Định (NV02 - Chấm công)",            role: "attendance" },
   { email: "khang@mimin.vn",     name: "Nguyễn Triết Khang (NV03 - Chấm công)", role: "attendance" },
   { email: "hao@mimin.vn",       name: "Trần Thái Hào (NV07 - Chấm công)",      role: "attendance" },

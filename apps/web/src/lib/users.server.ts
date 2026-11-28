@@ -126,6 +126,20 @@ export const USERS_FULL: UserAccountFull[] = [
     isMock: true,
     isActive: true,
   },
+  {
+    id: "long",
+    maNV: "NV16",
+    email: "long@mimin.vn",
+    password: "123456789",
+    name: "Long",
+    role: "attendance",
+    chucVu: "Nhân viên Chấm công",
+    phongBan: "to-may",
+    nhom: "cham-cong",
+    laCongNhan: true,
+    sdt: "",
+    isActive: true,
+  },
 ];
 
 export function findUserByEmailFull(email: string): UserAccountFull | undefined {

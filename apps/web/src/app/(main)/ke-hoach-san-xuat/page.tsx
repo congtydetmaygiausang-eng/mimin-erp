@@ -41,7 +41,7 @@ export default function KeHoachSXPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<KHSX | null>(null);
   const [activeEditors, setActiveEditors] = useState<Record<string, string[]>>({});
-  const [zoomImg, setZoomImg] = useState<string | null>(null);
+  const [zoomImg, setZoomImg] = useState<{ url: string; alt?: string; badge?: string } | null>(null);
 
   // Tự động đồng bộ hình ảnh từ Lệnh Cắt sang KHSX (khi có bổ sung ảnh ở Lệnh Cắt)
   useEffect(() => {
@@ -383,7 +383,7 @@ export default function KeHoachSXPage() {
         /* GIAO DIỆN KẾ HOẠCH SX TỔNG HỢP: ĐIỀU PHỐI VẢI, BO, XƯỞNG, TIẾN ĐỘ TỪNG LỆNH CẮT */
         <KeHoachSXTongHopView
           dsLenhCat={dsLenhCat}
-          onZoomImg={(url) => setZoomImg(url)}
+          onZoomImg={(url) => setZoomImg({ url })}
           onViewLenhCat={handleViewLenhCat}
         />
       ) : (
@@ -426,7 +426,7 @@ export default function KeHoachSXPage() {
               onDelete={handleDelete}
               onViewLenhCat={handleViewLenhCat}
               onTaoLenhCat={taoLenhCat}
-              onZoomImg={(url) => setZoomImg(url)}
+              onZoomImg={(url, alt, badge) => setZoomImg({ url, alt, badge })}
             />
           ) : (
             <KeHoachSXCardView
@@ -441,7 +441,7 @@ export default function KeHoachSXPage() {
               onDelete={handleDelete}
               onViewLenhCat={handleViewLenhCat}
               onTaoLenhCat={taoLenhCat}
-              onZoomImg={(url) => setZoomImg(url)}
+              onZoomImg={(url, alt, badge) => setZoomImg({ url, alt, badge })}
             />
           )}
         </>
@@ -471,8 +471,15 @@ export default function KeHoachSXPage() {
         }}
       />
 
-      {/* 6. MODAL PHÓNG TO ẢNH FULL MÀN HÌNH */}
-      {zoomImg && <ImageLightbox src={zoomImg} onClose={() => setZoomImg(null)} />}
+      {/* 6. MODAL PHÓNG TO ẢNH FULL MÀN HÌNH CÓ CON DẤU MÃ SP */}
+      {zoomImg && (
+        <ImageLightbox
+          src={zoomImg.url}
+          alt={zoomImg.alt}
+          badge={zoomImg.badge}
+          onClose={() => setZoomImg(null)}
+        />
+      )}
     </div>
   );
 }

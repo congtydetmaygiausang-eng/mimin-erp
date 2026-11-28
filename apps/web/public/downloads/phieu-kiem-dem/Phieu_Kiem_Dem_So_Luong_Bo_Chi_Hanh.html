@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phiếu Kiểm Đếm Số Lượng Bộ - Chị Hạnh</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      color: #1a202c;
+      background: #f7fafc;
+      padding: 20px;
+      line-height: 1.35;
+      font-size: 13.5px;
+    }
+    .page-container {
+      max-width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 16mm 18mm;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border-radius: 4px;
+    }
+    .header-company {
+      text-align: center;
+      border-bottom: 2px solid #1a365d;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .company-name {
+      font-size: 17px;
+      font-weight: bold;
+      color: #1a365d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .company-intl {
+      font-size: 12px;
+      font-style: italic;
+      color: #4a5568;
+      margin-top: 1px;
+    }
+    .company-details {
+      font-size: 11.5px;
+      color: #4a5568;
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+    .doc-title {
+      text-align: center;
+      margin: 12px 0 10px 0;
+    }
+    .doc-title h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: #c53030;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .doc-title h2 {
+      font-size: 13px;
+      font-style: italic;
+      color: #2d3748;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .info-box {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .info-box td {
+      padding: 4px 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .info-box td.label {
+      font-weight: bold;
+      color: #2d3748;
+      background: #f8fafc;
+      width: 18%;
+    }
+    .info-box td.val {
+      width: 32%;
+    }
+    .highlight-name {
+      font-weight: bold;
+      color: #1a365d;
+      font-size: 14px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #1a365d;
+      text-transform: uppercase;
+      margin: 8px 0 6px 0;
+    }
+    .table-data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-bottom: 10px;
+    }
+    .table-data th, .table-data td {
+      border: 1px solid #cbd5e0;
+      padding: 4px 6px;
+      text-align: center;
+    }
+    .table-data th {
+      background: #edf2f7;
+      font-weight: bold;
+      color: #2d3748;
+    }
+    .table-data td.text-right {
+      text-align: right;
+      padding-right: 8px;
+    }
+    .table-data td.text-left {
+      text-align: left;
+      padding-left: 8px;
+    }
+    .table-data td.note-cell {
+      font-size: 11px;
+      color: #718096;
+      font-style: italic;
+    }
+    .summary-row {
+      background: #fff5f5;
+      font-weight: bold;
+      color: #c53030;
+      font-size: 13.5px;
+    }
+    .summary-text {
+      margin: 8px 0;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .words-val {
+      font-weight: bold;
+      font-style: italic;
+      color: #c53030;
+      font-size: 14px;
+    }
+    .note-verify {
+      font-size: 11.5px;
+      color: #4a5568;
+      font-style: italic;
+      margin-bottom: 14px;
+      line-height: 1.35;
+      background: #f7fafc;
+      padding: 6px 10px;
+      border-left: 3px solid #3182ce;
+      border-radius: 2px;
+    }
+    .signatures {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .signatures td {
+      border: none;
+      vertical-align: top;
+      width: 33.33%;
+      padding: 0 5px;
+    }
+    .sig-title {
+      font-weight: bold;
+      font-size: 12.5px;
+      color: #1a365d;
+      text-transform: uppercase;
+    }
+    .sig-sub {
+      font-size: 11px;
+      font-style: italic;
+      color: #718096;
+      margin-top: 2px;
+    }
+    .sig-space {
+      height: 60px;
+    }
+    .sig-name {
+      font-weight: bold;
+      font-size: 13px;
+      color: #2d3748;
+    }
+    .date-footer {
+      text-align: right;
+      font-style: italic;
+      font-size: 12px;
+      color: #4a5568;
+      margin-top: 8px;
+    }
+    .print-btn-bar {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .btn-print {
+      background: #3182ce;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-print:hover {
+      background: #2b6cb0;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .page-container {
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+      }
+      .print-btn-bar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="print-btn-bar">
+    <button class="btn-print" onclick="window.print()">🖨️ In Phiếu Kiểm Đếm (Ctrl + P)</button>
+  </div>
+
+  <div class="page-container">
+    <!-- Header -->
+    <div class="header-company">
+      <div class="company-name">CÔNG TY TNHH DỆT MAY GIÀU SANG</div>
+      <div class="company-intl">Tên quốc tế: GIAU SANG TEXTILE COMPANY LIMITED</div>
+      <div class="company-details">
+        Người đại diện pháp luật: <strong>Hồ Minh Sang</strong> &nbsp;|&nbsp; Hotline / Zalo: <strong>0774480916</strong> &nbsp;|&nbsp; Email: <strong>congtydetmaygiausang@gmail.com</strong><br>
+        Địa chỉ: 12/39 Đường Xuân Thới Thượng 58C, Ấp 7, Xã Xuân Thới Thượng, Huyện Hóc Môn, TP. Hồ Chí Minh<br>
+        Mã số thuế: <strong>0318507560</strong> &nbsp;|&nbsp; Hệ thống quản lý: <strong>MIMIN ERP (mimin.vn)</strong>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="doc-title">
+      <h1>PHIẾU KIỂM ĐẾM SỐ LƯỢNG HÀNG HOÁ</h1>
+      <h2>BIÊN BẢN BÀN GIAO & KIỂM ĐẾM CHI TIẾT THEO BAO</h2>
+    </div>
+
+    <!-- Info Box -->
+    <table class="info-box">
+      <tr>
+        <td class="label">Khách hàng:</td>
+        <td class="val"><span class="highlight-name">CHỊ HẠNH (C. HẠNH)</span></td>
+        <td class="label">Ngày lập phiếu:</td>
+        <td class="val"><strong>10/11/2026</strong></td>
+      </tr>
+      <tr>
+        <td class="label">Đơn vị giao:</td>
+        <td class="val"><strong>Công ty TNHH Dệt May Giàu Sang</strong></td>
+        <td class="label">Loại hàng hoá:</td>
+        <td class="val"><strong>Hàng may mặc theo bộ</strong></td>
+      </tr>
+      <tr>
+        <td class="label">Đơn vị tính:</td>
+        <td class="val"><strong style="color: #c53030;">Bộ</strong></td>
+        <td class="label">Quy cách đóng:</td>
+        <td class="val"><strong>19 bao niêm phong</strong></td>
+      </tr>
+    </table>
+
+    <div class="section-title">BẢNG KÊ CHI TIẾT SỐ LƯỢNG TỪNG BAO (KIỆN)</div>
+
+    <!-- Table 2 columns -->
+    <table class="table-data">
+      <thead>
+        <tr>
+          <th style="width: 6%;">STT</th>
+          <th style="width: 14%;">Số bao</th>
+          <th style="width: 16%;">Số lượng (Bộ)</th>
+          <th style="width: 14%;">Ghi chú</th>
+          <th style="width: 6%;">STT</th>
+          <th style="width: 14%;">Số bao</th>
+          <th style="width: 16%;">Số lượng (Bộ)</th>
+          <th style="width: 14%;">Ghi chú</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td><strong>Bao 01</strong></td><td class="text-right"><strong>144 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>11</td><td><strong>Bao 11</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>2</td><td><strong>Bao 02</strong></td><td class="text-right"><strong>144 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>12</td><td><strong>Bao 12</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>3</td><td><strong>Bao 03</strong></td><td class="text-right"><strong>149 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>13</td><td><strong>Bao 13</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>4</td><td><strong>Bao 04</strong></td><td class="text-right"><strong>144 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>14</td><td><strong>Bao 14</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>5</td><td><strong>Bao 05</strong></td><td class="text-right"><strong>144 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>15</td><td><strong>Bao 15</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>6</td><td><strong>Bao 06</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>16</td><td><strong>Bao 16</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>7</td><td><strong>Bao 07</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>17</td><td><strong>Bao 17</strong></td><td class="text-right"><strong>86 bộ</strong></td><td class="note-cell">Bao lẻ quy cách</td>
+        </tr>
+        <tr>
+          <td>8</td><td><strong>Bao 08</strong></td><td class="text-right"><strong>136 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>18</td><td><strong>Bao 18</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+        </tr>
+        <tr>
+          <td>9</td><td><strong>Bao 09</strong></td><td class="text-right"><strong>130 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td>19</td><td><strong>Bao 19</strong></td><td class="text-right"><strong>118 bộ</strong></td><td class="note-cell">Bao lẻ cuối</td>
+        </tr>
+        <tr>
+          <td>10</td><td><strong>Bao 10</strong></td><td class="text-right"><strong>140 bộ</strong></td><td class="note-cell">Đóng gói chuẩn</td>
+          <td colspan="4" style="background: #fafafa;"></td>
+        </tr>
+        <tr class="summary-row">
+          <td colspan="2" style="text-align: center;">TỔNG SỐ BAO:</td>
+          <td colspan="2" style="text-align: center; font-size: 14px;">19 BAO (KIỆN)</td>
+          <td colspan="2" style="text-align: center;">TỔNG SỐ LƯỢNG:</td>
+          <td colspan="2" style="text-align: right; padding-right: 12px; font-size: 15px;">2.595 BỘ</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="summary-text">
+      • Tổng số lượng bàn giao bằng chữ: <span class="words-val">Hai nghìn năm trăm chín mươi lăm bộ</span> (đóng gói trong 19 bao nguyên vẹn).
+    </div>
+
+    <div class="note-verify">
+      <strong>* Ghi chú xác nhận:</strong> Số lượng hàng hoá thực tế đã được hai bên đồng kiểm, đối chiếu số lượng chi tiết từng bao và xác nhận đúng chủng loại, quy cách đóng gói niêm phong trước khi xuất kho giao nhận.
+    </div>
+
+    <!-- Signatures -->
+    <table class="signatures">
+      <tr>
+        <td>
+          <div class="sig-title">NGƯỜI KIỂM ĐẾM / LẬP PHIẾU</div>
+          <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Tổ đóng gói / Kiểm đếm</div>
+        </td>
+        <td>
+          <div class="sig-title">ĐẠI DIỆN BÊN GIAO (GIÀU SANG)</div>
+          <div class="sig-sub">(Ký, đóng dấu)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Hồ Minh Sang</div>
+        </td>
+        <td>
+          <div class="sig-title">ĐẠI DIỆN KHÁCH HÀNG (BÊN NHẬN)</div>
+          <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Chị Hạnh</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="date-footer">
+      TP. Hồ Chí Minh, ngày 10 tháng 11 năm 2026
+    </div>
+  </div>
+
+</body>
+</html>

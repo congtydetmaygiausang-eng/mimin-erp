@@ -47,7 +47,12 @@ export default function ChamCongPage() {
   const [boPhan, setBoPhan] = useState("all");
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | "dang_lam" | "nghi_viec">("all");
   const [submittingPunch, setSubmittingPunch] = useState(false);
-  const [showTangCaModal, setShowTangCaModal] = useState(false);
+  const [tangCaTarget, setTangCaTarget] = useState<{
+    employee: { maNV: string; hoTen: string; boPhan: string; chucVu?: string };
+    date: string;
+    hours: number;
+    note: string;
+  } | null>(null);
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState<string>("");
 
   const isAdmin = Boolean(
@@ -72,10 +77,14 @@ export default function ChamCongPage() {
     return Array.from(set).sort().reverse();
   }, [records]);
   const departments = useMemo(() => Array.from(new Set(nhanSu.map((item) => item.boPhan).filter(Boolean))).sort(), [nhanSu]);
+
+  // Helper chuẩn hóa mã nhân viên (bỏ dấu gạch ngang, khoảng trắng để NV-016, NV016, NV16 luôn khớp)
+  const normalizeCode = (s?: string) => (s || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
   // Tìm trong bảng nhân sự Supabase trước, ưu tiên nhân sự đang làm việc
   const currentEmployeeFromDB = useMemo(() => {
     const activeNhanSu = nhanSu.filter((e) => e.trangThai !== "nghi_viec");
-    
+
     // Hàm loại bỏ dấu tiếng Việt để tìm kiếm chính xác hơn
     const removeAccents = (str: string) => {
       return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
@@ -89,7 +98,10 @@ export default function ChamCongPage() {
       const targetMaNV = (user?.maNV || staticMatch?.maNV || "").trim().toLocaleLowerCase();
 
       return list.find((employee) => {
-        if (targetMaNV && employee.maNV.trim().toLocaleLowerCase() === targetMaNV) return true;
+        if (targetMaNV) {
+          if (employee.maNV.trim().toLocaleLowerCase() === targetMaNV) return true;
+          if (normalizeCode(employee.maNV) === normalizeCode(targetMaNV)) return true;
+        }
         if (user?.email && employee.email?.trim().toLocaleLowerCase() === user.email.trim().toLocaleLowerCase()) return true;
 
         if (user?.email) {
@@ -113,24 +125,33 @@ export default function ChamCongPage() {
 
   // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
   const currentEmployee = useMemo(() => {
-    if (currentEmployeeFromDB) return currentEmployeeFromDB;
+    if (currentEmployeeFromDB) {
+      return {
+        maNV: currentEmployeeFromDB.maNV,
+        hoTen: currentEmployeeFromDB.hoTen,
+        boPhan: currentEmployeeFromDB.boPhan,
+        chucVu: currentEmployeeFromDB.chucVu || (currentEmployeeFromDB as any).viTri || "Nhân viên",
+        email: currentEmployeeFromDB.email,
+      };
+    }
     if (!user) return undefined;
-    
+
     const staticUser = USERS.find((u) =>
       (user.email && u.email.toLocaleLowerCase() === user.email.toLocaleLowerCase())
       || (user.maNV && u.maNV.toLocaleLowerCase() === user.maNV.toLocaleLowerCase())
     );
-    
+
     if (staticUser) {
       // Tạo profile tạm từ USERS để hiển thị card chấm công
       return {
         maNV: staticUser.maNV,
         hoTen: staticUser.name,
         boPhan: staticUser.phongBan,
+        chucVu: staticUser.chucVu || (staticUser as any).role || "Nhân viên",
         email: staticUser.email,
-      } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+      };
     }
-    
+
     // Nếu vẫn không tìm thấy, tạo profile tạm từ thông tin user đăng nhập 
     // để đảm bảo 100% user đều thấy nút chấm công
     const prefix = user.email ? user.email.split('@')[0] : "user";
@@ -138,8 +159,9 @@ export default function ChamCongPage() {
       maNV: user.maNV || prefix.toUpperCase(),
       hoTen: user.name || prefix,
       boPhan: user.phongBan || "Hành chính",
+      chucVu: (user as any).role || (user as any).chucVu || "Nhân viên",
       email: user.email,
-    } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+    };
   }, [currentEmployeeFromDB, user]);
 
   const activeEmployeesCount = useMemo(() => nhanSu.filter((item) => item.trangThai !== "nghi_viec").length, [nhanSu]);
@@ -147,7 +169,7 @@ export default function ChamCongPage() {
 
   const employees = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("vi");
-    
+
     return nhanSu
       .filter((item) => {
         const isNghi = item.trangThai === "nghi_viec";
@@ -166,27 +188,45 @@ export default function ChamCongPage() {
     if (!isAdmin) {
       if (!currentEmployee) return [];
       const userMaNV = currentEmployee.maNV.trim().toUpperCase();
-      const matched = employees.filter((e) => e.maNV.trim().toUpperCase() === userMaNV);
+      const matched = employees.filter((e) =>
+        e.maNV.trim().toUpperCase() === userMaNV ||
+        normalizeCode(e.maNV) === normalizeCode(userMaNV)
+      );
       return matched.length > 0 ? matched : [currentEmployee as (typeof nhanSu)[number]];
     }
     if (selectedEmployeeFilter && selectedEmployeeFilter !== "all") {
       const target = selectedEmployeeFilter.trim().toUpperCase();
-      return employees.filter((e) => e.maNV.trim().toUpperCase() === target);
+      return employees.filter((e) =>
+        e.maNV.trim().toUpperCase() === target ||
+        normalizeCode(e.maNV) === normalizeCode(target)
+      );
     }
     return employees;
   }, [isAdmin, currentEmployee, employees, selectedEmployeeFilter]);
 
-  const recordMap = useMemo(
-    () => new Map(monthRecords.map((record) => [chamCongRecordKey(record.maNV, record.ngay), record])),
-    [monthRecords]
-  );
+  const recordMap = useMemo(() => {
+    const map = new Map<string, ChamCongRecord>();
+    for (const record of monthRecords) {
+      map.set(chamCongRecordKey(record.maNV, record.ngay), record);
+      // Index thêm bằng mã chuẩn hóa để NV-016 và NV16 luôn tìm thấy nhau
+      const normKey = `${normalizeCode(record.maNV)}__${record.ngay}`;
+      if (!map.has(normKey)) {
+        map.set(normKey, record);
+      }
+    }
+    return map;
+  }, [monthRecords]);
+
   const summary = useMemo(
     () =>
       new Map(
         employees.map((employee) => [
           employee.maNV,
           tongHopChamCong(
-            monthRecords.filter((record) => record.maNV.trim().toUpperCase() === employee.maNV.trim().toUpperCase())
+            monthRecords.filter((record) =>
+              record.maNV.trim().toUpperCase() === employee.maNV.trim().toUpperCase() ||
+              normalizeCode(record.maNV) === normalizeCode(employee.maNV)
+            )
           ),
         ])
       ),
@@ -198,7 +238,12 @@ export default function ChamCongPage() {
   const todayRecord = useMemo(() => {
     if (!currentEmployee) return undefined;
     const targetKey = chamCongRecordKey(currentEmployee.maNV, today);
-    return records.find((record) => chamCongRecordKey(record.maNV, record.ngay) === targetKey);
+    const normKey = `${normalizeCode(currentEmployee.maNV)}__${today}`;
+    return records.find(
+      (record) =>
+        chamCongRecordKey(record.maNV, record.ngay) === targetKey ||
+        `${normalizeCode(record.maNV)}__${record.ngay}` === normKey
+    );
   }, [currentEmployee, records, today]);
 
   // Chỉ Admin mới được sửa tay bảng lưới; toàn bộ nhân viên chỉ dùng Vào làm & Kết thúc
@@ -250,6 +295,28 @@ export default function ChamCongPage() {
     }
   };
 
+  const handleOpenTangCaModal = (emp: { maNV: string; hoTen: string; boPhan: string; chucVu?: string; viTri?: string }, dateStr: string) => {
+    const chucVuFound =
+      emp.chucVu ||
+      emp.viTri ||
+      nhanSu.find((n) => n.maNV.trim().toUpperCase() === emp.maNV.trim().toUpperCase())?.chucVu ||
+      USERS.find((u) => u.maNV.trim().toUpperCase() === emp.maNV.trim().toUpperCase())?.chucVu ||
+      "Nhân viên";
+
+    const rec = recordMap.get(chamCongRecordKey(emp.maNV, dateStr));
+    setTangCaTarget({
+      employee: {
+        maNV: emp.maNV,
+        hoTen: emp.hoTen,
+        boPhan: emp.boPhan,
+        chucVu: chucVuFound,
+      },
+      date: dateStr,
+      hours: rec?.soGioTangCa || 0,
+      note: rec?.ghiChu || "",
+    });
+  };
+
   const checkIn = async () => {
     if (!currentEmployee || !user || submittingPunch) return;
     if (todayRecord?.gioVao) {
@@ -262,13 +329,17 @@ export default function ChamCongPage() {
       const time = toLocalTime(now);
       const timestamp = now.toISOString();
       const late = isLateArrival(time, GIO_VAO_CA_CHUAN);
+      // Nếu vào làm từ 12:30 trở đi: nhận diện ca chiều (tính nửa công 0.5)
+      const isAfternoon = time >= "12:30:00" || time >= "12:30";
+      const trangThai: TrangThaiChamCong = isAfternoon ? "nua-cong" : late ? "di-tre" : "di-lam";
+
       const res = await saveRecord({
         id: todayRecord?.id || `CC-${currentEmployee.maNV}-${today}`,
         maNV: currentEmployee.maNV,
         authUserId: todayRecord?.authUserId || user.id,
         boPhan: todayRecord?.boPhan || currentEmployee.boPhan,
         ngay: today,
-        trangThai: late ? "di-tre" : "di-lam",
+        trangThai,
         gioVao: time,
         gioRa: todayRecord?.gioRa,
         soGioTangCa: todayRecord?.soGioTangCa || 0,
@@ -285,7 +356,9 @@ export default function ChamCongPage() {
         toast.warning(`Đã lưu tạm giờ vào ${time.slice(0, 5)} trên máy. Hệ thống sẽ tự đồng bộ lên máy chủ khi ổn định.`);
         return;
       }
-      if (late) {
+      if (isAfternoon) {
+        toast.info(`Đã ghi nhận vào làm ca chiều lúc ${time.slice(0, 5)} (tính nửa công - 0.5 công).`);
+      } else if (late) {
         toast.warning(`Đã ghi nhận vào làm lúc ${time.slice(0, 5)} (đi trễ sau ${GIO_VAO_CA_CHUAN.slice(0, 5)}).`);
       } else {
         toast.success(`Đã ghi nhận vào làm lúc ${time.slice(0, 5)}.`);
@@ -313,13 +386,25 @@ export default function ChamCongPage() {
       const early = !clockAnomaly && isEarlyLeave(time, GIO_KET_THUC_CA_CHUAN);
       const note = clockAnomaly
         ? [todayRecord.ghiChu, `Giờ kết thúc (${time.slice(0, 5)}) nhỏ hơn giờ vào (${todayRecord.gioVao.slice(0, 5)})`]
-            .filter(Boolean)
-            .join(" | ")
+          .filter(Boolean)
+          .join(" | ")
         : todayRecord.ghiChu;
+
+      // Tính tổng thời gian làm việc để nhận diện nửa công (nếu làm dưới 5 giờ hoặc về trước 12:30)
+      const [inH, inM] = (todayRecord.gioVao || "07:30").split(":").map(Number);
+      const [outH, outM] = time.split(":").map(Number);
+      const durationHours = !clockAnomaly ? (outH * 60 + outM - (inH * 60 + inM)) / 60 : 8;
+      const isHalfDay = !clockAnomaly && (durationHours < 5.0 || time < "12:30");
+
+      const finalTrangThai: TrangThaiChamCong =
+        isHalfDay && (todayRecord.trangThai === "di-lam" || todayRecord.trangThai === "di-tre")
+          ? "nua-cong"
+          : todayRecord.trangThai;
 
       const res = await saveRecord({
         ...todayRecord,
         gioRa: time,
+        trangThai: finalTrangThai,
         ghiChu: note,
         updatedAt: now.toISOString(),
       });
@@ -334,6 +419,8 @@ export default function ChamCongPage() {
       }
       if (clockAnomaly) {
         toast.warning(`Đã ghi nhận kết thúc lúc ${time.slice(0, 5)} (giờ nhỏ hơn giờ vào — vui lòng kiểm tra lại giờ thiết bị).`);
+      } else if (isHalfDay) {
+        toast.info(`Đã ghi nhận kết thúc lúc ${time.slice(0, 5)} (làm ${durationHours.toFixed(1)}h - tính nửa công).`);
       } else if (early) {
         toast.info(`Đã ghi nhận kết thúc lúc ${time.slice(0, 5)} (về sớm trước ${GIO_KET_THUC_CA_CHUAN.slice(0, 5)}).`);
       } else {
@@ -344,41 +431,63 @@ export default function ChamCongPage() {
     }
   };
 
-  const handleSaveOvertime = async (hours: number, ghiChu?: string) => {
-    if (!currentEmployee || !user || submittingPunch) return;
+    const handleSaveOvertime = async (hours: number, ghiChu?: string): Promise<boolean> => {
+    if (!tangCaTarget || !user || submittingPunch) return false;
     setSubmittingPunch(true);
     try {
+      const { employee, date } = tangCaTarget;
       const now = new Date();
       const timestamp = now.toISOString();
-      const existing = todayRecord;
+      const normEmpCode = normalizeCode(employee.maNV);
+      const existing = recordMap.get(chamCongRecordKey(employee.maNV, date))
+                    || recordMap.get(`${normEmpCode}__${date}`);
+      
+      const targetHours = Math.max(0, Math.round((Number(hours) || 0) * 100) / 100);
+      
+      // Đảm bảo dữ liệu chính xác:
+      // Nếu nhân sự tăng ca nhưng chưa có giờ vào/ra, tự động gán ca chuẩn để không bị tính là nghỉ
+      const gioVao = existing?.gioVao || (targetHours > 0 ? GIO_VAO_CA_CHUAN : undefined);
+      const gioRa = existing?.gioRa || (targetHours > 0 ? GIO_KET_THUC_CA_CHUAN : undefined);
+      const trangThai: TrangThaiChamCong = existing?.trangThai || "di-lam";
+
       const res = await saveRecord({
-        id: existing?.id || `CC-${currentEmployee.maNV}-${today}`,
-        maNV: currentEmployee.maNV,
+        id: existing?.id || `CC-${employee.maNV}-${date}`,
+        maNV: employee.maNV,
         authUserId: existing?.authUserId || user.id,
-        boPhan: existing?.boPhan || currentEmployee.boPhan,
-        ngay: today,
-        trangThai: existing?.trangThai || "di-lam",
-        gioVao: existing?.gioVao,
-        gioRa: existing?.gioRa,
-        soGioTangCa: Math.max(0, Number(hours) || 0),
+        boPhan: existing?.boPhan || employee.boPhan,
+        ngay: date,
+        trangThai,
+        gioVao,
+        gioRa,
+        soGioTangCa: targetHours,
         ghiChu: ghiChu !== undefined ? ghiChu : existing?.ghiChu,
         createdAt: existing?.createdAt || timestamp,
         updatedAt: timestamp,
       });
 
       if (!res.ok) {
-        toast.error(res.error || "Không thể lưu giờ tăng ca.");
-        return;
+        toast.error(res.error || "Không thể lưu giờ tăng ca.", { duration: 5000 });
+        return false;
       }
-      if (!res.synced) {
-        toast.warning(`Đã lưu tạm ${hours}h tăng ca trên máy. Sẽ tự đồng bộ khi có kết nối.`);
-        return;
+
+      // Phát event để các tab khác (Bảng Lương, Thống Kê) tự động đồng bộ ngay lập tức
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("mimin_cham_cong_updated"));
       }
-      if (hours > 0) {
-        toast.success(`Đã ghi nhận tăng ca ${hours} giờ hôm nay cho ${currentEmployee.hoTen}.`);
+
+      if (targetHours > 0) {
+        toast.success(`Đã ghi nhận tăng ca: +${targetHours}h (${employee.hoTen})`, {
+          description: `Ngày ${date}`,
+          duration: 3500,
+        });
       } else {
-        toast.info("Đã xóa giờ tăng ca hôm nay.");
+        toast.info(`Đã xóa giờ tăng ca ngày ${date} của ${employee.hoTen}.`, { duration: 3000 });
       }
+      return true;
+    } catch (err) {
+      console.error("[cham-cong] Lỗi ghi nhận tăng ca:", err);
+      toast.error("Có lỗi xảy ra khi lưu tăng ca. Vui lòng thử lại!");
+      return false;
     } finally {
       setSubmittingPunch(false);
     }
@@ -469,26 +578,48 @@ export default function ChamCongPage() {
 
       {/* Card chấm công cá nhân: chỉ hiện khi user có profile nhân sự liên kết */}
       {currentEmployee && (
-        <>
-          <SelfAttendanceCard
-            employee={currentEmployee}
-            record={todayRecord}
-            submitting={submittingPunch}
-            onCheckIn={() => void checkIn()}
-            onCheckOut={() => void checkOut()}
-            onOvertime={() => setShowTangCaModal(true)}
-          />
-          <TangCaModal
-            open={showTangCaModal}
-            onClose={() => setShowTangCaModal(false)}
-            onConfirm={handleSaveOvertime}
-            employee={currentEmployee}
-            currentHours={todayRecord?.soGioTangCa || 0}
-            currentNote={todayRecord?.ghiChu || ""}
-            todayStr={today}
-            submitting={submittingPunch}
-          />
-        </>
+        <SelfAttendanceCard
+          employee={currentEmployee}
+          record={todayRecord}
+          submitting={submittingPunch}
+          onCheckIn={() => void checkIn()}
+          onCheckOut={() => void checkOut()}
+          onOvertime={() => {
+            if (currentEmployee) {
+              const chucVuFound =
+                (currentEmployee as any).chucVu ||
+                nhanSu.find((n) => n.maNV.trim().toUpperCase() === currentEmployee.maNV.trim().toUpperCase())?.chucVu ||
+                USERS.find((u) => u.maNV.trim().toUpperCase() === currentEmployee.maNV.trim().toUpperCase())?.chucVu ||
+                "Nhân viên";
+
+              setTangCaTarget({
+                employee: {
+                  maNV: currentEmployee.maNV,
+                  hoTen: currentEmployee.hoTen,
+                  boPhan: currentEmployee.boPhan,
+                  chucVu: chucVuFound,
+                },
+                date: today,
+                hours: todayRecord?.soGioTangCa || 0,
+                note: todayRecord?.ghiChu || "",
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* Modal Chấm Tăng Ca: Dùng chung cho cả tự chấm và Admin click vào bất kỳ ô ngày/nhân sự nào */}
+      {tangCaTarget && (
+        <TangCaModal
+          open={Boolean(tangCaTarget)}
+          onClose={() => setTangCaTarget(null)}
+          onConfirm={handleSaveOvertime}
+          employee={tangCaTarget.employee}
+          currentHours={tangCaTarget.hours}
+          currentNote={tangCaTarget.note}
+          todayStr={tangCaTarget.date}
+          submitting={submittingPunch}
+        />
       )}
 
       <section className="card p-3 md:p-4">
@@ -512,13 +643,13 @@ export default function ChamCongPage() {
 
               {isAdmin && (
                 <>
-                  <button 
+                  <button
                     onClick={() => setShowConfirmReset(true)}
                     className="flex h-10 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 sm:px-3 text-xs sm:text-sm font-medium text-red-600 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/40 shrink-0"
                   >
                     <Trash2 className="h-4 w-4" /> <span className="hidden sm:inline">Reset toàn bộ</span><span className="sm:hidden">Reset</span>
                   </button>
-                  <ConfirmDialog 
+                  <ConfirmDialog
                     open={showConfirmReset}
                     onClose={() => setShowConfirmReset(false)}
                     onConfirm={resetAllAttendance}
@@ -568,11 +699,11 @@ export default function ChamCongPage() {
               {TRANG_THAI_CHAM_CONG.map((status) => <span key={status.value} className={`rounded-md px-2 py-1 font-semibold ${status.className}`}>{status.shortLabel} · {status.label}</span>)}
             </div>
           </div>
-          <div className="overflow-x-auto tab-scroll-mobile no-scrollbar">
-            <table className="min-w-max text-xs">
-              <thead className="bg-white/70 dark:bg-slate-900/80">
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="min-w-max text-xs border-collapse">
+              <thead className="bg-slate-50 dark:bg-slate-850">
                 <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                  <th className="sticky left-0 z-20 min-w-44 sm:min-w-52 bg-white dark:bg-slate-900 p-3 text-left shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)]">Nhân viên</th>
+                  <th className="sticky left-0 z-30 min-w-44 sm:min-w-52 bg-slate-50 dark:bg-slate-900 p-3 text-left border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]">Nhân viên</th>
                   {days.map((day) => {
                     const ngay = toIsoDate(day);
                     const isToday = ngay === today;
@@ -582,15 +713,14 @@ export default function ChamCongPage() {
                         key={day.getTime()}
                         onClick={() => setSelectedDate(ngay)}
                         title={`Bấm để xem thống kê ngày ${ngay}`}
-                        className={`w-12 p-2 text-center cursor-pointer transition select-none ${
-                          isSelected
+                        className={`w-12 p-2 text-center cursor-pointer transition select-none ${isSelected
                             ? "bg-teal-600 text-white font-bold shadow-xs"
                             : isToday
-                            ? "bg-emerald-100/60 text-emerald-800 ring-1 ring-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300"
-                            : day.getDay() === 0
-                            ? "text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                            : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }`}
+                              ? "bg-emerald-100/60 text-emerald-800 ring-1 ring-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              : day.getDay() === 0
+                                ? "text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
                       >
                         <span className="block">{day.getDate()}</span>
                         <span className="font-normal opacity-70 text-[10px]">{isToday ? "Hôm nay" : day.getDay() === 0 ? "CN" : `T${day.getDay() + 1}`}</span>
@@ -609,59 +739,86 @@ export default function ChamCongPage() {
                   return (
                     <tr
                       key={employee.maNV}
-                      className={`border-b last:border-0 ${
-                        isNghiViec
+                      className={`border-b last:border-0 ${isNghiViec
                           ? "bg-rose-50/25 dark:bg-rose-950/15 hover:bg-rose-50/40 opacity-85"
                           : "hover:bg-white/40 dark:hover:bg-white/5"
-                      }`}
+                        }`}
                       style={{ borderColor: "var(--border)" }}
                     >
                       <td
-                        className={`sticky left-0 z-10 p-3 shadow-[3px_0_6px_-5px_rgba(0,0,0,.5)] ${
-                          isNghiViec
-                            ? "bg-rose-50/95 dark:bg-slate-900 border-r border-rose-200/60"
-                            : "bg-white dark:bg-slate-900"
-                        }`}
+                        className={`sticky left-0 z-20 p-2.5 sm:p-3 border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)] ${isNghiViec ? "bg-rose-50 dark:bg-slate-900" : "bg-white dark:bg-slate-900"}`}
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="block font-semibold">{employee.hoTen}</span>
+                          <span className="block font-bold text-slate-900 dark:text-white">{employee.hoTen}</span>
                           {isNghiViec && (
                             <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
                               Đã nghỉ việc
                             </span>
                           )}
                         </div>
-                        <span className="opacity-60">{employee.maNV} · {employee.boPhan}</span>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 flex-wrap mt-0.5">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">{employee.maNV}</span>
+                          <span>·</span>
+                          <span>{employee.chucVu || employee.boPhan}</span>
+                        </div>
                       </td>
                       {days.map((day) => {
                         const ngay = toIsoDate(day);
                         const isToday = ngay === today;
                         const isSelected = ngay === selectedDate;
-                        const record = recordMap.get(chamCongRecordKey(employee.maNV, ngay));
+                        const record = recordMap.get(chamCongRecordKey(employee.maNV, ngay)) || recordMap.get(`${normalizeCode(employee.maNV)}__${ngay}`);
                         const status = TRANG_THAI_CHAM_CONG.find((item) => item.value === record?.trangThai);
                         return (
                           <td
                             key={ngay}
-                            className={`p-1 text-center transition-colors ${
-                              isSelected
+                            className={`p-1 text-center transition-colors relative group ${isSelected
                                 ? "bg-teal-50/70 dark:bg-teal-950/30"
                                 : isToday
-                                ? "bg-emerald-50/50 dark:bg-emerald-900/10"
-                                : day.getDay() === 0
-                                ? "bg-red-50/40 dark:bg-red-950/10"
-                                : ""
-                            }`}
+                                  ? "bg-emerald-50/50 dark:bg-emerald-900/10"
+                                  : day.getDay() === 0
+                                    ? "bg-red-50/40 dark:bg-red-950/10"
+                                    : ""
+                              }`}
                           >
-                            <select
-                              aria-label={`${employee.hoTen} ngày ${day.getDate()}`}
-                              disabled={!canEditGrid}
-                              className={`h-8 w-11 appearance-none rounded-md border-0 text-center text-[11px] font-bold outline-none ring-teal-500 focus:ring-2 ${canEditGrid ? "cursor-pointer" : "cursor-default"} disabled:cursor-not-allowed disabled:opacity-75 ${status?.className || "bg-slate-100 text-slate-400 dark:bg-slate-800"}`}
-                              value={record?.trangThai || ""}
-                              onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong | "")}
-                            >
-                              <option value="">—</option>
-                              {TRANG_THAI_CHAM_CONG.map((item) => <option key={item.value} value={item.value}>{item.shortLabel}</option>)}
-                            </select>
+                            <div className="relative inline-flex items-center justify-center">
+                              <select
+                                aria-label={`${employee.hoTen} ngày ${day.getDate()}`}
+                                disabled={!canEditGrid}
+                                className={`h-8 w-11 appearance-none rounded-md border-0 text-center text-[11px] font-bold outline-none ring-teal-500 focus:ring-2 ${canEditGrid ? "cursor-pointer" : "cursor-default"} disabled:cursor-not-allowed disabled:opacity-75 ${status?.className || "bg-slate-100 text-slate-400 dark:bg-slate-800"}`}
+                                value={record?.trangThai || ""}
+                                onChange={(event) => void updateStatus(employee.maNV, ngay, event.target.value as TrangThaiChamCong | "")}
+                              >
+                                <option value="">—</option>
+                                {TRANG_THAI_CHAM_CONG.map((item) => <option key={item.value} value={item.value}>{item.shortLabel}</option>)}
+                              </select>
+
+                              {/* Huy hiệu tăng ca hiển thị số giờ (+...h) - Click để xem/sửa */}
+                              {record && record.soGioTangCa > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenTangCaModal(employee, ngay);
+                                  }}
+                                  className="absolute -top-1 -right-1 px-1 py-0.2 rounded bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold leading-tight shadow-2xs cursor-pointer active:scale-90 transition z-[1]"
+                                  title={`Tăng ca ${record.soGioTangCa}h. Bấm để sửa.`}
+                                >
+                                  +{record.soGioTangCa}h
+                                </button>
+                              ) : canEditGrid ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenTangCaModal(employee, ngay);
+                                  }}
+                                  className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-amber-500 text-slate-600 hover:text-white transition z-[1] cursor-pointer shadow-2xs"
+                                  title={`Chấm tăng ca ngày ${day.getDate()}/${day.getMonth() + 1}`}
+                                >
+                                  <Flame className="w-2.5 h-2.5" />
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                         );
                       })}
@@ -683,7 +840,7 @@ export default function ChamCongPage() {
           <div className="border-b px-4 py-2.5 text-xs opacity-75" style={{ borderColor: "var(--border)" }}>
             Chuẩn ngày công tháng: <strong>{CHUAN_NGAY_CONG_THANG} ngày</strong> (không giới hạn trần — tháng có 29–31 ngày sẽ tính đúng theo số ngày công thực tế) · Nghỉ phép tính <strong>0 công</strong> · Ca chuẩn {GIO_VAO_CA_CHUAN.slice(0, 5)} – {GIO_KET_THUC_CA_CHUAN.slice(0, 5)}.
           </div>
-          <div className="overflow-x-auto tab-scroll-mobile no-scrollbar">
+          <div className="overflow-x-auto no-scrollbar">
             <table className="w-full min-w-[840px] text-sm">
               <thead><tr className="border-b text-left" style={{ borderColor: "var(--border)" }}><th className="p-3">Mã NV</th><th className="p-3">Họ tên</th><th className="p-3">Bộ phận</th><th className="p-3 text-center">Ngày công / {CHUAN_NGAY_CONG_THANG}</th><th className="p-3 text-center">Tỷ lệ</th><th className="p-3 text-center">Nghỉ phép (0 công)</th><th className="p-3 text-center">Không phép</th><th className="p-3 text-center">Đi trễ</th><th className="p-3 text-center">Tăng ca</th></tr></thead>
               <tbody>
@@ -695,11 +852,10 @@ export default function ChamCongPage() {
                   return (
                     <tr
                       key={employee.maNV}
-                      className={`border-b last:border-0 ${
-                        isNghiViec
+                      className={`border-b last:border-0 ${isNghiViec
                           ? "bg-rose-50/25 dark:bg-rose-950/15 hover:bg-rose-50/40 opacity-85"
                           : "hover:bg-white/30 dark:hover:bg-white/5"
-                      }`}
+                        }`}
                       style={{ borderColor: "var(--border)" }}
                     >
                       <td className="p-3 font-mono text-xs opacity-70">{employee.maNV}</td>
@@ -733,7 +889,7 @@ export default function ChamCongPage() {
 }
 
 function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOut, onOvertime }: {
-  employee: { maNV: string; hoTen: string; boPhan: string };
+  employee: { maNV: string; hoTen: string; boPhan: string; chucVu?: string };
   record?: ChamCongRecord;
   submitting?: boolean;
   onCheckIn: () => void;
@@ -744,13 +900,19 @@ function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOu
   const soGioTangCa = record?.soGioTangCa || 0;
   return (
     <section className="card overflow-hidden border border-teal-200/70 dark:border-teal-700/40">
-      <div className="flex flex-col gap-1 bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between md:px-5">
+      <div className="flex flex-col gap-1.5 bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between md:px-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/75">Chấm công của tôi · Hôm nay</p>
-          <h2 className="mt-0.5 text-lg font-bold">{employee.hoTen}</h2>
-          <p className="text-xs text-white/80">{employee.maNV} · {employee.boPhan}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-teal-100">Chấm công của tôi · Hôm nay</p>
+          <h2 className="mt-0.5 text-lg sm:text-xl font-black tracking-wide text-white">{employee.hoTen}</h2>
+          <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-white/95">
+            <span className="font-black bg-white/20 px-2 py-0.5 rounded shadow-xs">Mã: {employee.maNV}</span>
+            <span className="font-black bg-amber-400/30 text-amber-100 px-2 py-0.5 rounded border border-amber-300/40 shadow-xs">
+              Chức vụ: {employee.chucVu || "Nhân viên"}
+            </span>
+            <span className="text-white/85 font-semibold">Bộ phận: {employee.boPhan}</span>
+          </div>
         </div>
-        <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/95">
+        <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/95">
           Ca chuẩn: {GIO_VAO_CA_CHUAN.slice(0, 5)} – {GIO_KET_THUC_CA_CHUAN.slice(0, 5)} ({CHUAN_GIO_LAM_MOI_NGAY}h/ngày)
         </span>
       </div>
@@ -798,7 +960,7 @@ function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOu
             type="button"
             disabled={submitting}
             onClick={onOvertime}
-            className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 py-3 font-bold text-white shadow-md transition active:scale-95 cursor-pointer relative"
+            className="flex min-h-16 items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 px-3 py-3 font-bold text-white shadow-xs transition active:scale-95 cursor-pointer relative"
             title="Bấm để ghi nhận hoặc điều chỉnh giờ làm tăng ca hôm nay"
           >
             <Flame className="h-5 w-5 text-amber-100 animate-pulse shrink-0" />

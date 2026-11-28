@@ -1,0 +1,230 @@
+{
+  "VAI-01": {
+    "name": "Trắng",
+    "title": "TRẮNG",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-01.jpg",
+    "localUrl": "/swatches/vai-01.jpg"
+  },
+  "VAI-02": {
+    "name": "XÁM TRẮNG",
+    "title": "XÁM TRẮNG",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-02.jpg",
+    "localUrl": "/swatches/vai-02.jpg"
+  },
+  "VAI-03": {
+    "name": "KEM",
+    "title": "KEM",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-03.jpg",
+    "localUrl": "/swatches/vai-03.jpg"
+  },
+  "VAI-04": {
+    "name": "GỪNG 040",
+    "title": "GỪNG 040",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-04.jpg",
+    "localUrl": "/swatches/vai-04.jpg"
+  },
+  "VAI-05": {
+    "name": "ĐẬU (BEIGE SW7036)",
+    "title": "ĐẬU (BEIGE 7036)",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-05.jpg",
+    "localUrl": "/swatches/vai-05.jpg"
+  },
+  "VAI-06": {
+    "name": "XÁM 005",
+    "title": "XÁM 005",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-06.jpg",
+    "localUrl": "/swatches/vai-06.jpg"
+  },
+  "VAI-07": {
+    "name": "BÒ 027",
+    "title": "BÒ 027",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-07.jpg",
+    "localUrl": "/swatches/vai-07.jpg"
+  },
+  "VAI-08": {
+    "name": "RÊU",
+    "title": "RÊU",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-08.jpg",
+    "localUrl": "/swatches/vai-08.jpg"
+  },
+  "VAI-09": {
+    "name": "RÊU 036",
+    "title": "RÊU 036",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-09.jpg",
+    "localUrl": "/swatches/vai-09.jpg"
+  },
+  "VAI-10": {
+    "name": "XÁM CHÌ 035",
+    "title": "XÁM CHÌ 035",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-10.jpg",
+    "localUrl": "/swatches/vai-10.jpg"
+  },
+  "VAI-11": {
+    "name": "CỔ VỊT 012",
+    "title": "CỔ VỊT 012",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-11.jpg",
+    "localUrl": "/swatches/vai-11.jpg"
+  },
+  "VAI-12": {
+    "name": "XANH ĐEN CM",
+    "title": "XANH ĐEN CM",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-12.jpg",
+    "localUrl": "/swatches/vai-12.jpg"
+  },
+  "VAI-13": {
+    "name": "ĐEN CM 030",
+    "title": "ĐEN CM 030",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-13.jpg",
+    "localUrl": "/swatches/vai-13.jpg"
+  },
+  "VAI-14": {
+    "name": "ĐEN THƯỜNG",
+    "title": "ĐEN THƯỜNG",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-14.jpg",
+    "localUrl": "/swatches/vai-14.jpg"
+  },
+  "VAI-15": {
+    "name": "XANH ĐEN THƯỜNG",
+    "title": "XANH ĐEN THƯỜNG",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-15.jpg",
+    "localUrl": "/swatches/vai-15.jpg"
+  },
+  "VAI-16": {
+    "name": "XANH ĐÁ 08",
+    "title": "XANH ĐÁ 08",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-16.jpg",
+    "localUrl": "/swatches/vai-16.jpg"
+  },
+  "VAI-17": {
+    "name": "CÀ PHÊ",
+    "title": "CÀ PHÊ",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-17.jpg",
+    "localUrl": "/swatches/vai-17.jpg"
+  },
+  "VAI-18": {
+    "name": "CỎ ÚA 044",
+    "title": "CỎ ÚA 044",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-18.jpg",
+    "localUrl": "/swatches/vai-18.jpg"
+  },
+  "VAI-19": {
+    "name": "XÁM LỢT 06",
+    "title": "XÁM LỢT 06",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-19.jpg",
+    "localUrl": "/swatches/vai-19.jpg"
+  },
+  "VAI-20": {
+    "name": "XÁM CHÌ 066",
+    "title": "XÁM CHÌ 066",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-20.jpg",
+    "localUrl": "/swatches/vai-20.jpg"
+  },
+  "VAI-21": {
+    "name": "Ca Cao",
+    "title": "CA CAO 063",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-21.jpg",
+    "localUrl": "/swatches/vai-21.jpg"
+  },
+  "VAI-22": {
+    "name": "BÒ 068",
+    "title": "BÒ 068",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-22.jpg",
+    "localUrl": "/swatches/vai-22.jpg"
+  },
+  "VAI-23": {
+    "name": "XANH NHỚT 069",
+    "title": "XANH NHỚT 069",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-23.jpg",
+    "localUrl": "/swatches/vai-23.jpg"
+  },
+  "VAI-24": {
+    "name": "KEM VÀNG",
+    "title": "KEM VÀNG",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-24.jpg",
+    "localUrl": "/swatches/vai-24.jpg"
+  },
+  "VAI-25": {
+    "name": "XÁM NHẠT",
+    "title": "XÁM NHẠT 81",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-25.jpg",
+    "localUrl": "/swatches/vai-25.jpg"
+  },
+  "VAI-26": {
+    "name": "NÂU 11",
+    "title": "NÂU 11",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-26.jpg",
+    "localUrl": "/swatches/vai-26.jpg"
+  },
+  "VAI-27": {
+    "name": "Trắng · Bột 100",
+    "title": "TRẮNG BỘT 100",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-27.jpg",
+    "localUrl": "/swatches/vai-27.jpg"
+  },
+  "VAI-28": {
+    "name": "Trắng In",
+    "title": "TRẮNG IN",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-28.jpg",
+    "localUrl": "/swatches/vai-28.jpg"
+  },
+  "VAI-31": {
+    "name": "XÁM XANH 111",
+    "title": "XÁM XANH 111",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-31.jpg",
+    "localUrl": "/swatches/vai-31.jpg"
+  },
+  "VAI-32": {
+    "name": "XÁM MÔN 109",
+    "title": "XÁM MÔN 109",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-32.jpg",
+    "localUrl": "/swatches/vai-32.jpg"
+  },
+  "VAI-33": {
+    "name": "ĐẬU XANH 114",
+    "title": "ĐẬU XANH 114",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-33.jpg",
+    "localUrl": "/swatches/vai-33.jpg"
+  },
+  "VAI-34": {
+    "name": "ĐỎ 112",
+    "title": "ĐỎ 112",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-34.jpg",
+    "localUrl": "/swatches/vai-34.jpg"
+  },
+  "VAI-38": {
+    "name": "2DA ĐEN",
+    "title": "2DA ĐEN",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-38.jpg",
+    "localUrl": "/swatches/vai-38.jpg"
+  },
+  "VAI-39": {
+    "name": "XANH BÍCH",
+    "title": "XANH BÍCH",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-39.jpg",
+    "localUrl": "/swatches/vai-39.jpg"
+  },
+  "VAI-40": {
+    "name": "XANH NGỌC",
+    "title": "XANH NGỌC",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-40.jpg",
+    "localUrl": "/swatches/vai-40.jpg"
+  },
+  "VAI-41": {
+    "name": "2DA RÊU",
+    "title": "2DA RÊU",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-41.jpg",
+    "localUrl": "/swatches/vai-41.jpg"
+  },
+  "VAI-42": {
+    "name": "2DA NÂU ĐẤT",
+    "title": "2DA NÂU ĐẤT",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-42.jpg",
+    "localUrl": "/swatches/vai-42.jpg"
+  },
+  "VAI-43": {
+    "name": "2DA XÁM CHÌ",
+    "title": "2DA XÁM CHÌ",
+    "supabaseUrl": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/kho-vai-moi/swatch_VAI-43.jpg",
+    "localUrl": "/swatches/vai-43.jpg"
+  }
+}

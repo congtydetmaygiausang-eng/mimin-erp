@@ -138,14 +138,14 @@ test("tinhBangLuongThang tich hop ngay cong chuan 28, ho tro NV06+ va giu tuong 
     ...Array.from({ length: 30 }, (_, idx) =>
       makeRecord(`NV02-${idx + 1}`, "NV02", `2026-11-${String(idx + 1).padStart(2, "0")}`, "di-lam")
     ),
-    // NV06 di lam 14 ngay + 2 ngay nghi phep (0 cong) -> 7M * 14 / 28 = 3.5M
+    // NV06 di lam 14 ngay + 2 ngay nghi phep huong luong -> 7M * (14 + 2) / 28 = 4M
     ...Array.from({ length: 14 }, (_, idx) =>
       makeRecord(`NV06-${idx + 1}`, "NV06", `2026-11-${String(idx + 1).padStart(2, "0")}`, "di-lam")
     ),
     makeRecord("NV06-p1", "NV06", "2026-11-15", "nghi-phep"),
     makeRecord("NV06-p2", "NV06", "2026-11-16", "nghi-phep"),
-    // CN01 luong SP van tinh theo san luong nhung hien dung ngay cong
-    makeRecord("CN01-1", "CN01", "2026-11-01", "di-lam"),
+    // CN01 luong SP co tang ca 2 gio (du luongCung = 0 van duoc huong tien tang ca theo muc san co ban)
+    makeRecord("CN01-1", "CN01", "2026-11-01", "di-lam", { soGioTangCa: 2 }),
   ];
 
   const phieu = [
@@ -164,12 +164,15 @@ test("tinhBangLuongThang tich hop ngay cong chuan 28, ho tro NV06+ va giu tuong 
 
   assert.equal(nv06.ngayCongThucTe, 14);
   assert.equal(nv06.ngayPhep, 2);
-  assert.equal(nv06.tyLeNgayCong, 50);
-  assert.equal(nv06.thucNhan, 3_500_000);
+  assert.equal(nv06.ngayCongHuongLuong, 16);
+  assert.equal(nv06.tyLeNgayCong, 57.1);
+  assert.equal(nv06.thucNhan, 4_000_000);
 
   assert.equal(cn01.isLuongSP, true);
   assert.equal(cn01.ngayCongThucTe, 1);
-  assert.equal(cn01.thucNhan, 200_000);
+  assert.equal(cn01.gioTangCa, 2);
+  assert.equal(cn01.tienTangCa, 58_824);
+  assert.equal(cn01.thucNhan, 258_824);
 
   // Thang chua co du lieu cham cong: giu nguyen muc luong co ban lich su
   const legacyPayroll = tinhBangLuongThang(10, 2026, [], employees, []);

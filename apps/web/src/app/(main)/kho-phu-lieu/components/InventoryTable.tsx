@@ -9,12 +9,15 @@ import {
 } from "lucide-react";
 import { formatVND, type KhoVai } from "@/lib/data/real-data";
 import ImageLightbox from "@/components/ui/ImageLightbox";
+import { getFabricSwatchImage } from "@/lib/fabric-swatches";
 
 export function parsePhuLieuGhiChuAndImage(
   ghiChu: string | null | undefined,
   hinhAnh: string | null | undefined,
   maVT: string,
-  inventoryImages: Record<string, string>
+  inventoryImages: Record<string, string>,
+  mauSac?: string,
+  tenVT?: string
 ): { note: string; imageUrl: string } {
   let note = "";
   let imageUrl = hinhAnh || inventoryImages[maVT] || "";
@@ -50,6 +53,10 @@ export function parsePhuLieuGhiChuAndImage(
   // Loại bỏ hoàn toàn nếu vô tình còn dính chuỗi JSON
   if (note.includes('{"note"') || note.includes('"imageUrl"')) {
     note = "";
+  }
+
+  if (!imageUrl) {
+    imageUrl = getFabricSwatchImage(mauSac || tenVT, maVT);
   }
 
   return { note: note.trim(), imageUrl };

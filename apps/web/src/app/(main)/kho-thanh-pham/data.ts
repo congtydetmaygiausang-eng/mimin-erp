@@ -111,8 +111,17 @@ export function hienThiDanhSachSize(
 export function chuanHoaSanPhamKho(sp: SanPhamTP): SanPhamTP {
   const maNguonCu = chuanHoaMaNguonKho(sp.lsx || "");
   const laMaSanXuat = maNguonCu.startsWith("LC-");
+  const soLuong = isNaN(Number(sp.soLuong)) ? 0 : Math.max(0, Number(sp.soLuong));
+  const donGia = isNaN(Number(sp.donGia)) ? 0 : Math.max(0, Number(sp.donGia));
+  let giaTri = Number(sp.giaTri);
+  if (isNaN(giaTri) || giaTri <= 0) {
+    giaTri = soLuong * (donGia || Number(sp.giaVon) || 0);
+  }
   return {
     ...sp,
+    soLuong,
+    donGia,
+    giaTri,
     lsx: laMaSanXuat ? taoMaLoTonKhoTheoDong(sp.id, sp.ngayNhap) : layMaLoTonKho(sp),
     maLenhCat: sp.maLenhCat || (laMaSanXuat ? maNguonCu : undefined),
     size: hienThiDanhSachSize(sp.size || "", sp.chiTietSize),
@@ -138,9 +147,11 @@ export function fromSupabaseRow(r: any): SanPhamTP {
       : taoMaLoTonKhoTheoDong(String(r.id), r.ngay_nhap ?? ""),
     maLenhCat: r.ma_lenh_cat ?? (laMaSanXuat ? maNguonCu : undefined),
     ngayNhap: r.ngay_nhap ?? "",
-    soLuong: Number(r.so_luong) || 0,
-    donGia: Number(r.don_gia) || 0,
-    giaTri: Number(r.gia_tri) || 0,
+    soLuong: isNaN(Number(r.so_luong)) ? 0 : Math.max(0, Number(r.so_luong)),
+    donGia: isNaN(Number(r.don_gia)) ? 0 : Math.max(0, Number(r.don_gia)),
+    giaTri: !isNaN(Number(r.gia_tri)) && Number(r.gia_tri) > 0
+      ? Number(r.gia_tri)
+      : (Math.max(0, Number(r.so_luong) || 0) * (Math.max(0, Number(r.don_gia) || 0))),
     viTri: r.vi_tri ?? "",
     trangThai: (r.trang_thai as SanPhamTP["trangThai"]) ?? "con",
     khachHang: r.khach_hang ?? undefined,
@@ -369,7 +380,8 @@ export function taoSanPhamKhoTuLenhCat(
 
   return dsMauLC.map((m: any, idx: number) => {
     const ct = chiTietMauAll.find((c: any) => c.mau === m.ten);
-    const sl = ct?.soLuongDat ?? m.slThucTe ?? m.slDuKien ?? Math.round((lc.tongSL || 0) / dsMauLC.length);
+    const rawSl = ct?.soLuongDat ?? m.slThucTe ?? m.slDuKien ?? Math.round((Number(lc.tongSL) || 0) / (dsMauLC.length || 1));
+    const sl = isNaN(Number(rawSl)) ? 0 : Math.max(0, Number(rawSl));
     const chiTietSize = (ct?.sizes || m.phanBoSize || []) as Array<{ size: string; sl: number }>;
     const strTiLeSize = chiTietSize
       .filter((item) => item.sl > 0)
@@ -382,11 +394,12 @@ export function taoSanPhamKhoTuLenhCat(
       .toUpperCase();
     const anhMau = m.img || anhDaiDien;
 
-    const giaBanSi = options?.layGiaFn?.("ban-si", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.5);
-    const giaBanLe = options?.layGiaFn?.("ban-le", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 2);
-    const giaBanLo = options?.layGiaFn?.("ban-lo", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.3);
-    const giaTikTok = options?.layGiaFn?.("tiktok", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.8);
-    const giaShopee = options?.layGiaFn?.("shopee", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVon1SP * 1.8);
+    const giaVonNum = isNaN(Number(giaVon1SP)) ? 32250 : Number(giaVon1SP);
+    const giaBanSi = options?.layGiaFn?.("ban-si", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVonNum * 1.5);
+    const giaBanLe = options?.layGiaFn?.("ban-le", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVonNum * 2);
+    const giaBanLo = options?.layGiaFn?.("ban-lo", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVonNum * 1.3);
+    const giaTikTok = options?.layGiaFn?.("tiktok", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVonNum * 1.8);
+    const giaShopee = options?.layGiaFn?.("shopee", lc.maSP, m.maSKU, Math.max(1, sl)) || Math.round(giaVonNum * 1.8);
 
     return {
       id: `TP-${lc.id}-${variantKey}`,
@@ -399,9 +412,9 @@ export function taoSanPhamKhoTuLenhCat(
       maLenhCat: lc.id,
       ngayNhap,
       soLuong: sl,
-      donGia: giaVon1SP,
-      giaTri: sl * giaVon1SP,
-      giaVon: giaVon1SP,
+      donGia: giaVonNum,
+      giaTri: sl * giaVonNum,
+      giaVon: giaVonNum,
       giaBanSi: kenhBan.includes("ban-si") ? giaBanSi : 0,
       giaBanLe: kenhBan.includes("ban-le") ? giaBanLe : 0,
       giaBanLo: kenhBan.includes("ban-lo") ? giaBanLo : 0,

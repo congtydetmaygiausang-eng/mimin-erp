@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -40,6 +40,7 @@ import {
   Palette,
   Database,
   LogIn,
+  LogOut,
   RefreshCw,
   X,
   Lock,
@@ -251,11 +252,24 @@ const NAV: NavItem[] = [
   }
 ];
 
-function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pathname: string; onItemClick?: () => void; isCollapsed?: boolean; toggleCollapse?: () => void }) {
-  const { user } = useSession();
+function NavContent({
+  pathname,
+  onItemClick,
+  isCollapsed,
+  toggleCollapse,
+  isMobile = false,
+}: {
+  pathname: string;
+  onItemClick?: () => void;
+  isCollapsed?: boolean;
+  toggleCollapse?: () => void;
+  isMobile?: boolean;
+}) {
+  const { user, signOut } = useSession();
+  const router = useRouter();
   const role = user?.role;
   const permissionRevision = usePermissionRevision();
-  
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [currentSearch, setCurrentSearch] = useState("");
 
@@ -371,18 +385,18 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {!isCollapsed ? (
           <>
             <Link href={getDefaultLandingRoute(role)} className="flex items-center gap-3 min-w-0 flex-1 group" onClick={onItemClick}>
-              <div className="w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/10 border border-white/20 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform">
                 <img src="/logo.png" alt="MIMIN" className="w-full h-full object-cover p-0.5" />
               </div>
               <div className="min-w-0">
-                <div className="font-black text-lg truncate text-white tracking-wider drop-shadow-md">MIMIN ERP</div>
-                <div className="text-xs truncate text-cyan-200 font-medium">Quản lý may mặc</div>
+                <div className="font-black text-base sm:text-lg truncate text-white tracking-wider drop-shadow-md">MIMIN ERP</div>
+                <div className="text-[11px] sm:text-xs truncate text-cyan-200 font-medium">Quản lý may mặc</div>
               </div>
             </Link>
             {toggleCollapse && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); toggleCollapse(); }}
-                className="hidden md:flex p-2 hover:bg-white/15 rounded-xl text-slate-300 hover:text-white transition-all shrink-0 hover:scale-105 active:scale-95"
+                className="hidden md:flex p-2 hover:bg-white/15 rounded-xl text-slate-300 hover:text-white transition-all shrink-0 hover:scale-105 active:scale-95 cursor-pointer"
                 title="Thu gọn menu (Chế độ Icon Dock)"
                 aria-label="Thu gọn menu"
               >
@@ -392,8 +406,8 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           </>
         ) : (
           <div className="relative group">
-            <Link 
-              href={getDefaultLandingRoute(role)} 
+            <Link
+              href={getDefaultLandingRoute(role)}
               className="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden bg-white/15 border border-white/25 shadow-md hover:scale-105 transition-transform"
               title="Về Trang chính"
             >
@@ -408,13 +422,43 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {onItemClick && (
           <button
             onClick={onItemClick}
-            className="md:hidden p-1.5 rounded-lg hover:bg-white/20 text-white"
+            className="md:hidden p-2 rounded-xl hover:bg-white/20 text-white transition-colors cursor-pointer"
             aria-label="Đóng menu"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
+
+      {/* Thẻ User Profile & Nút Đăng Xuất nổi bật trên Mobile */}
+      {isMobile && user && (
+        <div className="p-3 mx-2.5 mt-2.5 rounded-2xl bg-black/25 border border-white/15 backdrop-blur-md shadow-inner">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyan-500/20 border-2 border-cyan-400/50 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm">
+              {user.name.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-extrabold text-white truncate">{user.name}</div>
+              <div className="text-xs text-cyan-200 font-semibold truncate flex items-center gap-1.5 mt-0.5">
+                <span>{user.title || user.role}</span>
+                {user.maNV && <span className="bg-white/15 px-1.5 py-0.2 rounded text-[10px] text-white font-mono">{user.maNV}</span>}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              onItemClick?.();
+              await signOut();
+              router.replace("/login");
+            }}
+            className="w-full mt-2.5 py-2 px-3 rounded-xl bg-rose-500/25 hover:bg-rose-500/35 text-rose-100 border border-rose-400/40 text-xs font-black flex items-center justify-center gap-2 transition active:scale-95 shadow-xs cursor-pointer tracking-wide"
+          >
+            <LogOut className="w-4 h-4 text-rose-300" />
+            <span>ĐĂNG XUẤT TÀI KHOẢN</span>
+          </button>
+        </div>
+      )}
 
       {/* Nav Content */}
       <nav className={clsx(
@@ -438,13 +482,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
             const idleHeaderClasses = item.idleBg
               ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
               : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
-            
+
             // XỬ LÝ NHÓM CÓ SUB-ITEMS
             if (item.isGroup && item.subItems) {
               const isOpen = openGroups[item.label] || false;
               const isGroupActive = item.subItems.some((s) => isMatchHref(s.href));
               const isPopoverOpen = activePopover === item.label;
-              
+
               // Chế độ Icon Dock (Thu gọn - iPad / macOS style)
               if (isCollapsed) {
                 return (
@@ -554,7 +598,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                     <span className="flex-1 text-left tracking-wide">{item.label}</span>
                     {isOpen ? <ChevronDown className="w-3.5 h-3.5 opacity-50" /> : <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
                   </button>
-                  
+
                   <div
                     className={clsx(
                       "overflow-hidden transition-all duration-200",
@@ -587,13 +631,13 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
                 </div>
               );
             }
-            
+
             // XỬ LÝ ITEM ĐƠN LẺ (KHÔNG CÓ SUB-ITEMS)
             const active = pathname === item.href || pathname?.startsWith(item.href + "/");
             const singleIdleClasses = item.idleBg
               ? `${groupBorderColor} ${item.idleBg} ${item.idleText || "text-slate-800"}`
               : "border-transparent hover:bg-white/5 text-slate-200 hover:text-white";
-              
+
             // Chế độ Icon Dock cho Item đơn lẻ
             if (isCollapsed) {
               return (
@@ -664,10 +708,24 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
         {!isCollapsed ? (
           <>
             <span className="text-[11px] font-medium text-slate-300">© 2026 Polo Mimin</span>
-            {toggleCollapse && (
+            {isMobile ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  onItemClick?.();
+                  await signOut();
+                  router.replace("/login");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 text-rose-200 border border-rose-400/40 text-xs font-bold transition active:scale-95 cursor-pointer"
+                title="Đăng xuất khỏi hệ thống"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-300" />
+                <span>Đăng xuất</span>
+              </button>
+            ) : toggleCollapse && (
               <button
                 onClick={toggleCollapse}
-                className="hidden md:flex p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                className="hidden md:flex p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
                 title="Thu gọn Sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
@@ -678,7 +736,7 @@ function NavContent({ pathname, onItemClick, isCollapsed, toggleCollapse }: { pa
           toggleCollapse && (
             <button
               onClick={toggleCollapse}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
               title="Mở rộng Sidebar (Chế độ đầy đủ)"
               aria-label="Mở rộng Sidebar"
             >
@@ -724,23 +782,23 @@ export function Sidebar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCollapsed]);
-  
+
   // Không render sidebar ở trang login hoặc register
   if (pathname === "/login" || pathname === "/register" || pathname?.startsWith("/lark-login")) {
     return null;
   }
 
   return (
-    <aside 
+    <aside
       className={clsx(
         "hidden md:flex flex-col h-screen sticky top-0 bg-[#0B4D5D] text-white border-r border-white/10 z-40 shadow-sm transition-all duration-300 select-none",
         isCollapsed ? "w-[68px]" : "w-64"
       )}
     >
-      <NavContent 
-        pathname={pathname || ""} 
-        isCollapsed={isCollapsed} 
-        toggleCollapse={() => setIsCollapsed((prev) => !prev)} 
+      <NavContent
+        pathname={pathname || ""}
+        isCollapsed={isCollapsed}
+        toggleCollapse={() => setIsCollapsed((prev) => !prev)}
       />
     </aside>
   );
@@ -748,14 +806,14 @@ export function Sidebar() {
 
 export function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden animate-fade-in">
+    <div className="fixed inset-0 z-[100] md:hidden animate-fade-in">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute top-0 left-0 bottom-0 w-[280px] bg-[#0B4D5D] text-white shadow-2xl flex flex-col animate-slide-in-right pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]">
-        <NavContent pathname={pathname || ""} onItemClick={onClose} />
+      <div className="absolute top-0 left-0 bottom-0 w-[300px] sm:w-[320px] max-w-[85vw] bg-[#0B4D5D] text-white shadow-2xl flex flex-col animate-slide-in-right pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] z-10">
+        <NavContent pathname={pathname || ""} onItemClick={onClose} isMobile />
       </div>
     </div>
   );

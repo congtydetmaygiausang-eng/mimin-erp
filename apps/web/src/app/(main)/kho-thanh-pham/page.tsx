@@ -334,8 +334,20 @@ export default function KhoThanhPhamPage() {
     return dsSanPham.length - countManPJ;
   }, [dsSanPham, countManPJ]);
 
-  const totalQtyFiltered = useMemo(() => filtered.reduce((s, x) => s + (x.soLuong || 0), 0), [filtered]);
-  const totalValFiltered = useMemo(() => filtered.reduce((s, x) => s + (x.giaTri || 0), 0), [filtered]);
+  const totalQtyFiltered = useMemo(() => filtered.reduce((s, x) => {
+    const sl = Number(x?.soLuong);
+    return s + (isNaN(sl) || sl < 0 ? 0 : sl);
+  }, 0), [filtered]);
+
+  const totalValFiltered = useMemo(() => filtered.reduce((s, x) => {
+    let gt = Number(x?.giaTri);
+    if (isNaN(gt) || gt <= 0) {
+      const sl = isNaN(Number(x?.soLuong)) ? 0 : Math.max(0, Number(x?.soLuong));
+      const dg = isNaN(Number(x?.donGia)) ? (isNaN(Number(x?.giaVon)) ? 0 : Number(x?.giaVon)) : Number(x?.donGia);
+      gt = sl * dg;
+    }
+    return s + (isNaN(gt) || gt < 0 ? 0 : gt);
+  }, 0), [filtered]);
 
   const handleResetFilters = useCallback(() => {
     setSearch("");
@@ -410,10 +422,21 @@ export default function KhoThanhPhamPage() {
 
   // Thống kê
   const stats = useMemo(() => {
-    const tongSP = dsSanPham.reduce((s, x) => s + x.soLuong, 0);
-    const tongGT = dsSanPham.reduce((s, x) => s + x.giaTri, 0);
-    const soLoai = new Set(dsSanPham.map((x) => x.maSP)).size;
-    const conHang = dsSanPham.filter((x) => x.trangThai === "con").length;
+    const tongSP = dsSanPham.reduce((s, x) => {
+      const sl = Number(x?.soLuong);
+      return s + (isNaN(sl) || sl < 0 ? 0 : sl);
+    }, 0);
+    const tongGT = dsSanPham.reduce((s, x) => {
+      let gt = Number(x?.giaTri);
+      if (isNaN(gt) || gt <= 0) {
+        const sl = isNaN(Number(x?.soLuong)) ? 0 : Math.max(0, Number(x?.soLuong));
+        const dg = isNaN(Number(x?.donGia)) ? (isNaN(Number(x?.giaVon)) ? 0 : Number(x?.giaVon)) : Number(x?.donGia);
+        gt = sl * dg;
+      }
+      return s + (isNaN(gt) || gt < 0 ? 0 : gt);
+    }, 0);
+    const soLoai = new Set(dsSanPham.map((x) => x.maSP).filter(Boolean)).size;
+    const conHang = dsSanPham.filter((x) => (Number(x.soLuong) || 0) > 0 && x.trangThai === "con").length;
     const daDat = dsSanPham.filter((x) => x.trangThai === "dat-hang").length;
     return { tongSP, tongGT, soLoai, conHang, daDat };
   }, [dsSanPham]);
@@ -422,7 +445,7 @@ export default function KhoThanhPhamPage() {
   const dsLoai = useMemo(() => Array.from(new Set(dsSanPham.map((s) => s.maSP))).sort(), [dsSanPham]);
 
   // Helper: Đồng bộ toàn bộ thông tin sản phẩm từ Kho Thành Phẩm sang Danh Mục Sản Phẩm (san_pham)
-  // Đảm bảo số lượng tồn kho từng màu, ảnh, tên SP, giá bán, loại SP luôn khớp 100%
+  // Đảm bảo số lượng tồn kho từng màu, tỷ lệ size, bảng size, ảnh, tên SP, giá bán, loại SP luôn khớp 100%
   const dongBoSangDanhMucSP = async (
     maSPInput: string,
     customKhoRows?: SanPhamTP[],
@@ -431,6 +454,8 @@ export default function KhoThanhPhamPage() {
       phanLoai?: string;
       anhDaiDien?: string;
       thuongHieu?: string;
+      tiLeSize?: string;
+      chiTietSize?: Array<{ size: string; sl: number }>;
     }
   ) => {
     const maSP = (maSPInput || "").trim();
@@ -451,6 +476,32 @@ export default function KhoThanhPhamPage() {
     const tenSP = extraInfo?.tenSP || firstRow?.tenSP || existingDM?.tenSP || maSP;
     const phanLoai = (extraInfo?.phanLoai || firstRow?.phanLoai || existingDM?.loaiSP || "BoTru") as any;
     const thuongHieu = extraInfo?.thuongHieu || firstRow?.thuongHieu || existingDM?.thuongHieu || "Polomimin";
+
+    // Xác định tỉ lệ size và bảng size từ variant mới nhất hoặc các dòng kho
+    const tiLeSize = extraInfo?.tiLeSize || firstRow?.tiLeSize || existingDM?.tiLeSize || "1:1:1:1";
+    let sizesList: string[] = [];
+    if (extraInfo?.chiTietSize && extraInfo.chiTietSize.length > 0) {
+      sizesList = extraInfo.chiTietSize.map((s) => s.size.trim()).filter(Boolean);
+    } else {
+      const allSizesFromRows = Array.from(
+        new Set(spRows.flatMap((r) => (r.chiTietSize || []).map((s) => s.size.trim())).filter(Boolean))
+      );
+      if (allSizesFromRows.length > 0) {
+        sizesList = allSizesFromRows;
+      } else if (existingDM?.bangSize?.sizes?.length) {
+        sizesList = existingDM.bangSize.sizes;
+      } else {
+        sizesList = ["L", "XL", "2XL", "3XL"];
+      }
+    }
+    const ratioParts = (tiLeSize || "").split(/[:,-]+/).map((n) => parseInt(n.trim(), 10) || 1);
+    const ratios = sizesList.map((_, idx) => ratioParts[idx] ?? 1);
+    const riSo = ratios.reduce((a, b) => a + b, 0) || sizesList.length || 1;
+    const bangSize = {
+      sizes: sizesList,
+      ratios,
+      riSo,
+    };
 
     // Tính giá
     const giaBanLe = Math.max(...spRows.map((r) => r.giaBanLe || 0), existingDM?.giaBanLe || 0, existingDM?.giaBanDuKien || 0);
@@ -551,6 +602,8 @@ export default function KhoThanhPhamPage() {
           giaShopee,
           giaBanDuKien: giaBanLe,
           giaVonDuKien: giaVon,
+          tiLeSize,
+          bangSize,
           dsMau: dsMauMoi,
           hinhAnh: anhDaiDien,
           trangThai: dsMauMoi.some((m) => m.soLuongKho > 0) ? "con-hang" : "het-hang",
@@ -573,12 +626,8 @@ export default function KhoThanhPhamPage() {
           giaShopee,
           giaBanDuKien: giaBanLe,
           giaVonDuKien: giaVon,
-          tiLeSize: firstRow?.tiLeSize || "1:1:1:1",
-          bangSize: {
-            sizes: firstRow?.chiTietSize?.map((s) => s.size) || ["L", "XL", "XXL", "3XL"],
-            ratios: (firstRow?.tiLeSize || "").split(":").map((n) => parseInt(n) || 1),
-            riSo: 4,
-          },
+          tiLeSize,
+          bangSize,
           dsMau: dsMauMoi,
           ghiChu: "Đồng bộ từ Kho thành phẩm",
           ngayTao: new Date().toISOString().slice(0, 10),
@@ -587,6 +636,39 @@ export default function KhoThanhPhamPage() {
         },
         { skipKhoSync: true }
       );
+    }
+
+    // Trực tiếp cập nhật bảng san_pham trên Supabase để đồng bộ ngay lập tức cho các tab và thiết bị
+    if (checkSupabase()) {
+      try {
+        const { supabase } = await import("@/lib/supabase/client");
+        const { buildDBPayload } = await import("@/lib/data/danh-muc-sp-store");
+        if (supabase) {
+          const spToSave: any = {
+            ...(existingDM || {}),
+            id: maSP,
+            maSP: maSP,
+            tenSP,
+            loaiSP: phanLoai,
+            thuongHieu,
+            giaBanLe,
+            giaBanSi,
+            giaBanLo,
+            giaTikTok,
+            giaShopee,
+            giaBanDuKien: giaBanLe,
+            giaVonDuKien: giaVon,
+            tiLeSize,
+            bangSize,
+            dsMau: dsMauMoi,
+            hinhAnh: anhDaiDien,
+            trangThai: dsMauMoi.some((m) => m.soLuongKho > 0) ? "con-hang" : "het-hang",
+          };
+          await supabase.from("san_pham").upsert(buildDBPayload(spToSave), { onConflict: "ma_sp" });
+        }
+      } catch (errSync) {
+        console.warn("[KhoThanhPham] Lỗi upsert sang Supabase san_pham:", errSync);
+      }
     }
 
     if (typeof window !== "undefined") {
@@ -902,6 +984,7 @@ export default function KhoThanhPhamPage() {
       trangThai: newTrangThai,
       size: hienThiDanhSachSize(updated.size || "", cleanSizes),
       chiTietSize: cleanSizes,
+      tiLeSize: updated.tiLeSize,
       giaTri: soLuongMoi * (Number(updated.donGia) || 0),
     };
 
@@ -920,13 +1003,15 @@ export default function KhoThanhPhamPage() {
       }
     }
 
-    // Đồng bộ toàn diện sang Danh mục sản phẩm (tồn kho từng màu, ảnh, giá...)
+    // Đồng bộ toàn diện sang Danh mục sản phẩm (tồn kho từng màu, tỷ lệ size, bảng size, ảnh, giá...)
     try {
       await dongBoSangDanhMucSP(cleanVariant.maSP, updatedKho, {
         tenSP: cleanVariant.tenSP,
         phanLoai: cleanVariant.phanLoai,
         anhDaiDien: cleanVariant.hinhAnh?.[0],
         thuongHieu: cleanVariant.thuongHieu,
+        tiLeSize: cleanVariant.tiLeSize,
+        chiTietSize: cleanSizes,
       });
     } catch (dmErr) {
       console.warn("[KhoThanhPham] Lỗi đồng bộ Danh mục:", dmErr);
@@ -1578,14 +1663,18 @@ export default function KhoThanhPhamPage() {
           />
         );
       })()}
-      {openVariant && (
-        <VariantDetailModal
-          sp={openVariant}
-          onClose={() => setOpenVariant(null)}
-          onSave={handleSaveVariant}
-          onDelete={handleDelete}
-        />
-      )}
+      {openVariant && (() => {
+        const matchingDM = dsDanhMuc.find((d) => isMatchingProduct(d, openVariant.maSP));
+        return (
+          <VariantDetailModal
+            sp={openVariant}
+            tiLeSizeDefault={openVariant.tiLeSize || matchingDM?.tiLeSize}
+            onClose={() => setOpenVariant(null)}
+            onSave={handleSaveVariant}
+            onDelete={handleDelete}
+          />
+        );
+      })()}
 
       {lenhDangNhap && (
         <ChiTietNhapKhoModal
