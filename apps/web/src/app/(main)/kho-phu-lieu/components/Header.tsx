@@ -4,7 +4,7 @@
 
 import {
   Boxes, Plus, Minus, History, Box, DollarSign,
-  TrendingUp, AlertTriangle, Download, Package
+  TrendingUp, AlertTriangle, Download, Package, RefreshCw
 } from "lucide-react";
 import { formatVND } from "@/lib/data/real-data";
 import type { Tab } from "../data";
@@ -17,6 +17,8 @@ interface HeaderProps {
   tongNhap: number;
   onAdd: () => void;
   onExportCSV?: () => void;
+  onSyncBo?: () => void;
+  isSyncingBo?: boolean;
   tab: Tab;
   setTab: (v: Tab) => void;
 }
@@ -29,6 +31,8 @@ export function Header({
   tongNhap,
   onAdd,
   onExportCSV,
+  onSyncBo,
+  isSyncingBo,
   tab,
   setTab,
 }: HeaderProps) {
@@ -71,6 +75,19 @@ export function Header({
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {onSyncBo && (
+            <button
+              type="button"
+              onClick={onSyncBo}
+              disabled={isSyncingBo}
+              className="px-3.5 py-2 bg-emerald-600/80 hover:bg-emerald-600 text-white border border-emerald-400/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer backdrop-blur-sm disabled:opacity-50"
+              title="Đồng bộ 28 màu bo cổ và 28 màu nút chuẩn theo 28 màu vải thành phẩm"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-100 ${isSyncingBo ? "animate-spin" : ""}`} />
+              <span>{isSyncingBo ? "Đang đồng bộ..." : "Đồng bộ Bo & Nút từ Vải TP"}</span>
+            </button>
+          )}
+
           {onExportCSV && (
             <button
               type="button"

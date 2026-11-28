@@ -61,12 +61,12 @@ export default function DanhMucSanPhamPage() {
   const { user } = useSession();
 
   useEffect(() => {
-    const zaloStatus = searchParams.get("zalo");
+    const zaloStatus = searchParams?.get("zalo");
     if (zaloStatus === "success") {
       toast.success("Đã kết nối Zalo OA thành công!");
       router.replace("/danh-muc-sp");
     } else if (zaloStatus === "error") {
-      toast.error(`Kết nối Zalo OA thất bại: ${searchParams.get("msg") || "Lỗi không xác định"}`);
+      toast.error(`Kết nối Zalo OA thất bại: ${searchParams?.get("msg") || "Lỗi không xác định"}`);
       router.replace("/danh-muc-sp");
     }
   }, [searchParams, router]);
@@ -194,6 +194,7 @@ export default function DanhMucSanPhamPage() {
           ngayTao: new Date().toISOString().slice(0, 10),
         }),
         tenSP: current?.tenSP || item.tenSP || item.maSP,
+        tiLeSize: current?.tiLeSize || item.tiLeSize || "1:1:1:1",
         dsMau: (() => {
           if (current?.dsMau?.length) {
             let base = [...current.dsMau];

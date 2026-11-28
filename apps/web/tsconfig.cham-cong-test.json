@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "isolatedModules": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".test-dist-cham-cong",
+    "rootDir": "src",
+    "plugins": []
+  },
+  "include": [
+    "src/lib/cham-cong-bang-luong.test.ts"
+  ]
+}
+

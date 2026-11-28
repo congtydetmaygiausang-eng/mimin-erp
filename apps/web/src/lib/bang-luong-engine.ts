@@ -154,11 +154,12 @@ export interface BangLuongNV {
   donVi: string;            // cái/sp
   luongCung: number;        // Lương cơ bản tháng (mức chuẩn 28 công)
   isLuongSP: boolean;      // true = lương sản phẩm, false = lương theo ngày công
-  ngayCongThucTe: number;  // Số công thực tế trong tháng (đi-làm/đi-trễ=1, nửa-ngày=0.5, nghỉ-phép=0)
+  ngayCongThucTe: number;  // Số công thực tế đi làm (đi-làm/đi-trễ=1, nửa-ngày=0.5)
+  ngayCongHuongLuong: number; // Tổng số công tính lương = ngayCongThucTe + ngayPhep
   ngayCongChuan: number;   // Chuẩn 28 ngày công/tháng
-  tyLeNgayCong: number;    // % thực tế so với chuẩn 28 công (không giới hạn trần)
-  ngayPhep: number;        // Số ngày nghỉ phép (0 công)
-  ngayKhongPhep: number;
+  tyLeNgayCong: number;    // % tính lương so với chuẩn 28 công (không giới hạn trần)
+  ngayPhep: number;        // Số ngày nghỉ phép hưởng lương (được tính vào lương)
+  ngayKhongPhep: number;   // Số ngày nghỉ không phép (trừ lương)
   soLanDiTre: number;
   gioTangCa: number;
   donGiaGioTangCa: number;  // Đơn giá 1h làm việc chuẩn = Lương cơ bản / (28 * 8.5)
@@ -168,14 +169,14 @@ export interface BangLuongNV {
   soLuongDat: number;       // SL hoàn thành đúng
   soLuongLoi: number;       // SL bị lỗi
   soLuongVuot: number;      // SL vượt (nếu có)
-  tienCong: number;         // Tiền công = slDat × donGia (SP) hoặc lương × (công / 28)
+  tienCong: number;         // Tiền công = slDat × donGia (SP) hoặc lương × (công hưởng lương / 28)
   phatLoi: number;          // Phạt lỗi (30% đơn giá / sp lỗi)
   thuongVuot: number;       // Thưởng vượt (+20% đơn giá / sp vượt)
   phatTreHan: number;       // Phạt trễ hạn (nếu có)
   tamUng: number;           // Tổng số tiền tạm ứng trong tháng từ Thu Chi nội bộ
   danhSachTamUng: GiaoDichThuChi[]; // Danh sách các lần tạm ứng chi tiết trong tháng
   thucNhan: number;         // Thực nhận = Tiền công + Thưởng - Phạt - Tạm ứng
-  ngayTra: string;          // Ngày trả dự kiến (ngày 5 tháng sau)
+  ngayTra: string;          // Ngày trả dự kiến (ngày 10 tháng sau)
   tasks: string[];          // Danh sách task IDs đã làm
   ghiChu?: string;
 }
@@ -184,13 +185,34 @@ const PHAT_LOI_RATE = 0.3;       // Phạt 30% đơn giá / sp lỗi
 const THUONG_VUOT_RATE = 0.2;    // Thưởng 20% đơn giá / sp vượt
 const PHAT_TRE_HAN = 50000;      // Phạt trễ hạn 50K / task
 
-// Lương cứng mặc định (theo data Excel)
-const LUONG_CUNG_DEFAULT: Record<string, number> = {
-  "Content - Media": 8_000_000,
-  "QL Khách hàng Sỉ": 7_000_000,
-  "Kế toán điều phối SX": 8_000_000,
-  "Nhân viên Kho": 7_000_000,
+// Lương cứng mặc định chuẩn hóa cho tất cả các bộ phận của MIMIN
+export const LUONG_CUNG_DEFAULT: Record<string, number> = {
+  "ban-giam-doc": 25_000_000,
+  "Quản lý": 12_000_000,
+  "Kế toán": 10_000_000,
+  "Kế toán điều phối SX": 10_000_000,
+  "ke-toan": 10_000_000,
+  "Kinh doanh": 10_000_000,
+  "kinh-doanh": 10_000_000,
+  "QL Khách hàng Sỉ": 8_000_000,
   "Media": 10_000_000,
+  "marketing": 10_000_000,
+  "Content - Media": 8_000_000,
+  "Kho": 8_000_000,
+  "Kho vận": 8_000_000,
+  "Nhân viên Kho": 8_000_000,
+  "kho": 8_000_000,
+  "Sản xuất": 7_000_000,
+  "to-may": 7_000_000,
+  "to-cat": 7_000_000,
+  "to-khuy-nut": 7_000_000,
+  "to-ui": 7_000_000,
+  "to-dong-goi": 7_000_000,
+  "Cắt": 7_000_000,
+  "May": 7_000_000,
+  "Ủi": 7_000_000,
+  "Khuy nút": 7_000_000,
+  "Gấp xếp": 7_000_000,
 };
 
 export interface NhanSuLuongInput {
@@ -263,13 +285,16 @@ export function tinhBangLuongThang(
 
     // Tổng hợp chấm công tháng của NV theo chuẩn 28 ngày (không giới hạn trần, nghỉ phép = 0 công)
     const normalizedMa = nv.ma.trim().toUpperCase();
+    const cleanCode = (s?: string) => (s || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     const myAttendance = monthAttendanceRecords.filter(
-      (r) => r.maNV.trim().toUpperCase() === normalizedMa
+      (r) => r.maNV.trim().toUpperCase() === normalizedMa || cleanCode(r.maNV) === cleanCode(nv.ma)
     );
     const attSummary = tongHopChamCong(myAttendance);
     const ngayCongChuan = CHUAN_NGAY_CONG_THANG;
     const ngayCongThucTe = attSummary.ngayCong;
-    const tyLeNgayCong = tinhPhanTramNgayCong(ngayCongThucTe, ngayCongChuan);
+    // Nghỉ phép năm (có phép) được hưởng nguyên lương: công hưởng lương = công đi làm + ngày phép
+    const ngayCongHuongLuong = ngayCongThucTe + (attSummary.ngayPhep || 0);
+    const tyLeNgayCong = tinhPhanTramNgayCong(ngayCongHuongLuong, ngayCongChuan);
 
     // Lấy tasks của NV trong tháng
     const myTasks = tasksTrongThang.filter((t) =>
@@ -305,9 +330,11 @@ export function tinhBangLuongThang(
     const tamUng = myTamUngRecords.reduce((sum, item) => sum + (Number(item.soTien) || 0), 0);
 
     // Tính tiền tăng ca:
-    // Cơ sở 28 ngày công / 1 tháng, mỗi ngày 8.5 tiếng làm việc chuẩn.
-    // Đơn giá 1 giờ = Lương cơ bản / (28 * 8.5) = Lương cơ bản / 238
-    const luongCoBanTinhTangCa = luongCung > 0 ? luongCung : (LUONG_CUNG_DEFAULT[nv.boPhan] || 0);
+    // Cơ sở 28 ngày công / 1 tháng, mỗi ngày 8.5 tiếng làm việc chuẩn = 238 giờ chuẩn.
+    // Nếu là công nhân hưởng lương SP (luongCung = 0), lấy mức sàn cơ sở 7.000.000đ (hoặc theo bộ phận) để tính đơn giá 1 giờ chuẩn
+    const luongCoBanTinhTangCa = (luongCung && luongCung > 0)
+      ? luongCung
+      : (LUONG_CUNG_DEFAULT[nv.boPhan] || 7_000_000);
     const donGiaGioTangCa = tinhDonGiaGio(luongCoBanTinhTangCa, ngayCongChuan, CHUAN_GIO_LAM_MOI_NGAY);
     const gioTangCa = attSummary.gioTangCa || 0;
     const tienTangCa = tinhTienTangCa(gioTangCa, luongCoBanTinhTangCa, ngayCongChuan, CHUAN_GIO_LAM_MOI_NGAY);
@@ -324,7 +351,8 @@ export function tinhBangLuongThang(
       thuongVuot = soLuongVuot * donGia * THUONG_VUOT_RATE;
       thucNhan = Math.max(0, tienCong + tienTangCa - phatLoi - phatTreHan + thuongVuot - tamUng);
     } else if (hasMonthAttendanceData) {
-      tienCong = tinhLuongTheoNgayCong(luongCung, ngayCongThucTe, ngayCongChuan);
+      // Lương theo ngày công: tính trên tổng số công hưởng lương (đi làm + nghỉ phép năm)
+      tienCong = tinhLuongTheoNgayCong(luongCung, ngayCongHuongLuong, ngayCongChuan);
       thucNhan = Math.max(0, tienCong + tienTangCa - phatTreHan - tamUng);
     } else {
       // Tháng chưa có dữ liệu chấm công (hoặc caller chưa truyền dữ liệu chấm công): giữ nguyên mức cơ bản để không gãy lịch sử
@@ -346,6 +374,7 @@ export function tinhBangLuongThang(
       luongCung,
       isLuongSP,
       ngayCongThucTe,
+      ngayCongHuongLuong,
       ngayCongChuan,
       tyLeNgayCong,
       ngayPhep: attSummary.ngayPhep,

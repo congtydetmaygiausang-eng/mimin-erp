@@ -1,5 +1,2651 @@
 [
   {
+    "id": "LC-2026-0346",
+    "maSP": "FCASA04",
+    "tenSP": "BỘ BÓNG ĐÁ FCASA04 IN CHUYỂN NHIỆT",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/FCASA04.png",
+    "hinhMauInTheu": "/product-models/FCASA04.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "FCASA04-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/FCASA04.png",
+        "imgQuan": "/product-models/FCASA04.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_ao",
+        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_quan",
+        "tenCongDoan": "May Quần",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-QUAN-001",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/FCASA04.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 31350
+    }
+  },
+  {
+    "id": "LC-2026-0347",
+    "maSP": "AAS02",
+    "tenSP": "ÁO CỔ TRÒN AAS02 SỌC ĐỨT IN CHUYỂN NHIỆT",
+    "loaiSP": "AoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/AAS02.png",
+    "hinhMauInTheu": "/product-models/AAS02.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "AAS02-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/AAS02.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/AAS02.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 21150
+    }
+  },
+  {
+    "id": "LC-2026-0348",
+    "maSP": "AAS03",
+    "tenSP": "ÁO POLO AAS03 PHỐI VAI CAM IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/AAS03.png",
+    "hinhMauInTheu": "/product-models/AAS03.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "AAS03-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/AAS03.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/AAS03.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0349",
+    "maSP": "KLAS17",
+    "tenSP": "BỘ THỂ THAO KLAS17 LOANG XANH IN CHUYỂN NHIỆT",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/KLAS17.png",
+    "hinhMauInTheu": "/product-models/KLAS17.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "KLAS17-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/KLAS17.png",
+        "imgQuan": "/product-models/KLAS17.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_ao",
+        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_quan",
+        "tenCongDoan": "May Quần",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-QUAN-001",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/KLAS17.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 31350
+    }
+  },
+  {
+    "id": "LC-2026-0350",
+    "maSP": "KLAS16",
+    "tenSP": "ÁO POLO KLAS16 VÒM CUNG IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/KLAS16.png",
+    "hinhMauInTheu": "/product-models/KLAS16.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "KLAS16-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/KLAS16.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/KLAS16.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0351",
+    "maSP": "DYAS04",
+    "tenSP": "BỘ THỂ THAO DYAS04 VẠT CHÉO IN CHUYỂN NHIỆT",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/DYAS04.png",
+    "hinhMauInTheu": "/product-models/DYAS04.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "DYAS04-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/DYAS04.png",
+        "imgQuan": "/product-models/DYAS04.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_ao",
+        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_quan",
+        "tenCongDoan": "May Quần",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-QUAN-001",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/DYAS04.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 31350
+    }
+  },
+  {
+    "id": "LC-2026-0352",
+    "maSP": "HKAS5",
+    "tenSP": "ÁO POLO HKAS5 SỌC CHÉO RÊU TRẮNG IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/HKAS5.png",
+    "hinhMauInTheu": "/product-models/HKAS5.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "HKAS5-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/HKAS5.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/HKAS5.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0353",
+    "maSP": "HKAS6",
+    "tenSP": "ÁO POLO HKAS6 HOA VĂN ĐA GIÁC IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/HKAS6.png",
+    "hinhMauInTheu": "/product-models/HKAS6.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "HKAS6-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/HKAS6.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/HKAS6.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0354",
+    "maSP": "KLAS14",
+    "tenSP": "ÁO POLO KLAS14 PRESTIGE CHUYỂN MÀU IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/KLAS14.png",
+    "hinhMauInTheu": "/product-models/KLAS14.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "KLAS14-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/KLAS14.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/KLAS14.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0355",
+    "maSP": "KLAS15",
+    "tenSP": "BỘ THỂ THAO KLAS15 CHẤM BI IN CHUYỂN NHIỆT",
+    "loaiSP": "BoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/KLAS15.png",
+    "hinhMauInTheu": "/product-models/KLAS15.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "KLAS15-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/KLAS15.png",
+        "imgQuan": "/product-models/KLAS15.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_ao",
+        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_quan",
+        "tenCongDoan": "May Quần",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-QUAN-001",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/KLAS15.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 33350
+    }
+  },
+  {
+    "id": "LC-2026-0356",
+    "maSP": "NTAS4",
+    "tenSP": "BỘ BÓNG ĐÁ NTAS4 SỐ 10 CHUYỂN SẮC IN CHUYỂN NHIỆT",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/NTAS4.png",
+    "hinhMauInTheu": "/product-models/NTAS4.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "NTAS4-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/NTAS4.png",
+        "imgQuan": "/product-models/NTAS4.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_ao",
+        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may_quan",
+        "tenCongDoan": "May Quần",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-QUAN-001",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/NTAS4.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 31350
+    }
+  },
+  {
+    "id": "LC-2026-0357",
+    "maSP": "FCASA03",
+    "tenSP": "ÁO BÓNG ĐÁ FCASA03 HOLIC SÓNG NHIỆT IN CHUYỂN NHIỆT",
+    "loaiSP": "AoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/FCASA03.png",
+    "hinhMauInTheu": "/product-models/FCASA03.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "FCASA03-IN-01",
+        "maVai": "VAI-THUN-LANH",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/FCASA03.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRON-001",
+        "nguoiTen": "Xưởng may tròn anh Trai",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/FCASA03.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 21150
+    }
+  },
+  {
+    "id": "LC-2026-0358",
+    "maSP": "NTAS5",
+    "tenSP": "ÁO POLO NTAS5 HÌNH HỌC IN CHUYỂN NHIỆT",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "POLOMIMIN",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-12-15",
+    "ngayTao": "2026-11-27",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Nguyễn Hoàng Giang",
+    "phuTrachSX": "NV08",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Lệnh sản xuất in chuyển nhiệt toàn thân tại Xưởng in chuyển nhiệt Tiến Đạt (GC-IN-004). Người phụ trách: Nguyễn Hoàng Giang",
+    "hinhAnh": "/product-models/NTAS5.png",
+    "hinhMauInTheu": "/product-models/NTAS5.png",
+    "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt",
+    "dsMau": [
+      {
+        "ten": "Màu In Thiết Kế",
+        "maSKU": "NTAS5-IN-01",
+        "maVai": "VAI-THUN-ME",
+        "dinhMuc": 0.25,
+        "slDuKien": 400,
+        "slThucTe": 400,
+        "img": "/product-models/NTAS5.png",
+        "phanBoSize": [
+          {
+            "size": "M",
+            "sl": 100
+          },
+          {
+            "size": "L",
+            "sl": 100
+          },
+          {
+            "size": "XL",
+            "sl": 100
+          },
+          {
+            "size": "2XL",
+            "sl": 100
+          }
+        ]
+      }
+    ],
+    "phanCong": [
+      {
+        "id": "cat",
+        "tenCongDoan": "Cắt",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "NV08",
+        "nguoiTen": "Nguyễn Hoàng Giang",
+        "donGia": 1400,
+        "soLuong": 400,
+        "thanhTien": 560000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "in_theu",
+        "tenCongDoan": "In chuyển nhiệt",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-IN-004",
+        "nguoiTen": "Xưởng in chuyển nhiệt Tiến Đạt",
+        "donGia": 3500,
+        "soLuong": 400,
+        "thanhTien": 1400000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "may",
+        "tenCongDoan": "May",
+        "loaiNguoi": "xuong_ngoai",
+        "nguoiMa": "GC-TRU-005",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 15000,
+        "soLuong": 400,
+        "thanhTien": 6000000,
+        "trangThaiCD": "cho_giao"
+      },
+      {
+        "id": "khuy_nut",
+        "tenCongDoan": "Khuy nút",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_KHUY_NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 750,
+        "soLuong": 400,
+        "thanhTien": 300000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "qc",
+        "tenCongDoan": "Kiểm tra chất lượng (QC)",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_QC",
+        "nguoiTen": "Tổ QC",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "ui",
+        "tenCongDoan": "Ủi",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "dong_goi",
+        "tenCongDoan": "Gấp xếp / Đóng gói",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "TO_DONG_GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 800,
+        "soLuong": 400,
+        "thanhTien": 320000,
+        "trangThaiCD": "chua_bat_dau",
+        "daThanhToan": 0,
+        "conLai": 320000,
+        "trangThaiTT": "chua_tra"
+      },
+      {
+        "id": "nhap_kho",
+        "tenCongDoan": "Nhập kho",
+        "loaiNguoi": "noi_bo",
+        "nguoiMa": "KHO_THANH_PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "chua_bat_dau"
+      }
+    ],
+    "bangCOGS": {
+      "taiLieuSanXuat": {
+        "hinhMauInTheu": "/product-models/NTAS5.png",
+        "ghiChuInTheu": "In chuyển nhiệt tại Xưởng in chuyển nhiệt Tiến Đạt"
+      },
+      "giaCong1SP": 23150
+    }
+  },
+  {
+    "id": "LC-2026-0288",
+    "maSP": "M288",
+    "tenSP": "BỘ TRỤ PHỐI NGANG NGỰC 2 THANH",
+    "loaiSP": "BoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã phiếu cắt: GC-20260319-001 | BÀN 196-PBJ-288 | Sơ đồ 8,5m/8 bộ | Định mức 1,049 bộ/kg | 1 cây vải = 40m | 5 màu × 80 bộ/màu = 400 bộ",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ 8,5m/8 bộ | Định mức 1,049 bộ/kg | 1 cây vải = 40m",
+    "hinhAnh": "/product-models/M288.png",
+    "dsMau": [
+      {
+        "ten": "TRẮNG",
+        "maSKU": "PBJ-288-TRANG",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "/product-models/M288.png",
+        "imgQuan": "/product-models/PBJ-288-detail.png",
+        "mauPhoi": [
+          "DA-NÂU"
+        ],
+        "ghiChu": "Quần ĐEN | Phối DA-NÂU | 20 lớp, 246m, 6.5 cây, 130 kg",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "ĐEN",
+        "maSKU": "PBJ-288-DEN",
+        "maVai": "VAI-13",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "/product-models/M288.png",
+        "imgQuan": "/product-models/PBJ-288-detail.png",
+        "mauPhoi": [
+          "NÂU-X.ĐEN"
+        ],
+        "ghiChu": "Quần ĐEN | Phối NÂU-X.ĐEN | 20 lớp, 246m, 6.5 cây, 130 kg",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "XÁM NHẠT",
+        "maSKU": "PBJ-288-XAM-NHAT",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-XAM-NHAT",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "/product-models/M288.png",
+        "imgQuan": "/product-models/PBJ-288-detail.png",
+        "mauPhoi": [
+          "X.ĐEN-DA"
+        ],
+        "ghiChu": "Quần XÁM NHẠT | Phối X.ĐEN-DA | 20 lớp, 246m, 6.5 cây, 130 kg",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "NÂU 11",
+        "maSKU": "PBJ-288-NAU-11",
+        "maVai": "VAI-11",
+        "maVaiQuan": "VAI-NAU-11",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "/product-models/M288.png",
+        "imgQuan": "/product-models/PBJ-288-detail.png",
+        "mauPhoi": [
+          "TRẮNG-ĐEN"
+        ],
+        "ghiChu": "Quần NÂU 11 | Phối TRẮNG-ĐEN | 20 lớp, 246m, 6.5 cây, 130 kg",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "BEGI",
+        "maSKU": "PBJ-288-BEGI",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-BEGI",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "/product-models/M288.png",
+        "imgQuan": "/product-models/PBJ-288-detail.png",
+        "mauPhoi": [
+          "ĐEN-TRẮNG"
+        ],
+        "ghiChu": "Quần BEGI | Phối ĐEN-TRẮNG | 20 lớp, 246m, 6.5 cây, 130 kg",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "daThanhToan": 0,
+        "conLai": 5200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_quan",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Quần",
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "daThanhToan": 0,
+        "conLai": 3800000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 400,
+        "thanhTien": 400000,
+        "daThanhToan": 0,
+        "conLai": 400000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 24000,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 103900,
+      "taiLieuSanXuat": {
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ 8,5m/8 bộ | Định mức 1,049 bộ/kg | 1 cây vải = 40m",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
     "id": "LC-2026-0017",
     "loaiLenh": "HangDat",
     "khachHang": "Hàng Đặt",
@@ -500,10 +3146,10 @@
   {
     "id": "LC-2026-0337",
     "maSP": "M337",
-    "tenSP": "BỘ TRỤ SỌC NGỰC BÀN 188",
+    "tenSP": "BỘ TRỤ MANPJ PHỐI TINH TẾ TRẺ TRUNG (BPJ-337-NND)",
     "loaiSP": "BoTru",
     "loaiLenh": "HangDat",
-    "khachHang": "MANPJ / POLOMIMIN",
+    "khachHang": "MANPJ",
     "tongSL": 400,
     "tongSLThucTe": 400,
     "tongSLThucTeAo": 400,
@@ -511,25 +3157,31 @@
     "tiLeSize": "1:1:1:1",
     "hanHoanThanh": "2026-10-26",
     "ngayTao": "2026-10-18",
-    "phuTrachCat": "Bàn 188",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
     "phuTrachSX": "Hồ Minh Sang",
-    "ghiChu": "Theo Phiếu Giao Nhận Gia Công Bàn 188 - M337",
     "trangThai": "DangCat",
-    "aoXuong": "Xưởng may trụ anh Thông",
-    "quanXuong": "Xưởng may quần anh Thơ",
-    "inXuong": "Xưởng thêu anh Vui",
     "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: BPJ-337-NND | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-337-NND",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752287247_8ahmqrc.jpg",
     "dsMau": [
       {
-        "ten": "MÀU ĐEN",
-        "maSKU": "M337-ĐEN",
-        "maVai": "V-ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "XÁM",
+        "maSKU": "BPJ-337-NND-XÁM",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M337.jpg",
-        "imgQuan": "/product-models/M337-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752287247_8ahmqrc.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752287247_8ahmqrc.jpg",
+        "ghiChu": "Xám - BPJ-337-NND",
         "phanBoSize": [
           {
             "size": "L",
@@ -568,15 +3220,17 @@
         ]
       },
       {
-        "ten": "MÀU XANH ĐEN",
-        "maSKU": "M337-X.ĐEN",
-        "maVai": "V-X.ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "XANH",
+        "maSKU": "BPJ-337-NND-XANH",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M337.jpg",
-        "imgQuan": "/product-models/M337-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752324106_jydje2q.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752324106_jydje2q.jpg",
+        "ghiChu": "Xanh - BPJ-337-NND",
         "phanBoSize": [
           {
             "size": "L",
@@ -615,15 +3269,17 @@
         ]
       },
       {
-        "ten": "MÀU DA",
-        "maSKU": "M337-DA",
-        "maVai": "V-DA001",
-        "dinhMuc": 0.26,
+        "ten": "DA",
+        "maSKU": "BPJ-337-NND-DA",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M337.jpg",
-        "imgQuan": "/product-models/M337-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752343063_ntlplug.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752343063_ntlplug.jpg",
+        "ghiChu": "Da - BPJ-337-NND",
         "phanBoSize": [
           {
             "size": "L",
@@ -662,15 +3318,17 @@
         ]
       },
       {
-        "ten": "MÀU RÊU",
-        "maSKU": "M337-RÊU",
-        "maVai": "V-RÊU001",
-        "dinhMuc": 0.26,
+        "ten": "TRẮNG",
+        "maSKU": "BPJ-337-NND-TRẮNG",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M337.jpg",
-        "imgQuan": "/product-models/M337-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752359847_ic1zeim.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752359847_ic1zeim.jpg",
+        "ghiChu": "Trắng - BPJ-337-NND",
         "phanBoSize": [
           {
             "size": "L",
@@ -709,15 +3367,17 @@
         ]
       },
       {
-        "ten": "MÀU XÁM",
-        "maSKU": "M337-XÁM",
-        "maVai": "V-XÁM001",
-        "dinhMuc": 0.26,
+        "ten": "ĐEN",
+        "maSKU": "BPJ-337-NND-ĐEN",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M337.jpg",
-        "imgQuan": "/product-models/M337-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752376418_f0kzk7r.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752376418_f0kzk7r.jpg",
+        "ghiChu": "Đen - BPJ-337-NND",
         "phanBoSize": [
           {
             "size": "L",
@@ -756,17 +3416,35 @@
         ]
       }
     ],
+    "dsPhuLieu": [],
     "phanCong": [
       {
-        "id": "in_theu",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "In / Thêu",
-        "nguoiTen": "Xưởng thêu anh Vui",
-        "donGia": 3000,
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
         "soLuong": 400,
-        "thanhTien": 1200000,
+        "thanhTien": 600000,
         "daThanhToan": 0,
-        "conLai": 1200000,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
         "trangThaiTT": "chua_tra",
         "trangThaiCD": "hoan_thanh",
         "soLuongHoanThanh": 400,
@@ -774,31 +3452,33 @@
       },
       {
         "id": "may_ao",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
         "nguoiTen": "Xưởng may trụ anh Thông",
-        "donGia": 12000,
+        "donGia": 13000,
         "soLuong": 400,
-        "thanhTien": 4800000,
+        "thanhTien": 5200000,
         "daThanhToan": 0,
-        "conLai": 4800000,
+        "conLai": 5200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
       {
         "id": "may_quan",
-        "loaiNguoi": "gia_cong",
+        "loaiNguoi": "xuong_ngoai",
         "tenCongDoan": "May Quần",
-        "nguoiTen": "Xưởng may quần anh Thơ",
-        "donGia": 8000,
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
         "soLuong": 400,
-        "thanhTien": 3200000,
+        "thanhTien": 3800000,
         "daThanhToan": 0,
-        "conLai": 3200000,
+        "conLai": 3800000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
@@ -806,6 +3486,7 @@
         "id": "khuy_nut",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
         "nguoiTen": "Tổ Khuy Nút",
         "donGia": 500,
         "soLuong": 400,
@@ -813,14 +3494,15 @@
         "daThanhToan": 0,
         "conLai": 200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "ui",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
         "nguoiTen": "Tổ Ủi",
         "donGia": 1000,
         "soLuong": 400,
@@ -828,14 +3510,15 @@
         "daThanhToan": 0,
         "conLai": 400000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "dong_goi",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
         "nguoiTen": "Tổ Đóng Gói",
         "donGia": 1200,
         "soLuong": 400,
@@ -843,14 +3526,15 @@
         "daThanhToan": 0,
         "conLai": 480000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "nhap_kho",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
         "nguoiTen": "Kho thành phẩm",
         "donGia": 0,
         "soLuong": 400,
@@ -863,9 +3547,28 @@
         "soLuongLoi": 0
       }
     ],
-    "dsPhuLieu": [],
-    "chiPhiCoDinh": {},
-    "mauCongDoan": "MCD-BO-TRU"
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795752287247_8ahmqrc.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-337-NND",
+        "daCoSoDo": true
+      }
+    }
   },
   {
     "id": "LC-2026-0001",
@@ -34491,10 +37194,10 @@
   {
     "id": "LC-2026-0331",
     "maSP": "M331",
-    "tenSP": "BỘ TRỤ PHỐI TAY LOGO P BÀN 195",
+    "tenSP": "BỘ TRỤ MANPJ PHONG CÁCH ĐƯỜNG PHỐ (BPJ-331-PT)",
     "loaiSP": "BoTru",
     "loaiLenh": "HangDat",
-    "khachHang": "MANPJ / POLOMIMIN",
+    "khachHang": "MANPJ",
     "tongSL": 400,
     "tongSLThucTe": 400,
     "tongSLThucTeAo": 400,
@@ -34502,25 +37205,31 @@
     "tiLeSize": "1:1:1:1",
     "hanHoanThanh": "2026-11-03",
     "ngayTao": "2026-10-25",
-    "phuTrachCat": "Bàn 195",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
     "phuTrachSX": "Hồ Minh Sang",
-    "ghiChu": "Theo Phiếu Giao Nhận Gia Công Bàn 195 - M331",
     "trangThai": "DangCat",
-    "aoXuong": "Xưởng may trụ chị Tý Sơn",
-    "quanXuong": "Xưởng may quần chị Hương",
-    "inXuong": "Xưởng thêu anh Vui",
     "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: BPJ-331-PT | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-331-PT",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745720016_aidh07y.jpg",
     "dsMau": [
       {
-        "ten": "MÀU ĐEN",
-        "maSKU": "M331-ĐEN",
-        "maVai": "V-ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "DA",
+        "maSKU": "BPJ-331-PT-DA",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M331.jpg",
-        "imgQuan": "/product-models/M331-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745720016_aidh07y.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745720016_aidh07y.jpg",
+        "ghiChu": "Da - BPJ-331-PT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34559,15 +37268,17 @@
         ]
       },
       {
-        "ten": "MÀU XANH ĐEN",
-        "maSKU": "M331-X.ĐEN",
-        "maVai": "V-X.ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "TRẮNG",
+        "maSKU": "BPJ-331-PT-TRẮNG",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M331.jpg",
-        "imgQuan": "/product-models/M331-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745747923_tnsdyot.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745747923_tnsdyot.jpg",
+        "ghiChu": "Trắng - BPJ-331-PT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34606,15 +37317,17 @@
         ]
       },
       {
-        "ten": "MÀU DA",
-        "maSKU": "M331-DA",
-        "maVai": "V-DA001",
-        "dinhMuc": 0.26,
+        "ten": "VÀNG BÒ",
+        "maSKU": "BPJ-331-PT-VÀNG BÒ",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M331.jpg",
-        "imgQuan": "/product-models/M331-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745768151_ceakzx9.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745768151_ceakzx9.jpg",
+        "ghiChu": "Vàng bò - BPJ-331-PT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34653,15 +37366,17 @@
         ]
       },
       {
-        "ten": "MÀU RÊU",
-        "maSKU": "M331-RÊU",
-        "maVai": "V-RÊU001",
-        "dinhMuc": 0.26,
+        "ten": "ĐEN",
+        "maSKU": "BPJ-331-PT-ĐEN",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M331.jpg",
-        "imgQuan": "/product-models/M331-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745785393_6wocmgt.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745785393_6wocmgt.jpg",
+        "ghiChu": "Đen - BPJ-331-PT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34700,15 +37415,17 @@
         ]
       },
       {
-        "ten": "MÀU XÁM",
-        "maSKU": "M331-XÁM",
-        "maVai": "V-XÁM001",
-        "dinhMuc": 0.26,
+        "ten": "XANH ĐEN",
+        "maSKU": "BPJ-331-PT-XANH ĐEN",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M331.jpg",
-        "imgQuan": "/product-models/M331-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745800796_qyua0si.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745800796_qyua0si.jpg",
+        "ghiChu": "Xanh đen - BPJ-331-PT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34747,17 +37464,35 @@
         ]
       }
     ],
+    "dsPhuLieu": [],
     "phanCong": [
       {
-        "id": "in_theu",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "In / Thêu",
-        "nguoiTen": "Xưởng thêu anh Vui",
-        "donGia": 3000,
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
         "soLuong": 400,
-        "thanhTien": 1200000,
+        "thanhTien": 600000,
         "daThanhToan": 0,
-        "conLai": 1200000,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
         "trangThaiTT": "chua_tra",
         "trangThaiCD": "hoan_thanh",
         "soLuongHoanThanh": 400,
@@ -34765,31 +37500,33 @@
       },
       {
         "id": "may_ao",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "May Áo",
-        "nguoiTen": "Xưởng may trụ chị Tý Sơn",
-        "donGia": 12000,
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
         "soLuong": 400,
-        "thanhTien": 4800000,
+        "thanhTien": 5200000,
         "daThanhToan": 0,
-        "conLai": 4800000,
+        "conLai": 5200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
       {
         "id": "may_quan",
-        "loaiNguoi": "gia_cong",
+        "loaiNguoi": "xuong_ngoai",
         "tenCongDoan": "May Quần",
-        "nguoiTen": "Xưởng may quần chị Hương",
-        "donGia": 8000,
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
         "soLuong": 400,
-        "thanhTien": 3200000,
+        "thanhTien": 3800000,
         "daThanhToan": 0,
-        "conLai": 3200000,
+        "conLai": 3800000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
@@ -34797,6 +37534,7 @@
         "id": "khuy_nut",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
         "nguoiTen": "Tổ Khuy Nút",
         "donGia": 500,
         "soLuong": 400,
@@ -34804,14 +37542,15 @@
         "daThanhToan": 0,
         "conLai": 200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "ui",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
         "nguoiTen": "Tổ Ủi",
         "donGia": 1000,
         "soLuong": 400,
@@ -34819,14 +37558,15 @@
         "daThanhToan": 0,
         "conLai": 400000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "dong_goi",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
         "nguoiTen": "Tổ Đóng Gói",
         "donGia": 1200,
         "soLuong": 400,
@@ -34834,14 +37574,15 @@
         "daThanhToan": 0,
         "conLai": 480000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "nhap_kho",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
         "nguoiTen": "Kho thành phẩm",
         "donGia": 0,
         "soLuong": 400,
@@ -34854,17 +37595,36 @@
         "soLuongLoi": 0
       }
     ],
-    "dsPhuLieu": [],
-    "chiPhiCoDinh": {},
-    "mauCongDoan": "MCD-BO-TRU"
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795745720016_aidh07y.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-331-PT",
+        "daCoSoDo": true
+      }
+    }
   },
   {
     "id": "LC-2026-0336",
     "maSP": "M336",
-    "tenSP": "BỘ TRỤ HEBOZ BÀN 188",
+    "tenSP": "BỘ TRỤ MANPJ PHỐI MÀU LỊCH LÃM (BPJ-336-PDT)",
     "loaiSP": "BoTru",
     "loaiLenh": "HangDat",
-    "khachHang": "MANPJ / POLOMIMIN",
+    "khachHang": "MANPJ",
     "tongSL": 400,
     "tongSLThucTe": 400,
     "tongSLThucTeAo": 400,
@@ -34872,25 +37632,31 @@
     "tiLeSize": "1:1:1:1",
     "hanHoanThanh": "2026-10-26",
     "ngayTao": "2026-10-18",
-    "phuTrachCat": "Bàn 188",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
     "phuTrachSX": "Hồ Minh Sang",
-    "ghiChu": "Theo Phiếu Giao Nhận Gia Công Bàn 188 - M336",
     "trangThai": "DangCat",
-    "aoXuong": "Xưởng may trụ anh Thông",
-    "quanXuong": "Xưởng may quần anh Thơ",
-    "inXuong": "Xưởng thêu anh Vui",
     "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: BPJ-336-PDT | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-336-PDT",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655666147_9s6xbr8.jpg",
     "dsMau": [
       {
-        "ten": "MÀU ĐEN",
-        "maSKU": "M336-ĐEN",
-        "maVai": "V-ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "ĐEN",
+        "maSKU": "BPJ-336-PDT-ĐEN",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M336.jpg",
-        "imgQuan": "/product-models/M336-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655666147_9s6xbr8.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655666147_9s6xbr8.jpg",
+        "ghiChu": "Đen - BPJ-336-PDT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34929,15 +37695,17 @@
         ]
       },
       {
-        "ten": "MÀU XANH ĐEN",
-        "maSKU": "M336-X.ĐEN",
-        "maVai": "V-X.ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "XÁM",
+        "maSKU": "BPJ-336-PDT-XÁM",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M336.jpg",
-        "imgQuan": "/product-models/M336-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655700403_0n9vt2q.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655700403_0n9vt2q.jpg",
+        "ghiChu": "Xám - BPJ-336-PDT",
         "phanBoSize": [
           {
             "size": "L",
@@ -34976,15 +37744,17 @@
         ]
       },
       {
-        "ten": "MÀU DA",
-        "maSKU": "M336-DA",
-        "maVai": "V-DA001",
-        "dinhMuc": 0.26,
+        "ten": "XANH",
+        "maSKU": "BPJ-336-PDT-XANH",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M336.jpg",
-        "imgQuan": "/product-models/M336-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655788290_oau34oa.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655788290_oau34oa.jpg",
+        "ghiChu": "Xanh - BPJ-336-PDT",
         "phanBoSize": [
           {
             "size": "L",
@@ -35023,15 +37793,17 @@
         ]
       },
       {
-        "ten": "MÀU RÊU",
-        "maSKU": "M336-RÊU",
-        "maVai": "V-RÊU001",
-        "dinhMuc": 0.26,
+        "ten": "TRẮNG",
+        "maSKU": "BPJ-336-PDT-TRẮNG",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M336.jpg",
-        "imgQuan": "/product-models/M336-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655820485_fix5ous.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655820485_fix5ous.jpg",
+        "ghiChu": "Trắng - BPJ-336-PDT",
         "phanBoSize": [
           {
             "size": "L",
@@ -35070,15 +37842,17 @@
         ]
       },
       {
-        "ten": "MÀU XÁM",
-        "maSKU": "M336-XÁM",
-        "maVai": "V-XÁM001",
-        "dinhMuc": 0.26,
+        "ten": "BEGI",
+        "maSKU": "BPJ-336-PDT-BEGI",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M336.jpg",
-        "imgQuan": "/product-models/M336-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655856594_50qgqxk.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655856594_50qgqxk.jpg",
+        "ghiChu": "Begi - BPJ-336-PDT",
         "phanBoSize": [
           {
             "size": "L",
@@ -35117,17 +37891,35 @@
         ]
       }
     ],
+    "dsPhuLieu": [],
     "phanCong": [
       {
-        "id": "in_theu",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "In / Thêu",
-        "nguoiTen": "Xưởng thêu anh Vui",
-        "donGia": 3000,
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
         "soLuong": 400,
-        "thanhTien": 1200000,
+        "thanhTien": 600000,
         "daThanhToan": 0,
-        "conLai": 1200000,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
         "trangThaiTT": "chua_tra",
         "trangThaiCD": "hoan_thanh",
         "soLuongHoanThanh": 400,
@@ -35135,31 +37927,33 @@
       },
       {
         "id": "may_ao",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "May Áo",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
         "nguoiTen": "Xưởng may trụ anh Thông",
-        "donGia": 12000,
+        "donGia": 13000,
         "soLuong": 400,
-        "thanhTien": 4800000,
+        "thanhTien": 5200000,
         "daThanhToan": 0,
-        "conLai": 4800000,
+        "conLai": 5200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
       {
         "id": "may_quan",
-        "loaiNguoi": "gia_cong",
+        "loaiNguoi": "xuong_ngoai",
         "tenCongDoan": "May Quần",
-        "nguoiTen": "Xưởng may quần anh Thơ",
-        "donGia": 8000,
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
         "soLuong": 400,
-        "thanhTien": 3200000,
+        "thanhTien": 3800000,
         "daThanhToan": 0,
-        "conLai": 3200000,
+        "conLai": 3800000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
@@ -35167,6 +37961,7 @@
         "id": "khuy_nut",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
         "nguoiTen": "Tổ Khuy Nút",
         "donGia": 500,
         "soLuong": 400,
@@ -35174,14 +37969,15 @@
         "daThanhToan": 0,
         "conLai": 200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "ui",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
         "nguoiTen": "Tổ Ủi",
         "donGia": 1000,
         "soLuong": 400,
@@ -35189,14 +37985,15 @@
         "daThanhToan": 0,
         "conLai": 400000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "dong_goi",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
         "nguoiTen": "Tổ Đóng Gói",
         "donGia": 1200,
         "soLuong": 400,
@@ -35204,14 +38001,15 @@
         "daThanhToan": 0,
         "conLai": 480000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "nhap_kho",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
         "nguoiTen": "Kho thành phẩm",
         "donGia": 0,
         "soLuong": 400,
@@ -35224,9 +38022,28 @@
         "soLuongLoi": 0
       }
     ],
-    "dsPhuLieu": [],
-    "chiPhiCoDinh": {},
-    "mauCongDoan": "MCD-BO-TRU"
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795655666147_9s6xbr8.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu BPJ-336-PDT",
+        "daCoSoDo": true
+      }
+    }
   },
   {
     "id": "LC-2026-0334",
@@ -36711,10 +39528,10 @@
   {
     "id": "LC-2026-0292",
     "maSP": "M292",
-    "tenSP": "BỘ TRÒN RAGLAN LA BÀN 194",
+    "tenSP": "BỘ TRÒN MANPJ IN CHỮ TRƯỚC NGỰC SPORT (TPJ-292-RLI)",
     "loaiSP": "BoCoTron",
     "loaiLenh": "HangDat",
-    "khachHang": "MANPJ / POLOMIMIN",
+    "khachHang": "MANPJ",
     "tongSL": 400,
     "tongSLThucTe": 400,
     "tongSLThucTeAo": 400,
@@ -36722,25 +39539,31 @@
     "tiLeSize": "1:1:1:1",
     "hanHoanThanh": "2026-10-24",
     "ngayTao": "2026-10-16",
-    "phuTrachCat": "Bàn 194",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
     "phuTrachSX": "Hồ Minh Sang",
-    "ghiChu": "Theo Phiếu Giao Nhận Gia Công Bàn 194 - M292",
     "trangThai": "DangCat",
-    "aoXuong": "Xưởng may anh Long",
-    "quanXuong": "Xưởng may quần chị Dung",
-    "inXuong": "Xưởng in/dập Thanh Sơn",
     "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: TPJ-292-RLI | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may tròn chị Hằng",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-292-RLI",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751484110_8snd3y9.jpg",
     "dsMau": [
       {
-        "ten": "MÀU ĐEN",
-        "maSKU": "M292-ĐEN",
-        "maVai": "V-ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "TRẮNG",
+        "maSKU": "TPJ-292-RLi-TRẮNG",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M292.jpg",
-        "imgQuan": "/product-models/M292-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751484110_8snd3y9.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751484110_8snd3y9.jpg",
+        "ghiChu": "Trắng - TPJ-292-RLI",
         "phanBoSize": [
           {
             "size": "L",
@@ -36779,15 +39602,17 @@
         ]
       },
       {
-        "ten": "MÀU XANH ĐEN",
-        "maSKU": "M292-X.ĐEN",
-        "maVai": "V-X.ĐEN001",
-        "dinhMuc": 0.26,
+        "ten": "BE",
+        "maSKU": "TPJ-292-RLi-BE",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M292.jpg",
-        "imgQuan": "/product-models/M292-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751502752_h5rqyjo.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751502752_h5rqyjo.jpg",
+        "ghiChu": "Be - TPJ-292-RLI",
         "phanBoSize": [
           {
             "size": "L",
@@ -36826,15 +39651,17 @@
         ]
       },
       {
-        "ten": "MÀU DA",
-        "maSKU": "M292-DA",
-        "maVai": "V-DA001",
-        "dinhMuc": 0.26,
+        "ten": "NÂU",
+        "maSKU": "TPJ-292-RLi-NÂU",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M292.jpg",
-        "imgQuan": "/product-models/M292-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751521530_slahtuh.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751521530_slahtuh.jpg",
+        "ghiChu": "Nâu - TPJ-292-RLI",
         "phanBoSize": [
           {
             "size": "L",
@@ -36873,15 +39700,17 @@
         ]
       },
       {
-        "ten": "MÀU RÊU",
-        "maSKU": "M292-RÊU",
-        "maVai": "V-RÊU001",
-        "dinhMuc": 0.26,
+        "ten": "ĐEN",
+        "maSKU": "TPJ-292-RLi-ĐEN",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M292.jpg",
-        "imgQuan": "/product-models/M292-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751546449_tebyt5z.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751546449_tebyt5z.jpg",
+        "ghiChu": "Đen - TPJ-292-RLI",
         "phanBoSize": [
           {
             "size": "L",
@@ -36920,15 +39749,17 @@
         ]
       },
       {
-        "ten": "MÀU XÁM",
-        "maSKU": "M292-XÁM",
-        "maVai": "V-XÁM001",
-        "dinhMuc": 0.26,
+        "ten": "RÊU",
+        "maSKU": "TPJ-292-RLi-RÊU",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
         "slDuKien": 80,
         "slThucTe": 80,
-        "ghiChu": "",
-        "img": "/product-models/M292.jpg",
-        "imgQuan": "/product-models/M292-quan.jpg",
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751555712_h4mfag5.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751555712_h4mfag5.jpg",
+        "ghiChu": "Rêu - TPJ-292-RLI",
         "phanBoSize": [
           {
             "size": "L",
@@ -36967,17 +39798,35 @@
         ]
       }
     ],
+    "dsPhuLieu": [],
     "phanCong": [
       {
-        "id": "in_theu",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "In / Thêu",
-        "nguoiTen": "Xưởng in/dập Thanh Sơn",
-        "donGia": 3000,
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
         "soLuong": 400,
-        "thanhTien": 1200000,
+        "thanhTien": 600000,
         "daThanhToan": 0,
-        "conLai": 1200000,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
         "trangThaiTT": "chua_tra",
         "trangThaiCD": "hoan_thanh",
         "soLuongHoanThanh": 400,
@@ -36985,31 +39834,33 @@
       },
       {
         "id": "may_ao",
-        "loaiNguoi": "gia_cong",
-        "tenCongDoan": "May Áo",
-        "nguoiTen": "Xưởng may anh Long",
-        "donGia": 12000,
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo Cổ Tròn",
+        "nguoiMa": "XUONG-MAY-TRON-HANG",
+        "nguoiTen": "Xưởng may tròn chị Hằng",
+        "donGia": 10000,
         "soLuong": 400,
-        "thanhTien": 4800000,
+        "thanhTien": 4000000,
         "daThanhToan": 0,
-        "conLai": 4800000,
+        "conLai": 4000000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
       {
         "id": "may_quan",
-        "loaiNguoi": "gia_cong",
+        "loaiNguoi": "xuong_ngoai",
         "tenCongDoan": "May Quần",
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
         "nguoiTen": "Xưởng may quần chị Dung",
-        "donGia": 8000,
+        "donGia": 9500,
         "soLuong": 400,
-        "thanhTien": 3200000,
+        "thanhTien": 3800000,
         "daThanhToan": 0,
-        "conLai": 3200000,
+        "conLai": 3800000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
+        "trangThaiCD": "dang_lam",
         "soLuongHoanThanh": 400,
         "soLuongLoi": 0
       },
@@ -37017,6 +39868,7 @@
         "id": "khuy_nut",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
         "nguoiTen": "Tổ Khuy Nút",
         "donGia": 500,
         "soLuong": 400,
@@ -37024,14 +39876,15 @@
         "daThanhToan": 0,
         "conLai": 200000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "ui",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
         "nguoiTen": "Tổ Ủi",
         "donGia": 1000,
         "soLuong": 400,
@@ -37039,14 +39892,15 @@
         "daThanhToan": 0,
         "conLai": 400000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "dong_goi",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
         "nguoiTen": "Tổ Đóng Gói",
         "donGia": 1200,
         "soLuong": 400,
@@ -37054,14 +39908,15 @@
         "daThanhToan": 0,
         "conLai": 480000,
         "trangThaiTT": "chua_tra",
-        "trangThaiCD": "hoan_thanh",
-        "soLuongHoanThanh": 400,
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
         "soLuongLoi": 0
       },
       {
         "id": "nhap_kho",
         "loaiNguoi": "noi_bo",
         "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
         "nguoiTen": "Kho thành phẩm",
         "donGia": 0,
         "soLuong": 400,
@@ -37074,8 +39929,1951 @@
         "soLuongLoi": 0
       }
     ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751484110_8snd3y9.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-292-RLI",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0286",
+    "maSP": "M286",
+    "tenSP": "ÁO TRỤ MANPJ PHỐI VAI THỜI TRANG (PJ-286-DV)",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: PJ-286-DV | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 áo",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-286-DV",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750135061_xumpzae.jpg",
+    "dsMau": [
+      {
+        "ten": "TRẮNG",
+        "maSKU": "PJ-286-DV-TRẮNG",
+        "maVai": "VAI-01",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750135061_xumpzae.jpg",
+        "ghiChu": "Trắng - PJ-286-DV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "CỎ ÚA",
+        "maSKU": "PJ-286-DV-CỎ ÚA",
+        "maVai": "VAI-02",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750155787_87jgrxy.jpg",
+        "ghiChu": "Cỏ úa - PJ-286-DV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "XÁM",
+        "maSKU": "PJ-286-DV-XÁM",
+        "maVai": "VAI-03",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750195329_fz89ye3.jpg",
+        "ghiChu": "Xám - PJ-286-DV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "RÊU",
+        "maSKU": "PJ-286-DV-RÊU",
+        "maVai": "VAI-04",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750213144_9vizq80.jpg",
+        "ghiChu": "Rêu - PJ-286-DV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "ĐEN",
+        "maSKU": "PJ-286-DV-ĐEN",
+        "maVai": "VAI-05",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750228080_hsa34sf.jpg",
+        "ghiChu": "Đen - PJ-286-DV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      }
+    ],
     "dsPhuLieu": [],
-    "chiPhiCoDinh": {},
-    "mauCongDoan": "MCD-BO-TRON"
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
+        "soLuong": 400,
+        "thanhTien": 5200000,
+        "daThanhToan": 0,
+        "conLai": 5200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 400,
+        "thanhTien": 400000,
+        "daThanhToan": 0,
+        "conLai": 400000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 0,
+      "THUNQUAN": 0
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 13000,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 55000,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750135061_xumpzae.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 áo",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-286-DV",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0255",
+    "maSP": "M255",
+    "tenSP": "ÁO TRỤ MANPJ THÊU PHONG CÁCH (PJ-255-CV)",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 300,
+    "tongSLThucTe": 300,
+    "tongSLThucTeAo": 300,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: PJ-255-CV | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 3 màu × 100 SP = 300 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 áo",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-255-CV",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750436515_ayn4ero.jpg",
+    "dsMau": [
+      {
+        "ten": "XÁM",
+        "maSKU": "PJ-255-CV-XÁM",
+        "maVai": "VAI-01",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750436515_ayn4ero.jpg",
+        "ghiChu": "Xám - PJ-255-CV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "XANH DẠ QUANG",
+        "maSKU": "PJ-255-CV-XANH DẠ QUANG",
+        "maVai": "VAI-02",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750456525_r3itpq0.jpg",
+        "ghiChu": "Xanh dạ quang - PJ-255-CV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "ĐEN",
+        "maSKU": "PJ-255-CV-ĐEN",
+        "maVai": "VAI-03",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750469763_kjls1f6.jpg",
+        "ghiChu": "Đen - PJ-255-CV",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 300,
+        "thanhTien": 450000,
+        "daThanhToan": 0,
+        "conLai": 450000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 300,
+        "thanhTien": 750000,
+        "daThanhToan": 0,
+        "conLai": 750000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
+        "soLuong": 300,
+        "thanhTien": 3900000,
+        "daThanhToan": 0,
+        "conLai": 3900000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 300,
+        "thanhTien": 150000,
+        "daThanhToan": 0,
+        "conLai": 150000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 300,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 300,
+        "thanhTien": 360000,
+        "daThanhToan": 0,
+        "conLai": 360000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 300,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 0,
+      "THUNQUAN": 0
+    },
+    "bangCOGS": {
+      "tongTienVai": 22500000,
+      "tongTienPhuLieu": 900000,
+      "giaCong1SP": 13000,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 55000,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750436515_ayn4ero.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 áo",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-255-CV",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0273",
+    "maSP": "M273",
+    "tenSP": "ÁO TRỤ MANPJ LỊCH LÃM (PJ-273-PVT)",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 300,
+    "tongSLThucTe": 300,
+    "tongSLThucTeAo": 300,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: PJ-273-PVT | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 3 màu × 100 SP = 300 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 áo",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-273-PVT",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750690178_ntdm1u2.jpg",
+    "dsMau": [
+      {
+        "ten": "TRẮNG",
+        "maSKU": "PJ-273-PVT-TRẮNG",
+        "maVai": "VAI-01",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750690178_ntdm1u2.jpg",
+        "ghiChu": "Trắng - PJ-273-PVT",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "XANH DẠ QUANG",
+        "maSKU": "PJ-273-PVT-XANH DẠ QUANG",
+        "maVai": "VAI-02",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750706949_evzkl34.jpg",
+        "ghiChu": "Xanh dạ quang - PJ-273-PVT",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "VÀNG BÒ",
+        "maSKU": "PJ-273-PVT-VÀNG BÒ",
+        "maVai": "VAI-03",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750727280_z6eztj6.jpg",
+        "ghiChu": "Vàng bò - PJ-273-PVT",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 300,
+        "thanhTien": 450000,
+        "daThanhToan": 0,
+        "conLai": 450000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 300,
+        "thanhTien": 750000,
+        "daThanhToan": 0,
+        "conLai": 750000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
+        "soLuong": 300,
+        "thanhTien": 3900000,
+        "daThanhToan": 0,
+        "conLai": 3900000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 300,
+        "thanhTien": 150000,
+        "daThanhToan": 0,
+        "conLai": 150000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 300,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 300,
+        "thanhTien": 360000,
+        "daThanhToan": 0,
+        "conLai": 360000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 300,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 0,
+      "THUNQUAN": 0
+    },
+    "bangCOGS": {
+      "tongTienVai": 22500000,
+      "tongTienPhuLieu": 900000,
+      "giaCong1SP": 13000,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 55000,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750690178_ntdm1u2.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 áo",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-273-PVT",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0324",
+    "maSP": "M324",
+    "tenSP": "BỘ TRÒN MANPJ PHỐI MẢNG TINH TẾ (TPJ-324-PND)",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: TPJ-324-PND | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may tròn chị Hằng",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-324-PND",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751258338_l4731ax.jpg",
+    "dsMau": [
+      {
+        "ten": "VÀNG BÒ",
+        "maSKU": "TPJ-324-PND-VÀNG BÒ",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751258338_l4731ax.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751258338_l4731ax.jpg",
+        "ghiChu": "Vàng bò - TPJ-324-PND",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "XÁM",
+        "maSKU": "TPJ-324-PND-XÁM",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751304162_ekmvbz3.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751304162_ekmvbz3.jpg",
+        "ghiChu": "Xám - TPJ-324-PND",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "BE",
+        "maSKU": "TPJ-324-PND-BE",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751313079_o328oho.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751313079_o328oho.jpg",
+        "ghiChu": "Be - TPJ-324-PND",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "TRẮNG",
+        "maSKU": "TPJ-324-PND-TRẮNG",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751327945_t14c60n.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751327945_t14c60n.jpg",
+        "ghiChu": "Trắng - TPJ-324-PND",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "ĐEN",
+        "maSKU": "TPJ-324-PND-ĐEN",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751340262_j7a6hhe.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751340262_j7a6hhe.jpg",
+        "ghiChu": "Đen - TPJ-324-PND",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo Cổ Tròn",
+        "nguoiMa": "XUONG-MAY-TRON-HANG",
+        "nguoiTen": "Xưởng may tròn chị Hằng",
+        "donGia": 10000,
+        "soLuong": 400,
+        "thanhTien": 4000000,
+        "daThanhToan": 0,
+        "conLai": 4000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_quan",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Quần",
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "daThanhToan": 0,
+        "conLai": 3800000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 400,
+        "thanhTien": 400000,
+        "daThanhToan": 0,
+        "conLai": 400000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795751258338_l4731ax.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-324-PND",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0259",
+    "maSP": "M259",
+    "tenSP": "ÁO TRỤ MANPJ PHỐI MẢNG NGỰC TINH TẾ (PJ-259-NNL)",
+    "loaiSP": "AoTru",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 300,
+    "tongSLThucTe": 300,
+    "tongSLThucTeAo": 300,
+    "tongSLThucTeQuan": 0,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: PJ-259-NNL | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 3 màu × 100 SP = 300 SP",
+    "aoXuong": "Xưởng may trụ anh Thông",
+    "quanXuong": "",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 áo",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-259-NNL",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750880012_ru45riz.jpg",
+    "dsMau": [
+      {
+        "ten": "XANH DẠ QUANG",
+        "maSKU": "PJ-259-NNL-XANH DẠ QUANG",
+        "maVai": "VAI-01",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750880012_ru45riz.jpg",
+        "ghiChu": "Xanh dạ quang - PJ-259-NNL",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "XANH ĐEN",
+        "maSKU": "PJ-259-NNL-XANH ĐEN",
+        "maVai": "VAI-02",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750897475_d4ktu1r.jpg",
+        "ghiChu": "Xanh đen - PJ-259-NNL",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      },
+      {
+        "ten": "ĐEN",
+        "maSKU": "PJ-259-NNL-ĐEN",
+        "maVai": "VAI-03",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0,
+        "slDuKien": 100,
+        "slThucTe": 100,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750913498_c2thoiw.jpg",
+        "ghiChu": "Đen - PJ-259-NNL",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 25
+          },
+          {
+            "size": "XL",
+            "sl": 25
+          },
+          {
+            "size": "XXL",
+            "sl": 25
+          },
+          {
+            "size": "3XL",
+            "sl": 25
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 300,
+        "thanhTien": 450000,
+        "daThanhToan": 0,
+        "conLai": 450000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 300,
+        "thanhTien": 750000,
+        "daThanhToan": 0,
+        "conLai": 750000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo (Trụ / Tròn)",
+        "nguoiMa": "XUONG-MAY-TRU-THONG",
+        "nguoiTen": "Xưởng may trụ anh Thông",
+        "donGia": 13000,
+        "soLuong": 300,
+        "thanhTien": 3900000,
+        "daThanhToan": 0,
+        "conLai": 3900000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 300,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 300,
+        "thanhTien": 150000,
+        "daThanhToan": 0,
+        "conLai": 150000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 300,
+        "thanhTien": 300000,
+        "daThanhToan": 0,
+        "conLai": 300000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 300,
+        "thanhTien": 360000,
+        "daThanhToan": 0,
+        "conLai": 360000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 300,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 0,
+      "THUNQUAN": 0
+    },
+    "bangCOGS": {
+      "tongTienVai": 22500000,
+      "tongTienPhuLieu": 900000,
+      "giaCong1SP": 13000,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 55000,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795750880012_ru45riz.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 áo",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu PJ-259-NNL",
+        "daCoSoDo": true
+      }
+    }
+  },
+  {
+    "id": "LC-2026-0328",
+    "maSP": "M328",
+    "tenSP": "BỘ TRÒN MANPJ THÊU NAI CÁ TÍNH (TPJ-328-RLD)",
+    "loaiSP": "BoCoTron",
+    "loaiLenh": "HangDat",
+    "khachHang": "MANPJ",
+    "tongSL": 400,
+    "tongSLThucTe": 400,
+    "tongSLThucTeAo": 400,
+    "tongSLThucTeQuan": 400,
+    "tiLeSize": "1:1:1:1",
+    "hanHoanThanh": "2026-11-20",
+    "ngayTao": "2026-11-12",
+    "nguoiTao": "Hồ Minh Sang",
+    "phuTrachCat": "Xưởng nhà",
+    "phuTrachSX": "Hồ Minh Sang",
+    "trangThai": "DangCat",
+    "phienBanDinhMuc": 1,
+    "ghiChu": "Mã sản phẩm: TPJ-328-RLD | Khách hàng: MANPJ | Sơ đồ 8,5m | Định mức 1,049 | 5 màu × 80 SP = 400 SP",
+    "aoXuong": "Xưởng may tròn chị Hằng",
+    "quanXuong": "Xưởng may quần chị Dung",
+    "daiSoDoChinh": "8.5m",
+    "khoSoDoChinh": "8 bộ",
+    "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-328-RLD",
+    "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742895896_zp9qeoy.jpg",
+    "dsMau": [
+      {
+        "ten": "ĐEN",
+        "maSKU": "TPJ-328-RLD-ĐEN",
+        "maVai": "VAI-01",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742895896_zp9qeoy.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742895896_zp9qeoy.jpg",
+        "ghiChu": "Đen - TPJ-328-RLD",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "TRẮNG",
+        "maSKU": "TPJ-328-RLD-TRẮNG",
+        "maVai": "VAI-02",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742908924_z69jh0c.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742908924_z69jh0c.jpg",
+        "ghiChu": "Trắng - TPJ-328-RLD",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "BE",
+        "maSKU": "TPJ-328-RLD-BE",
+        "maVai": "VAI-03",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742938998_unib0ue.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742938998_unib0ue.jpg",
+        "ghiChu": "Be - TPJ-328-RLD",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "XANH",
+        "maSKU": "TPJ-328-RLD-XANH",
+        "maVai": "VAI-04",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742943831_qqs7zrc.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742943831_qqs7zrc.jpg",
+        "ghiChu": "Xanh - TPJ-328-RLD",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      },
+      {
+        "ten": "XÁM",
+        "maSKU": "TPJ-328-RLD-XÁM",
+        "maVai": "VAI-05",
+        "maVaiQuan": "VAI-DEN",
+        "dinhMuc": 0.25,
+        "dinhMucQuan": 0.18,
+        "slDuKien": 80,
+        "slThucTe": 80,
+        "img": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742955102_w6nx05b.jpg",
+        "imgQuan": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742955102_w6nx05b.jpg",
+        "ghiChu": "Xám - TPJ-328-RLD",
+        "phanBoSize": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ],
+        "phanBoSizeQuan": [
+          {
+            "size": "L",
+            "sl": 20
+          },
+          {
+            "size": "XL",
+            "sl": 20
+          },
+          {
+            "size": "XXL",
+            "sl": 20
+          },
+          {
+            "size": "3XL",
+            "sl": 20
+          }
+        ]
+      }
+    ],
+    "dsPhuLieu": [],
+    "phanCong": [
+      {
+        "id": "cat",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Tổ Cắt",
+        "nguoiMa": "XUONG-NHA",
+        "nguoiTen": "Xưởng nhà",
+        "donGia": 1500,
+        "soLuong": 400,
+        "thanhTien": 600000,
+        "daThanhToan": 0,
+        "conLai": 600000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "in_theu",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "In / Thêu",
+        "nguoiMa": "XUONG-THEU",
+        "nguoiTen": "Xưởng thêu anh Vui",
+        "donGia": 2500,
+        "soLuong": 400,
+        "thanhTien": 1000000,
+        "daThanhToan": 0,
+        "conLai": 1000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "hoan_thanh",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_ao",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Áo Cổ Tròn",
+        "nguoiMa": "XUONG-MAY-TRON-HANG",
+        "nguoiTen": "Xưởng may tròn chị Hằng",
+        "donGia": 10000,
+        "soLuong": 400,
+        "thanhTien": 4000000,
+        "daThanhToan": 0,
+        "conLai": 4000000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "may_quan",
+        "loaiNguoi": "xuong_ngoai",
+        "tenCongDoan": "May Quần",
+        "nguoiMa": "XUONG-MAY-QUAN-DUNG",
+        "nguoiTen": "Xưởng may quần chị Dung",
+        "donGia": 9500,
+        "soLuong": 400,
+        "thanhTien": 3800000,
+        "daThanhToan": 0,
+        "conLai": 3800000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "dang_lam",
+        "soLuongHoanThanh": 400,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "khuy_nut",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Khuy nút",
+        "nguoiMa": "TO-KHUY-NUT",
+        "nguoiTen": "Tổ Khuy Nút",
+        "donGia": 500,
+        "soLuong": 400,
+        "thanhTien": 200000,
+        "daThanhToan": 0,
+        "conLai": 200000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "ui",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Ủi",
+        "nguoiMa": "TO-UI",
+        "nguoiTen": "Tổ Ủi",
+        "donGia": 1000,
+        "soLuong": 400,
+        "thanhTien": 400000,
+        "daThanhToan": 0,
+        "conLai": 400000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "dong_goi",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Đóng gói",
+        "nguoiMa": "TO-DONG-GOI",
+        "nguoiTen": "Tổ Đóng Gói",
+        "donGia": 1200,
+        "soLuong": 400,
+        "thanhTien": 480000,
+        "daThanhToan": 0,
+        "conLai": 480000,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      },
+      {
+        "id": "nhap_kho",
+        "loaiNguoi": "noi_bo",
+        "tenCongDoan": "Nhập kho",
+        "nguoiMa": "KHO-THANH-PHAM",
+        "nguoiTen": "Kho thành phẩm",
+        "donGia": 0,
+        "soLuong": 400,
+        "thanhTien": 0,
+        "daThanhToan": 0,
+        "conLai": 0,
+        "trangThaiTT": "chua_tra",
+        "trangThaiCD": "cho_giao",
+        "soLuongHoanThanh": 0,
+        "soLuongLoi": 0
+      }
+    ],
+    "chiPhiCoDinh": {
+      "EPKEOTRU": 300,
+      "EPNHAN": 300,
+      "BAOBI_GIAY": 700,
+      "THEBAI": 700,
+      "DAYKEO": 1400,
+      "THUNQUAN": 1500
+    },
+    "bangCOGS": {
+      "tongTienVai": 30000000,
+      "tongTienPhuLieu": 1200000,
+      "giaCong1SP": 22500,
+      "tongChiPhiCoDinh": 4900,
+      "giaVonBinhQuan": 102400,
+      "taiLieuSanXuat": {
+        "hinhAnh": "https://ejcuqyaiwabfygyesvxj.supabase.co/storage/v1/object/public/san-pham-media/mau-anh/1795742895896_zp9qeoy.jpg",
+        "daiSoDoChinh": "8.5m",
+        "khoSoDoChinh": "8 bộ",
+        "ghiChuSoDoChinh": "Sơ đồ chuẩn giác mẫu TPJ-328-RLD",
+        "daCoSoDo": true
+      }
+    }
   }
 ]

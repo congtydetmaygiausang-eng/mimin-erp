@@ -3478,11 +3478,13 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                     {(() => {
                       const vtCuaMau = dsPhuLieu
                         .map((p, i) => ({ p, i }))
-                        .filter(({ p }) => p.mauIdx === idx);
+                        .filter(({ p }) => p.mauIdx === idx && (!isBo || p.apDungCho === "ao" || !p.apDungCho));
                       if (vtCuaMau.length === 0) return null;
                       return (
                         <div className="flex flex-col gap-1 bg-white/70 rounded-lg border border-slate-200 p-2">
-                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Vật tư của màu này</div>
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                            {isBo ? "Vật tư của áo" : "Vật tư của màu này"}
+                          </div>
                           {vtCuaMau.map(({ p, i }) => (
                             <div key={i} className="flex items-center justify-between gap-1.5 text-[11px] bg-slate-50 rounded px-1.5 py-1">
                               <span className={`shrink-0 px-1 rounded text-white font-bold ${p.apDungCho === "quan" ? "bg-teal-700" : "bg-[#2B4C3E]"}`}>
@@ -3649,7 +3651,33 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                                 </div>
                               </div>
                               <div className="mt-2 p-1.5 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
-                                <label className="text-[10px] font-bold text-fuchsia-700 block mb-1">Màu phối (tham khảo, không tính định mức)</label>
+                                <div className="flex flex-wrap items-center justify-between mb-1 gap-1">
+                                  <label className="text-[10px] font-bold text-fuchsia-700">Màu phối (tham khảo, không tính định mức)</label>
+                                  <select
+                                    className="text-[11px] px-1.5 py-0.5 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[150px]"
+                                    value=""
+                                    onChange={(e) => {
+                                      const ten = e.target.value;
+                                      if (!ten) return;
+                                      const next = [...dsMau];
+                                      const dsHienTai = next[idx].mauPhoi || [];
+                                      if (!dsHienTai.includes(ten)) {
+                                        next[idx].mauPhoi = [...dsHienTai, ten];
+                                        setDsMau(next);
+                                      }
+                                      e.target.value = "";
+                                    }}
+                                  >
+                                    <option value="">+ Thêm màu phối...</option>
+                                    {NHOM_MAU.map((nhom) => (
+                                      <optgroup key={nhom} label={nhom}>
+                                        {getDistinctColorOptions(mau.ten, mau.mauPhoi || []).filter((sw) => sw.nhom === nhom).map((sw) => (
+                                          <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                  </select>
+                                </div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {(mau.mauPhoi || []).length === 0 && <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối</span>}
                                   {(mau.mauPhoi || []).map((ten, mpIdx) => (
@@ -3892,176 +3920,290 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                         </div>
 
                         {/* CỘT 2: Quần và Thông tin Bổ sung (Ghi chú, Tổng tiền) */}
-                        <div className="grid grid-cols-1 md:grid-cols-[160px_minmax(0,1fr)] gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-teal-300 bg-white/95 p-2 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
-                          {isBo && (
-                            <div
-                              className="relative w-[240px] h-[320px] max-w-full aspect-[3/4] mx-auto md:row-span-2 self-start bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer group hover:border-teal-500 transition-colors flex items-center justify-center z-10 hover:z-50 overflow-hidden shadow-sm"
-                              onClick={() => handleColorImageUpload(idx, "quan")}
-                            >
-                              {uploadingColor?.idx === idx && uploadingColor?.phan === "quan" && (
-                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-2xs flex flex-col items-center justify-center rounded-lg z-30 pointer-events-none">
-                                  <div className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin mb-1.5" />
-                                  <span className="text-xs font-bold text-white">Đang tải ảnh...</span>
-                                </div>
-                              )}
-                              {mau.imgQuan ? (
-                                <>
-                                  <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover object-top rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" style={{ imageRendering: "-webkit-optimize-contrast" }} />
-                                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-teal-700/90 text-white text-[10px] font-bold">QUẦN</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDsMau(prev => {
-                                        const next = [...prev];
-                                        next[idx] = { ...next[idx], imgQuan: "" };
-                                        return next;
-                                      });
-                                      toast.info("Đã gỡ ảnh màu quần");
-                                    }}
-                                    className="absolute top-1 right-1 p-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-md z-20 transition-all opacity-80 hover:opacity-100"
-                                    title="Xoá ảnh này"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                  <span className="absolute bottom-0 inset-x-0 py-1.5 bg-black/60 text-white text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Bấm để thay ảnh quần</span>
-                                </>
-                              ) : (
-                                <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity">
-                                  <Plus className="w-8 h-8 text-teal-600" />
-                                  <span className="text-sm mt-2 text-slate-600 font-bold">Tải ảnh màu quần</span>
-                                </div>
-                              )}
+                        <div className="flex flex-col gap-2 min-w-0 min-h-[300px] rounded-lg border-2 border-teal-300 bg-white/95 p-2.5 text-xs shadow-sm [&_input]:py-1 [&_select]:py-1 [&_textarea]:py-1">
+                          {/* Header Khối Quần đồng bộ chuẩn mực với Khối Áo */}
+                          <div className="flex items-center justify-between border-b border-teal-300 pb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-teal-600 inline-block" />
+                              <span className="text-[10px] font-black uppercase tracking-wider text-teal-800">Thông tin quần</span>
                             </div>
-                          )}
-                          {isBo && <div className="text-[10px] font-black uppercase tracking-wider text-teal-800 border-b border-teal-300 pb-2 md:col-start-2">Thông tin quần</div>}
-                          {isBo && (
-                            <div className="p-2 bg-teal-50/50 rounded border border-teal-200 flex flex-col gap-2 md:col-start-2">
-                              <div>
-                                <div className="text-[10px] font-bold text-teal-800 mb-1">QUẦN - Kho Vải</div>
-                                <select 
-                                  className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                                  value={mau.maVaiQuan || ""}
-                                  onChange={(e) => handleChonVai(idx, e.target.value, "quan")}
-                                >
-                                  <option value="">-- Chọn vải --</option>
-                                  {khoVaiReals.map((kv) => (
-                                    <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
-                                  ))}
-                                </select>
-                                {mau.maVaiQuan && (() => {
-                                  const v = khoVaiReals.find((x) => x.maVT === mau.maVaiQuan);
-                                  if (!v) return null;
-                                  const g3k = getChiTietGia3Khau(v.maVT, v.donGia, v.tenVT, v.mauSac);
-                                  return (
-                                    <div className="mt-1 px-2 py-1 bg-teal-50 dark:bg-teal-950/40 rounded border border-teal-200 dark:border-teal-800 text-[10px] text-teal-800 dark:text-teal-300 flex items-center justify-between flex-wrap gap-1">
-                                      <span className="font-semibold">
-                                        🧵 Sợi {g3k.chiPhiSoi.toLocaleString()}đ + 🏭 Dệt {g3k.giaDet.toLocaleString()}đ + 🧪 Nhuộm {g3k.chiPhiNhuom.toLocaleString()}đ
-                                      </span>
-                                      <span className="font-bold font-mono">
-                                        = {(v.donGia || 0).toLocaleString('vi-VN')} đ/kg
-                                      </span>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div>
-                                  <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
-                                  <input 
-                                    type="number" step="0.0001"
-                                    className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded" 
-                                    value={mau.dinhMucQuan || ""}
-                                    onChange={(e) => {
-                                      const val = parseFloat(e.target.value) || 0;
-                                      setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, dinhMucQuan: val } : m));
-                                    }}
-                                  />
-                                </div>
-                                <div>
-                                  <div className="flex items-center justify-between mb-1">
-                                    <div className="text-[10px] font-bold text-teal-700">Đơn giá vải quần (đ/kg):</div>
-                                    {donGiaQuanKho > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, donGiaVaiQuan: donGiaQuanKho } : m))}
-                                        className="text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition-colors cursor-pointer"
-                                        title="Click để đồng bộ đơn giá từ Kho vải"
-                                      >
-                                        ✓ Kho: {donGiaQuanKho.toLocaleString('vi-VN')} đ
-                                      </button>
-                                    )}
-                                  </div>
-                                  <input 
-                                    type="number" step="1000"
-                                    className="w-full px-2 py-1.5 border border-teal-300 text-sm rounded font-bold text-teal-800 bg-teal-50/30" 
-                                    placeholder={donGiaQuanKho > 0 ? String(donGiaQuanKho) : "VD: 91000"}
-                                    value={mau.donGiaVaiQuan !== undefined && mau.donGiaVaiQuan !== null && mau.donGiaVaiQuan > 0 ? mau.donGiaVaiQuan : (donGiaQuanKho > 0 ? donGiaQuanKho : "")}
-                                    onChange={(e) => {
-                                      const valStr = e.target.value;
-                                      const val = valStr === "" ? 0 : parseFloat(valStr) || 0;
-                                      setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, donGiaVaiQuan: val } : m));
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                              <div className="mt-2">
-                                <select
-                                  className="text-[11px] px-2 py-1.5 border border-fuchsia-200 rounded bg-white w-full font-medium text-fuchsia-800 focus:outline-none focus:border-fuchsia-400 shadow-sm"
-                                  value=""
-                                  onChange={(e) => {
-                                    const ten = e.target.value;
-                                    if (!ten) return;
-                                    const next = [...dsMau];
-                                    const dsHienTai = next[idx].mauPhoi || [];
-                                    if (!dsHienTai.includes(ten)) {
-                                      next[idx].mauPhoi = [...dsHienTai, ten];
-                                      setDsMau(next);
-                                    }
-                                    e.target.value = "";
-                                  }}
-                                >
-                                  <option value="">+ Thêm màu phối...</option>
-                                  {NHOM_MAU.map((nhom) => (
-                                    <optgroup key={nhom} label={nhom}>
-                                      {getDistinctColorOptions(mau.ten, mau.mauPhoi || []).filter((sw) => sw.nhom === nhom).map((sw) => (
-                                        <option key={sw.id} value={sw.ten}>{sw.ten}</option>
-                                      ))}
-                                    </optgroup>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          )}
-
-                          {isBo && (
-                            <button
-                              type="button"
-                              onClick={() => themVatTuTheoMau(idx, "quan")}
-                              className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition md:col-start-2"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Vật tư quần
-                            </button>
-                          )}
-
-                          <div className="flex flex-col flex-1 bg-amber-50/50 p-2 rounded border border-amber-200/50 md:col-span-2">
-                            <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
-                            <textarea 
-                              className="w-full flex-1 px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
-                              placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
-                              value={mau.ghiChu || ""}
-                              onChange={(e) => {
-                                const next = [...dsMau]; 
-                                next[idx].ghiChu = e.target.value; 
-                                setDsMau(next);
-                              }}
-                            />
+                            <span className="text-[9px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                              Đồng bộ theo bộ (Áo + Quần)
+                            </span>
                           </div>
 
-                          <div className="bg-emerald-50 p-2 rounded border border-emerald-200 md:col-span-2">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[10px] font-bold text-emerald-700">Tổng tiền vải màu này ({mau.slDuKien || 0} SP)</div>
-                              <div className="text-sm font-bold text-emerald-900">{formatVND(tongTienVaiMau)}</div>
+                          <div className="grid grid-cols-1 md:grid-cols-[190px_minmax(0,1fr)] lg:grid-cols-[210px_minmax(0,1fr)] gap-3 flex-1 items-start">
+                            {/* Cột con 1: ẢNH MÀU QUẦN + VẬT TƯ QUẦN */}
+                            <div className="flex flex-col gap-2 w-full">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wide">ẢNH MÀU QUẦN</span>
+                                <span className="px-1.5 py-0.2 rounded bg-teal-700 text-white text-[9px] font-bold">QUẦN</span>
+                              </div>
+
+                              {/* Khung ảnh Quần tỉ lệ 3:4 chuẩn lookbook */}
+                              <div
+                                className="relative w-full max-w-[210px] aspect-[3/4] mx-auto bg-white border-2 border-dashed border-teal-300 rounded-lg cursor-pointer group hover:border-teal-500 transition-colors flex items-center justify-center z-10 hover:z-50 overflow-hidden shadow-sm"
+                                onClick={() => handleColorImageUpload(idx, "quan")}
+                              >
+                                {uploadingColor?.idx === idx && uploadingColor?.phan === "quan" && (
+                                  <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-2xs flex flex-col items-center justify-center rounded-lg z-30 pointer-events-none">
+                                    <div className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin mb-1.5" />
+                                    <span className="text-xs font-bold text-white">Đang tải ảnh...</span>
+                                  </div>
+                                )}
+                                {mau.imgQuan ? (
+                                  <>
+                                    <img src={mau.imgQuan} alt={`Ảnh màu quần ${mau.ten || idx + 1}`} className="w-full h-full object-cover object-top rounded-lg group-hover:scale-[1.75] transition-transform duration-300 group-hover:shadow-2xl origin-center" style={{ imageRendering: "-webkit-optimize-contrast" }} />
+                                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-teal-700/90 text-white text-[10px] font-bold">QUẦN</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDsMau(prev => {
+                                          const next = [...prev];
+                                          next[idx] = { ...next[idx], imgQuan: "" };
+                                          return next;
+                                        });
+                                        toast.info("Đã gỡ ảnh màu quần");
+                                      }}
+                                      className="absolute top-1 right-1 p-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white shadow-md z-20 transition-all opacity-80 hover:opacity-100"
+                                      title="Xoá ảnh này"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="absolute bottom-0 inset-x-0 py-1.5 bg-black/60 text-white text-[10px] font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Bấm để thay ảnh quần</span>
+                                  </>
+                                ) : (
+                                  <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <Plus className="w-8 h-8 text-teal-600" />
+                                    <span className="text-xs mt-2 text-slate-600 font-bold">Tải ảnh màu quần</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Nút + Vật tư quần */}
+                              <button
+                                type="button"
+                                onClick={() => themVatTuTheoMau(idx, "quan")}
+                                className="w-full flex items-center justify-center gap-1 px-2 py-1.5 bg-teal-700 text-white text-xs font-bold rounded hover:bg-teal-800 transition shadow-2xs cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" /> Vật tư quần
+                              </button>
+
+                              {/* Danh sách vật tư của quần */}
+                              {(() => {
+                                const vtQuan = dsPhuLieu
+                                  .map((p, i) => ({ p, i }))
+                                  .filter(({ p }) => p.mauIdx === idx && p.apDungCho === "quan");
+                                if (vtQuan.length === 0) return null;
+                                return (
+                                  <div className="flex flex-col gap-1 bg-teal-50/70 rounded-lg border border-teal-200 p-2">
+                                    <div className="text-[10px] font-bold text-teal-800 uppercase tracking-wide">Vật tư của quần</div>
+                                    {vtQuan.map(({ p, i }) => (
+                                      <div key={i} className="flex items-center justify-between gap-1.5 text-[11px] bg-white rounded px-1.5 py-1 border border-teal-100 shadow-2xs">
+                                        <span className="shrink-0 px-1 rounded text-white font-bold bg-teal-700 text-[10px]">Q</span>
+                                        <select 
+                                          className="flex-1 font-medium text-slate-700 bg-transparent border-b border-slate-300 outline-none hover:border-teal-700 focus:border-teal-700 w-20 text-[11px]"
+                                          value={p.maPL}
+                                          onChange={e => {
+                                            const v = khoPhuLieuReals.find(x => x.maVT === e.target.value);
+                                            if (v) {
+                                              setDsPhuLieu(prev => {
+                                                const next = [...prev];
+                                                next[i] = { ...next[i], maPL: v.maVT, tenPL: v.tenVT, donGia: v.donGia || 0, dvt: v.dvt || "cái" };
+                                                return next;
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          {khoPhuLieuReals.map(v => <option key={v.maVT} value={v.maVT} className="text-black bg-white">{v.tenChuan || v.tenVT}{v.maMoi ? ` (${v.maMoi})` : ""}</option>)}
+                                        </select>
+                                        <div className="flex items-center shrink-0">
+                                          <input 
+                                            type="number" 
+                                            className="w-9 text-right text-slate-600 bg-transparent border-b border-slate-300 outline-none hover:border-teal-700 focus:border-teal-700 text-[11px]" 
+                                            value={p.soLuong} 
+                                            onChange={e => {
+                                              setDsPhuLieu(prev => {
+                                                const next = [...prev];
+                                                next[i] = { ...next[i], soLuong: parseInt(e.target.value) || 0 };
+                                                return next;
+                                              });
+                                            }} 
+                                          />
+                                          <span className="text-slate-500 ml-0.5 text-[10px]">{p.dvt}</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => setDsPhuLieu(prev => prev.filter((_, pi) => pi !== i))}
+                                          className="shrink-0 text-rose-400 hover:text-rose-600"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Cột con 2: KHO VẢI QUẦN + GHI CHÚ + THÀNH TIỀN */}
+                            <div className="flex flex-col gap-2 w-full h-full justify-between">
+                              {/* Box Kho Vải Quần */}
+                              <div className="p-2.5 bg-teal-50/50 rounded border border-teal-200 flex flex-col gap-2">
+                                <div>
+                                  <div className="text-[10px] font-bold text-teal-800 mb-1">QUẦN - Kho Vải</div>
+                                  <select 
+                                    className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded bg-white font-medium" 
+                                    value={mau.maVaiQuan || ""}
+                                    onChange={(e) => handleChonVai(idx, e.target.value, "quan")}
+                                  >
+                                    <option value="">-- Chọn vải --</option>
+                                    {khoVaiReals.map((kv) => (
+                                      <option key={kv.maVT} value={kv.maVT}>{getVaiOptionLabel(kv)}</option>
+                                    ))}
+                                  </select>
+                                  {mau.maVaiQuan && (() => {
+                                    const v = khoVaiReals.find((x) => x.maVT === mau.maVaiQuan);
+                                    if (!v) return null;
+                                    const g3k = getChiTietGia3Khau(v.maVT, v.donGia, v.tenVT, v.mauSac);
+                                    return (
+                                      <div className="mt-1 px-2 py-1 bg-teal-50 dark:bg-teal-950/40 rounded border border-teal-200 dark:border-teal-800 text-[10px] text-teal-800 dark:text-teal-300 flex items-center justify-between flex-wrap gap-1">
+                                        <span className="font-semibold">
+                                          🧵 Sợi {g3k.chiPhiSoi.toLocaleString()}đ + 🏭 Dệt {g3k.giaDet.toLocaleString()}đ + 🧪 Nhuộm {g3k.chiPhiNhuom.toLocaleString()}đ
+                                        </span>
+                                        <span className="font-bold font-mono">
+                                          = {(v.donGia || 0).toLocaleString('vi-VN')} đ/kg
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <div className="text-[10px] font-bold text-slate-500 block mb-1">Định mức (kg/quần):</div>
+                                    <input 
+                                      type="number" step="0.0001"
+                                      className="w-full px-2 py-1.5 border border-slate-200 text-sm rounded bg-white font-semibold" 
+                                      value={mau.dinhMucQuan || ""}
+                                      placeholder="VD: 0.35"
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, dinhMucQuan: val } : m));
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="text-[10px] font-bold text-teal-700">Đơn giá vải quần (đ/kg):</div>
+                                      {donGiaQuanKho > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, donGiaVaiQuan: donGiaQuanKho } : m))}
+                                          className="text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition-colors cursor-pointer"
+                                          title="Click để đồng bộ đơn giá từ Kho vải"
+                                        >
+                                          ✓ Kho: {donGiaQuanKho.toLocaleString('vi-VN')} đ
+                                        </button>
+                                      )}
+                                    </div>
+                                    <input 
+                                      type="number" step="1000"
+                                      className="w-full px-2 py-1.5 border border-teal-300 text-sm rounded font-bold text-teal-800 bg-teal-50/30" 
+                                      placeholder={donGiaQuanKho > 0 ? String(donGiaQuanKho) : "VD: 91000"}
+                                      value={mau.donGiaVaiQuan !== undefined && mau.donGiaVaiQuan !== null && mau.donGiaVaiQuan > 0 ? mau.donGiaVaiQuan : (donGiaQuanKho > 0 ? donGiaQuanKho : "")}
+                                      onChange={(e) => {
+                                        const valStr = e.target.value;
+                                        const val = valStr === "" ? 0 : parseFloat(valStr) || 0;
+                                        setDsMau(prev => prev.map((m, i) => i === idx ? { ...m, donGiaVaiQuan: val } : m));
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Màu phối của quần */}
+                                <div className="p-2 bg-fuchsia-50/60 border border-fuchsia-200 rounded">
+                                  <div className="flex flex-wrap items-center justify-between mb-1.5 gap-2">
+                                    <label className="text-[10px] font-bold text-fuchsia-700">Màu phối quần (tham khảo, không tính định mức)</label>
+                                    <select
+                                      className="text-[11px] px-1.5 py-1 border border-fuchsia-200 rounded bg-white w-full sm:w-auto sm:max-w-[160px]"
+                                      value=""
+                                      onChange={(e) => {
+                                        const ten = e.target.value;
+                                        if (!ten) return;
+                                        const next = [...dsMau];
+                                        const cur = (next[idx] as any).mauPhoiQuan || next[idx].mauPhoi || [];
+                                        if (!cur.includes(ten)) {
+                                          (next[idx] as any).mauPhoiQuan = [...cur, ten];
+                                          setDsMau(next);
+                                        }
+                                        e.target.value = "";
+                                      }}
+                                    >
+                                      <option value="">+ Thêm màu phối...</option>
+                                      {NHOM_MAU.map((nhom) => (
+                                        <optgroup key={nhom} label={nhom}>
+                                          {getDistinctColorOptions(mau.ten, (mau as any).mauPhoiQuan || mau.mauPhoi || []).filter((sw) => sw.nhom === nhom).map((sw) => (
+                                            <option key={sw.id} value={sw.ten}>{sw.ten}</option>
+                                          ))}
+                                        </optgroup>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {(((mau as any).mauPhoiQuan || mau.mauPhoi || []).length === 0) && (
+                                      <span className="text-[11px] text-fuchsia-400 italic">Chưa có màu phối quần</span>
+                                    )}
+                                    {(((mau as any).mauPhoiQuan || mau.mauPhoi || []) as string[]).map((ten: string, mpIdx: number) => (
+                                      <span key={mpIdx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-[11px] font-medium">
+                                        {ten}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDsMau(prev => prev.map((m, i) => {
+                                              if (i !== idx) return m;
+                                              const cur = ((m as any).mauPhoiQuan || m.mauPhoi || []) as string[];
+                                              return { ...m, mauPhoiQuan: cur.filter((_, mi) => mi !== mpIdx) };
+                                            }));
+                                          }}
+                                          className="hover:text-fuchsia-950"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Ghi chú */}
+                              <div className="flex flex-col bg-amber-50/50 p-2 rounded border border-amber-200/50">
+                                <label className="text-[10px] font-bold text-amber-700 mb-1">Ghi chú (Màu sắc phối, chú ý kỹ thuật may):</label>
+                                <textarea 
+                                  rows={2}
+                                  className="w-full px-2 py-1.5 border border-amber-200 rounded text-sm focus:outline-none focus:border-amber-400 resize-none bg-white"
+                                  placeholder="Nhập ghi chú kỹ thuật riêng cho màu này..."
+                                  value={mau.ghiChu || ""}
+                                  onChange={(e) => {
+                                    const next = [...dsMau]; 
+                                    next[idx].ghiChu = e.target.value; 
+                                    setDsMau(next);
+                                  }}
+                                />
+                              </div>
+
+                              {/* Tổng tiền vải màu này */}
+                              <div className="bg-emerald-50 p-2 rounded border border-emerald-300">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-[10px] font-bold text-emerald-800">
+                                    Tổng tiền vải màu này ({mau.slDuKien || 0} SP)
+                                  </div>
+                                  <div className="text-sm font-black text-emerald-900 font-mono">
+                                    {formatVND(tongTienVaiMau)}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>

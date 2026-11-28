@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { KHSX, TrangThaiKHSX } from "@/lib/data/khsx-store";
 import { LOAI_SP_LABELS } from "@/lib/data/lenh-cat-store";
+import { isChuyenNhietOrder } from "@/components/ui/LenhCatTableView";
 
 interface KeHoachSXCardViewProps {
   list: KHSX[];
@@ -28,7 +29,7 @@ interface KeHoachSXCardViewProps {
   onDelete: (item: KHSX) => void;
   onViewLenhCat: (lenhCatId: string) => void;
   onTaoLenhCat: (item: KHSX) => void;
-  onZoomImg: (url: string) => void;
+  onZoomImg: (url: string, alt?: string, badge?: string) => void;
 }
 
 const TRANG_THAI_BADGE: Record<TrangThaiKHSX, { bg: string; text: string; dot: string; label: string }> = {
@@ -82,12 +83,38 @@ export function KeHoachSXCardView({
 }: KeHoachSXCardViewProps) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Helper lấy ảnh đại diện tối ưu
-  const getDisplayImage = (item: KHSX) => {
+  // Helper lấy mã sản phẩm chuẩn (ưu tiên item.maSP, sau đó dò từ KHSX, Lệnh Cắt hoặc Danh mục SP)
+  const getSPCode = (item: KHSX) => {
+    if (item.maSP) return item.maSP.trim();
+    if (item.maKHSX) {
+      const match = item.maKHSX.match(/M\d+/i);
+      if (match) return match[0].toUpperCase();
+    }
     const matchedLC = dsLenhCat.find(
       (lc: any) =>
         (item.lenhCatId && lc.id === item.lenhCatId) ||
-        (item.maSP && (lc.maSP === item.maSP || lc.id.endsWith(item.maSP)))
+        (item.id && lc.id.includes(item.id.replace("KHSX-2026-", ""))) ||
+        (item.sanPham && (lc.tenSP === item.sanPham || lc.id === item.sanPham))
+    );
+    if (matchedLC?.maSP) return matchedLC.maSP.trim();
+    const sp = dsSanPham.find(
+      (s: any) =>
+        (item.sanPham && (s.tenSP === item.sanPham || s.ten_sp === item.sanPham)) ||
+        (item.tenSP && s.tenSP === item.tenSP)
+    );
+    if (sp?.maSP || sp?.ma_sp) return (sp.maSP || sp.ma_sp).trim();
+    return "";
+  };
+
+  // Helper lấy ảnh đại diện tối ưu
+  const getDisplayImage = (item: KHSX) => {
+    const spCode = getSPCode(item);
+    const matchedLC = dsLenhCat.find(
+      (lc: any) =>
+        (item.lenhCatId && lc.id === item.lenhCatId) ||
+        (spCode && (lc.maSP === spCode || lc.id.endsWith(spCode))) ||
+        (item.id && lc.id.includes(item.id.replace("KHSX-2026-", ""))) ||
+        (item.sanPham && (lc.tenSP === item.sanPham || lc.id === item.sanPham))
     );
 
     if (matchedLC?.dsMau && matchedLC.dsMau.length > 0) {
@@ -103,8 +130,8 @@ export function KeHoachSXCardView({
       if (item.dsMau[0]?.img) return item.dsMau[0].img;
     }
 
-    if (item.maSP) {
-      return `/product-models/${item.maSP}.png`;
+    if (spCode) {
+      return `/product-models/${spCode}.png`;
     }
 
     const sp = dsSanPham.find(
@@ -131,6 +158,7 @@ export function KeHoachSXCardView({
     <div className="grid gap-3.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
       {list.map((item) => {
         const imageToDisplay = getDisplayImage(item);
+        const spCode = getSPCode(item);
         const st = TRANG_THAI_BADGE[item.trangThai] || TRANG_THAI_BADGE["Lên kế hoạch"];
         const isOverdue = item.denNgay && item.denNgay < todayStr && item.trangThai !== "Hoàn thành";
         const hasEditor = item.lenhCatId && activeEditors[item.lenhCatId] && activeEditors[item.lenhCatId].length > 0;
@@ -138,9 +166,11 @@ export function KeHoachSXCardView({
         const matchedLC = dsLenhCat.find(
           (lc: any) =>
             (item.lenhCatId && lc.id === item.lenhCatId) ||
-            (item.maSP && (lc.maSP === item.maSP || lc.id.endsWith(item.maSP))) ||
+            (spCode && (lc.maSP === spCode || lc.id.endsWith(spCode))) ||
             (item.id && lc.id.includes(item.id.replace("KHSX-2026-", "")))
         );
+
+        const isChuyenNhiet = isChuyenNhietOrder(matchedLC, spCode);
 
         const activeDsMau = (matchedLC?.dsMau && matchedLC.dsMau.length > 0) ? matchedLC.dsMau : (item.dsMau || []);
         const tongSL = item.soLuong || 0;
@@ -162,9 +192,9 @@ export function KeHoachSXCardView({
                   </span>
 
                   {/* Mã SP */}
-                  {item.maSP && (
+                  {spCode && (
                     <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/70 dark:border-indigo-800/60">
-                      Mã: {item.maSP}
+                      Mã: {spCode}
                     </span>
                   )}
                 </div>
@@ -181,7 +211,7 @@ export function KeHoachSXCardView({
                 {/* Thumbnail ảnh sản phẩm */}
                 {imageToDisplay ? (
                   <div
-                    onClick={() => onZoomImg(imageToDisplay)}
+                    onClick={() => onZoomImg(imageToDisplay, item.sanPham, isChuyenNhiet ? undefined : spCode)}
                     style={{ width: "80px", height: "106px", minWidth: "80px", maxWidth: "80px" }}
                     className="rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 shrink-0 overflow-hidden shadow-2xs cursor-pointer hover:border-teal-500 hover:shadow-md transition-all relative group/img"
                     title="Nhấp để xem ảnh lớn"
@@ -190,8 +220,23 @@ export function KeHoachSXCardView({
                       src={imageToDisplay}
                       alt={item.sanPham}
                       className="w-full h-full object-cover object-top group-hover/img:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        if (spCode && !e.currentTarget.src.includes(`/product-models/${spCode}.png`)) {
+                          e.currentTarget.src = `/product-models/${spCode}.png`;
+                        }
+                      }}
                     />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-2xs">
+
+                    {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ĐÁY TẤM HÌNH (trừ 13 mã in chuyển nhiệt) */}
+                    {spCode && !isChuyenNhiet && (
+                      <div className="absolute bottom-0 inset-x-0 bg-slate-950/85 backdrop-blur-[1px] py-1 px-0.5 text-center pointer-events-none z-10 border-t border-amber-400/40">
+                        <span className="font-mono font-black text-[10px] text-amber-300 tracking-tight block truncate leading-tight drop-shadow-xs">
+                          {spCode}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-2xs z-20">
                       <Maximize2 className="w-4 h-4 drop-shadow" />
                     </div>
                   </div>
@@ -223,15 +268,17 @@ export function KeHoachSXCardView({
                     {item.sanPham}
                   </h3>
 
-                  {/* Danh sách Màu sắc gọn gàng */}
-                  {activeDsMau.length > 0 && (
+                  {/* Danh sách Màu sắc & Logo gọn gàng */}
+                  {(activeDsMau.length > 0 || matchedLC?.hinhMauInTheu) && (
                     <div className="pt-0.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Màu:</span>
+                        {activeDsMau.length > 0 && (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Màu:</span>
+                        )}
                         {activeDsMau.slice(0, 3).map((mau: any, mIdx: number) => (
                           <div
                             key={mIdx}
-                            onClick={() => mau.img && onZoomImg(mau.img)}
+                            onClick={() => mau.img && onZoomImg(mau.img, `${item.sanPham} - ${mau.ten}`, spCode)}
                             className="inline-flex items-center gap-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-700 text-[10px] font-medium text-slate-700 dark:text-slate-300 cursor-pointer transition-colors"
                             title={`${mau.ten}${mau.slThucTe ? ` - ${mau.slThucTe} SP` : ''} (Bấm xem ảnh màu)`}
                           >
@@ -249,6 +296,18 @@ export function KeHoachSXCardView({
                           <span className="text-[10px] font-bold text-teal-700 dark:text-emerald-400 bg-teal-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-teal-200/60 dark:border-emerald-800">
                             +{activeDsMau.length - 3}
                           </span>
+                        )}
+
+                        {/* Logo In/Thêu nếu có */}
+                        {matchedLC?.hinhMauInTheu && (
+                          <div
+                            onClick={() => onZoomImg(matchedLC.hinhMauInTheu, `Logo In/Thêu - ${item.sanPham}`, spCode || "LOGO")}
+                            className="inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 px-1.5 py-0.5 rounded-md border border-purple-200/80 dark:border-purple-800/80 text-[10px] font-bold text-purple-700 dark:text-purple-300 cursor-pointer transition-colors"
+                            title="Logo In/Thêu - Bấm xem to rõ nét"
+                          >
+                            <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                            <span>Logo</span>
+                          </div>
                         )}
                       </div>
                     </div>

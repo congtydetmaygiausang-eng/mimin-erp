@@ -91,7 +91,14 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setList(parsed);
+          const missing = DOI_TAC_GIA_CONG.filter(k => !parsed.find((p: any) => p.ma === k.ma));
+          if (missing.length > 0) {
+            const merged = [...parsed, ...missing].sort((a: any, b: any) => (a.stt || 0) - (b.stt || 0));
+            setList(merged);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          } else {
+            setList(parsed);
+          }
         }
       }
     } catch (err) {}
@@ -103,13 +110,11 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseEnabled) {
         setList(prev => {
           if (prev.length === 0) return DOI_TAC_GIA_CONG;
-          if (prev.length < DOI_TAC_GIA_CONG.length) {
-            const missing = DOI_TAC_GIA_CONG.filter(k => !prev.find(p => p.ma === k.ma));
-            if (missing.length > 0) {
-              const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
-              return combined;
-            }
+          const missing = DOI_TAC_GIA_CONG.filter(k => !prev.find(p => p.ma === k.ma));
+          if (missing.length > 0) {
+            const combined = [...prev, ...missing].sort((a, b) => a.stt - b.stt);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+            return combined;
           }
           return prev;
         });
@@ -123,8 +128,15 @@ export function DoiTacProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           if (data && data.length > 0) {
             const mapped = data.map((d: any, i: number) => mapToUI(d, i));
-            setList(mapped);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped));
+            const missing = DOI_TAC_GIA_CONG.filter(k => !mapped.find(p => p.ma === k.ma));
+            const combined = missing.length > 0 ? [...mapped, ...missing].sort((a, b) => a.stt - b.stt) : mapped;
+            setList(combined);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
+            if (missing.length > 0) {
+              Promise.all(missing.map(dt => 
+                supabaseUpsert("nha_cung_cap", mapToDB(dt), "ma_ncc")
+              )).catch(() => {});
+            }
           } else {
             setList(DOI_TAC_GIA_CONG);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(DOI_TAC_GIA_CONG));

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Layers, X, CheckCircle2, SlidersHorizontal, RefreshCw,
-  ShieldCheck, Calculator, Package, AlertCircle,
+  Sparkles, ShieldCheck, Calculator, Package, AlertCircle,
   Tag, ArrowRight, Check, Percent
 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,8 +12,8 @@ import { formatVND, type KhoVai } from "@/lib/data/real-data";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { updateVaiInfo, getInventoryByMaVT, upsertInventoryItem, type ThuongHieuVai } from "@/lib/inventory-engine";
 import {
-  getChiTietGia3Khau, saveChiTietGia3Khau,
-  type ChiTietGia3Khau
+  getChiTietGia3Khau, saveChiTietGia3Khau, PRESETS_VAI_MAU,
+  type ChiTietGia3Khau, type PresetVaiMau
 } from "@/lib/fabric-cost-breakdown";
 
 interface VaiChinhSuaModalProps {
@@ -137,6 +137,31 @@ export function VaiChinhSuaModal({
   const soMetQuyDoi = Math.round(tonKho * 3.2);
   const tongThanhTienTon = Math.round(tonKho * donGia);
 
+  // Áp dụng Preset
+  const handleApplyPreset = (preset: PresetVaiMau) => {
+    setNccSoi(preset.khauSoi.nccSoi);
+    setLoaiSoi(preset.khauSoi.loaiSoi);
+    setGiaSoi(preset.khauSoi.giaSoi);
+    setDinhMucSoi(preset.khauSoi.dinhMucSoi);
+    setHaoHutSoi(preset.khauSoi.haoHutSoi || 0);
+    setVatSoi(preset.khauSoi.vatSoi || 0);
+
+    setNccDet(preset.khauDet.nccDet);
+    setKieuDet(preset.khauDet.kieuDet);
+    setGiaDet(preset.khauDet.giaDet);
+    setHaoHutDet(preset.khauDet.haoHutDet || 0);
+    setVatDet(preset.khauDet.vatDet || 0);
+
+    setNccNhuom(preset.khauNhuom.nccNhuom);
+    setKieuNhuom(preset.khauNhuom.kieuNhuom);
+    setGiaNhuom(preset.khauNhuom.giaNhuom);
+    setPhuPhiNhuom(preset.khauNhuom.phuPhiNhuom || 0);
+    setHaoHutNhuom(preset.khauNhuom.haoHutNhuom || 0);
+    setVatNhuom(preset.khauNhuom.vatNhuom || 0);
+
+    setIsCustomDonGia(false);
+    toast.success(`Đã áp dụng mẫu giá chuẩn: ${preset.tenPreset}`);
+  };
 
   // Khôi phục chuẩn 74k
   const handleResetChuan = () => {
@@ -326,6 +351,34 @@ export function VaiChinhSuaModal({
 
           {/* CUỘN FORM NỘI DUNG */}
           <form id="form-edit-vai-modal" onSubmit={handleSave} className="overflow-y-auto pr-1 flex-1 py-3.5 space-y-4">
+            {/* PRESETS NẠP NHANH 1-CLICK */}
+            <div className="p-3 rounded-xl bg-gradient-to-r from-teal-500/5 via-sky-500/5 to-purple-500/5 border border-teal-200/60 dark:border-teal-800/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  Mẫu bảng giá chuẩn theo Nhà cung cấp của xưởng (Nạp nhanh 1-Click):
+                </span>
+                <span className="text-[11px] text-slate-500">Click để tự động điền các khâu</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
+                {PRESETS_VAI_MAU.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleApplyPreset(p)}
+                    className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 hover:border-teal-400 dark:border-slate-700 hover:shadow-sm text-left transition flex flex-col justify-between group cursor-pointer"
+                  >
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-teal-600 line-clamp-1">
+                      {p.tenPreset.split("(")[0].trim()}
+                    </span>
+                    <span className="text-[11px] font-black text-teal-700 dark:text-teal-400 mt-1 font-mono">
+                      {formatVND(p.donGiaMau)}/kg
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* KHỐI 1: THÔNG TIN CƠ BẢN VẢI & PHÂN LOẠI */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex items-center justify-between">

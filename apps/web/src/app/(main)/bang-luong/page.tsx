@@ -623,8 +623,8 @@ export default function BangLuongPage() {
                     setNam(item.y);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${thang === item.m && nam === item.y
-                      ? "bg-teal-700 text-white shadow-xs font-bold"
-                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    ? "bg-teal-700 text-white shadow-xs font-bold"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                     }`}
                 >
                   {item.label}
@@ -820,8 +820,8 @@ export default function BangLuongPage() {
                   key={t.id}
                   onClick={() => setTab(t.id as any)}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${isActive
-                      ? "bg-teal-700 text-white shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                     }`}
                 >
                   <Icon className={`w-3.5 h-3.5 ${isActive ? "text-teal-200" : "text-teal-600 dark:text-teal-400"}`} />
@@ -839,8 +839,8 @@ export default function BangLuongPage() {
                 type="button"
                 onClick={() => setViewMode("table")}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${viewMode === "table"
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 title="Xem dạng bảng kế toán chi tiết"
               >
@@ -851,8 +851,8 @@ export default function BangLuongPage() {
                 type="button"
                 onClick={() => setViewMode("card")}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${viewMode === "card"
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 title="Xem dạng thẻ hồ sơ nhân sự trực quan"
               >
@@ -945,8 +945,8 @@ export default function BangLuongPage() {
                   key={p.id}
                   onClick={() => setFilterBoPhan(p.id as any)}
                   className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${active
-                      ? "bg-teal-700 text-white shadow-xs"
-                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                     }`}
                 >
                   <span>{p.label}</span>
@@ -1178,8 +1178,8 @@ export default function BangLuongPage() {
                           <td className="px-3.5 py-3 whitespace-nowrap min-w-[95px]">
                             <span
                               className={`text-xs px-2.5 py-1 rounded-full font-semibold whitespace-nowrap inline-block ${b.isLuongSP
-                                  ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
-                                  : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+                                : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                                 }`}
                             >
                               {b.boPhan}
@@ -1313,8 +1313,8 @@ export default function BangLuongPage() {
                         </div>
                         <span
                           className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${b.isLuongSP
-                              ? "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border border-sky-200"
-                              : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200"
+                            ? "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border border-sky-200"
+                            : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200"
                             }`}
                         >
                           {b.boPhan}
@@ -1809,7 +1809,8 @@ export default function BangLuongPage() {
 
               {/* Thông tin nhân viên & Chấm công tháng */}
               {(() => {
-                const soNgayNghi = Math.max(0, (selectedSlipNV.ngayCongChuan || 28) - (selectedSlipNV.ngayCongThucTe || 0));
+                const congHuongLuong = selectedSlipNV.ngayCongHuongLuong || selectedSlipNV.ngayCongThucTe || 0;
+                const soNgayNghiKhongPhep = Math.max(0, (selectedSlipNV.ngayCongChuan || 28) - congHuongLuong);
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                     <div>
@@ -1835,20 +1836,30 @@ export default function BangLuongPage() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[10px] block uppercase font-medium">Ngày công đi làm:</span>
+                      <span className="text-slate-500 text-[10px] block uppercase font-medium">Công hưởng lương:</span>
                       <div className="font-bold text-teal-700 text-xs mt-0.5">
-                        {selectedSlipNV.ngayCongThucTe}/{selectedSlipNV.ngayCongChuan} công ({selectedSlipNV.tyLeNgayCong}%)
+                        {congHuongLuong}/{selectedSlipNV.ngayCongChuan} công ({selectedSlipNV.tyLeNgayCong}%)
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Đi làm: {selectedSlipNV.ngayCongThucTe}c · Phép: {selectedSlipNV.ngayPhep || 0}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[10px] block uppercase font-medium">Số ngày đã nghỉ:</span>
+                      <span className="text-slate-500 text-[10px] block uppercase font-medium">Nghỉ phép / Nghỉ việc:</span>
                       <div className="font-bold text-xs mt-0.5">
-                        {soNgayNghi > 0 ? (
-                          <span className="text-rose-600 font-bold">
-                            {soNgayNghi} ngày {selectedSlipNV.ngayPhep > 0 ? `(${selectedSlipNV.ngayPhep} ngày phép)` : "(Không phép)"}
+                        {selectedSlipNV.ngayPhep > 0 && (
+                          <span className="text-indigo-600 block text-[11px]">
+                            Phép: {selectedSlipNV.ngayPhep} ngày (hưởng lương)
+                          </span>
+                        )}
+                        {soNgayNghiKhongPhep > 0 ? (
+                          <span className="text-rose-600 block text-[11px]">
+                            Không phép: {soNgayNghiKhongPhep} ngày (trừ công)
                           </span>
                         ) : (
-                          <span className="text-emerald-700 font-bold">0 ngày (Đi làm đủ)</span>
+                          selectedSlipNV.ngayPhep === 0 && (
+                            <span className="text-emerald-700 font-bold">Đi làm đủ (0 ngày nghỉ)</span>
+                          )
                         )}
                       </div>
                     </div>
@@ -1899,7 +1910,7 @@ export default function BangLuongPage() {
                       <td className="py-2 px-3 text-center border-r border-slate-200">
                         {selectedSlipNV.isLuongSP
                           ? `${selectedSlipNV.soLuongDat} sp đạt`
-                          : `${selectedSlipNV.ngayCongThucTe}/${selectedSlipNV.ngayCongChuan} công (Đã nghỉ: ${Math.max(0, (selectedSlipNV.ngayCongChuan || 28) - (selectedSlipNV.ngayCongThucTe || 0))} ngày)`}
+                          : `${selectedSlipNV.ngayCongThucTe} ngày đi làm${selectedSlipNV.ngayPhep > 0 ? ` + ${selectedSlipNV.ngayPhep} ngày phép` : ""} / ${selectedSlipNV.ngayCongChuan} công chuẩn (Hưởng lương: ${selectedSlipNV.ngayCongHuongLuong || selectedSlipNV.ngayCongThucTe} công)`}
                       </td>
                       <td className="py-2 px-3 text-right text-slate-600 border-r border-slate-200">
                         {selectedSlipNV.isLuongSP

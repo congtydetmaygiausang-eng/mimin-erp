@@ -137,7 +137,7 @@ function cleanVariantKey(str: string): string {
 }
 
 // Chuyển từ App lên DB (snake_case), chỉ gửi các cột có thật trong bảng san_pham
-function buildDBPayload(sp: SanPham) {
+export function buildDBPayload(sp: SanPham) {
   const loai = sp.loaiSP || "BoTru";
   const payload: any = {
     ma_sp: sp.id || (sp as any).maSP,
@@ -495,7 +495,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                   const delSet = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
                   duplicateIds.forEach(id => delSet.add(String(id)));
                   localStorage.setItem("mimin_kho_tp_deleted_ids", JSON.stringify(Array.from(delSet)));
-                } catch {}
+                } catch { }
               }
             }
 
@@ -511,7 +511,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
                   const delSet = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
                   orphanIds.forEach(id => delSet.add(String(id)));
                   localStorage.setItem("mimin_kho_tp_deleted_ids", JSON.stringify(Array.from(delSet)));
-                } catch {}
+                } catch { }
               }
             }
           }

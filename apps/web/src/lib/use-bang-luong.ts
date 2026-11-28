@@ -9,7 +9,7 @@
 // 3. Convert từng schema row thành format chuẩn cho tinhBangLuongThang
 
 import { useEffect, useState, useMemo } from "react";
-import { tinhBangLuongThang, tongKetBangLuong, type BangLuongNV, type TongKetBangLuong, type NhanSuLuongInput } from "./bang-luong-engine";
+import { tinhBangLuongThang, tongKetBangLuong, LUONG_CUNG_DEFAULT, type BangLuongNV, type TongKetBangLuong, type NhanSuLuongInput } from "./bang-luong-engine";
 import { supabaseFetchAll, isSupabaseEnabled, supabase } from "@/lib/supabase/client";
 import { mergeChamCongRecords, normalizeChamCongFromDB, type ChamCongRecord } from "./cham-cong";
 import { getDanhSachThuChi, syncFromSupabase, type GiaoDichThuChi } from "@/lib/data/thu-chi";
@@ -146,9 +146,18 @@ export function useBangLuongData(thang: number, nam: number) {
   const [danhSachThuChi, setDanhSachThuChi] = useState<GiaoDichThuChi[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<"supabase" | "localStorage" | "empty">("empty");
+  const [chamCongVersion, setChamCongVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Lắng nghe sự kiện cập nhật chấm công realtime để re-fetch ngay lập tức
+    const handleChamCongUpdate = () => {
+      setChamCongVersion((v) => v + 1);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("mimin_cham_cong_updated", handleChamCongUpdate);
+    }
 
     // 0c. Load danh sách Thu Chi nội bộ (Tạm ứng) ngay lập tức từ localStorage
     const localTC = getDanhSachThuChi();
@@ -217,7 +226,7 @@ export function useBangLuongData(thang: number, nam: number) {
                 else if (/kế toán/i.test(boPhan)) lc = 10_000_000;
                 else if (/kinh doanh/i.test(boPhan)) lc = 10_000_000;
                 else if (/media|marketing/i.test(boPhan)) lc = 10_000_000;
-                else if (/sản xuất/i.test(boPhan)) lc = 7_000_000;
+                else lc = LUONG_CUNG_DEFAULT[boPhan] || 7_000_000;
               }
               return {
                 ma: r.ma_nv || r.maNV || "",
@@ -386,9 +395,10 @@ export function useBangLuongData(thang: number, nam: number) {
       if (typeof window !== "undefined") {
         window.removeEventListener("mimin_thu_chi_updated", handleThuChiUpdate);
         window.removeEventListener("storage", handleThuChiUpdate);
+        window.removeEventListener("mimin_cham_cong_updated", handleChamCongUpdate);
       }
     };
-  }, [thang, nam]);
+  }, [thang, nam, chamCongVersion]);
 
   // Tính bảng lương (kết hợp dữ liệu chấm công chuẩn 28 ngày & khấu trừ tạm ứng từ Thu Chi nội bộ)
   const bangLuong = useMemo(

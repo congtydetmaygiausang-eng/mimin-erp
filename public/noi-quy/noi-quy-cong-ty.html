@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Nội Quy Công Ty - POLOMIMIN / MANPJ</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+      background: #0f172a;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .poster {
+      width: 1040px;
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER GỌN GÀNG, SANG TRỌNG */
+    .top-header {
+      background: linear-gradient(135deg, #042f2e 0%, #0f766e 60%, #0e7490 100%);
+      color: #ffffff;
+      padding: 24px 36px 20px;
+      text-align: center;
+      border-bottom: 5px solid #f59e0b;
+    }
+
+    .company-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #5eead4;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .brand-pill {
+      background: #f59e0b;
+      color: #78350f;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 3px 12px;
+      border-radius: 999px;
+    }
+
+    .brand-pill-sub {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 3px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .main-title {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .sub-title {
+      font-size: 16px;
+      color: #ccfbf1;
+      font-weight: 600;
+    }
+
+    /* NỘI DUNG CHỮ LỚN */
+    .body-content {
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #f8fafc;
+    }
+
+    .rule-card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1.5px solid #e2e8f0;
+      padding: 18px 22px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    }
+
+    .rule-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+
+    .rule-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .bg-teal   { background: #0f766e; }
+    .bg-blue   { background: #0284c7; }
+    .bg-amber  { background: #d97706; }
+    .bg-purple { background: #7c3aed; }
+    .bg-emerald{ background: #059669; }
+
+    .rule-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .rule-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rule-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 17px;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+
+    .rule-bullet {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #f0fdfa;
+      border: 1.5px solid #0d9488;
+      color: #0d9488;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .rule-item strong {
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    .tag-alert {
+      display: inline-block;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #fecaca;
+    }
+
+    .tag-notice {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #fde68a;
+    }
+
+    .tag-ok {
+      display: inline-block;
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* FOOTER CHỮ KÝ GỌN GÀNG */
+    .bottom-row {
+      background: #ffffff;
+      border-top: 2px solid #e2e8f0;
+      padding: 18px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sign-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sign-left .role {
+      font-size: 15px;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+    }
+
+    .sign-left .name {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .sign-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sign-right .company {
+      font-size: 13px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .sign-right .director {
+      font-size: 16px;
+      font-weight: 900;
+      color: #0f766e;
+      text-transform: uppercase;
+    }
+
+    /* BAR DƯỚI CÙNG */
+    .bar-footer {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 10px 36px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="poster">
+    <!-- HEADER -->
+    <div class="top-header">
+      <div class="company-top">
+        <div>🏢 CÔNG TY TNHH DỆT MAY GIÀU SANG</div>
+        <div class="brand-pills">
+          <span class="brand-pill">POLOMIMIN</span>
+          <span class="brand-pill-sub">MANPJ</span>
+        </div>
+      </div>
+      <h1 class="main-title">NỘI QUY CÔNG TY</h1>
+      <p class="sub-title">Quy định áp dụng đối với toàn thể nhân viên & người lao động tại xưởng may và văn phòng</p>
+    </div>
+
+    <!-- NỘI DUNG 5 ĐIỀU CHỮ LỚN -->
+    <div class="body-content">
+      
+      <!-- ĐIỀU 1 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-teal">I</div>
+          <div class="rule-title">TÁC PHONG VÀ VỆ SINH NƠI LÀM VIỆC</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Giữ gìn vệ sinh nơi làm việc:</strong> Nhân viên giữ gìn nơi làm việc sạch sẽ, gọn gàng; sắp xếp dụng cụ, máy móc và nguyên vật liệu đúng vị trí sau khi sử dụng.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Giờ giấc làm việc:</strong> <span class="tag-ok">ĐÚNG GIỜ</span> Đi làm đúng giờ, chấp hành thời gian làm việc và nghỉ ngơi theo lịch, ca kíp của công ty.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Ăn uống gọn gàng:</strong> Khi ăn trưa, mọi người cùng giữ gìn và dọn dẹp sạch sẽ khu vực ăn uống ngay sau khi dùng; không để thức ăn thừa, rác hoặc vật dụng bừa bãi.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Sử dụng nhà vệ sinh:</strong> Sử dụng đúng cách; sau khi dùng phải giữ khu vực sạch sẽ, khô ráo và có ý thức giữ gìn, bảo vệ tài sản chung.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 2 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-blue">II</div>
+          <div class="rule-title">TRÁCH NHIỆM VÀ BÀN GIAO CÔNG VIỆC</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Trách nhiệm công việc:</strong> Mỗi nhân viên chịu trách nhiệm hoàn thành công việc được phân công, bảo đảm đúng yêu cầu chất lượng và tiến độ.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Bàn giao công đoạn:</strong> <span class="tag-notice">CHỦ ĐỘNG BÀN GIAO</span> Khi hoàn tất công đoạn, phải chủ động bàn giao sản phẩm cho công đoạn tiếp theo; thông tin rõ số lượng, tình trạng và các vấn đề phát sinh.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Xử lý vướng mắc:</strong> Mỗi người cần biết bộ phận hoặc người nhận ở công đoạn kế tiếp. Nếu chưa rõ cách xử lý, phát hiện lỗi hoặc có vướng mắc, <strong>phải báo và gặp quản lý trực tiếp</strong> để được hướng dẫn; <span class="tag-alert">CẤM TỰ Ý BỎ QUA CÔNG ĐOẠN</span>.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Tuân thủ quy trình:</strong> Không tự ý thay đổi quy trình, chuyển hàng hoặc bàn giao khi chưa thống nhất với người phụ trách.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 3 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-amber">III</div>
+          <div class="rule-title">AN TOÀN LAO ĐỘNG, ĐIỆN VÀ THIẾT BỊ MÁY MÓC</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Tắt điện khi ra về:</strong> <span class="tag-notice">KIỂM TRA AN TOÀN</span> Trước khi rời khỏi khu vực làm việc, nhân viên được phân công phải kiểm tra và tắt toàn bộ thiết bị điện, đèn, quạt và máy móc không còn sử dụng theo quy định.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Vận hành thiết bị:</strong> <span class="tag-alert">CẤM TỰ Ý VẬN HÀNH</span> Không tự ý vận hành thiết bị khi chưa được hướng dẫn; báo ngay cho quản lý khi phát hiện hư hỏng, nguy cơ mất an toàn hoặc sự cố điện.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 4 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-purple">IV</div>
+          <div class="rule-title">XIN NGHỈ VÀ THÔNG BÁO VẮNG MẶT</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Thời gian báo trước:</strong> Khi có nhu cầu nghỉ phép, nhân viên cần báo và xin phép quản lý <span class="tag-notice">TRƯỚC ÍT NHẤT 01 NGÀY</span>; trường hợp nghỉ dài ngày phải thông báo <span class="tag-notice">TRƯỚC 02 NGÀY</span> để công ty kịp sắp xếp nhân sự và đơn hàng.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Việc đột xuất:</strong> Trường hợp đột xuất hoặc bất khả kháng, nhân viên phải thông báo cho quản lý sớm nhất có thể, nêu rõ lý do và phối hợp bàn giao công việc.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Phê duyệt nghỉ phép:</strong> Việc nghỉ phép chỉ hợp lệ khi có xác nhận của người có thẩm quyền. Trường hợp nghỉ từ 02 ngày trở lên cần được quản lý xem xét, phê duyệt trước (trừ tình huống khẩn cấp).</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 5 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-emerald">V</div>
+          <div class="rule-title">Ý THỨC VÀ TRÁCH NHIỆM CHUNG</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Tinh thần hợp tác:</strong> Chấp hành sự phân công hợp lý của quản lý; phối hợp, tôn trọng đồng nghiệp và luôn có ý thức bảo vệ tài sản, hàng hóa, máy móc của công ty.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Phụ cấp & trách nhiệm:</strong> Các khoản phụ cấp hoặc tiền trách nhiệm (nếu có) được thực hiện theo chính sách riêng được công ty thông báo; việc xem xét căn cứ quy định đã phổ biến và pháp luật hiện hành.</div>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- CHỮ KÝ GỌN GÀNG -->
+    <div class="bottom-row">
+      <div class="sign-left">
+        <div class="role">ĐẠI DIỆN NGƯỜI LAO ĐỘNG</div>
+        <div class="name">Tập thể Cán bộ & Công nhân viên (Cam kết chấp hành)</div>
+      </div>
+      <div class="sign-right">
+        <div class="company">ĐẠI DIỆN BAN GIÁM ĐỐC ĐÃ DUYỆT</div>
+        <div class="director">HỒ MINH SANG · GIÁM ĐỐC</div>
+      </div>
+    </div>
+
+    <!-- BAR FOOTER -->
+    <div class="bar-footer">
+      <div>MIMIN ERP · Hệ thống Quản trị & Sản xuất May mặc</div>
+      <div>Website: mimin.vn</div>
+    </div>
+  </div>
+
+</body>
+</html>

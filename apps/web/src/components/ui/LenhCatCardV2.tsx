@@ -10,6 +10,7 @@ import { DateDisplay } from "./DateDisplay";
 import { useKho } from "@/lib/data/kho-store";
 import { tinhGiaVonLenhCat } from "@/lib/gia-von-lenh-cat";
 import { LenhCatSummaryModal } from "@/app/(main)/lenh-cat/components/LenhCatSummaryModal";
+import { resolveLenhCatImage, resolveSpCode, isChuyenNhietOrder } from "./LenhCatTableView";
 
 interface Props {
   lc: LenhCat;
@@ -24,7 +25,9 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
   const { list: dsNhanSu } = useNhanSu();
   const { giaoDich } = useKho();
   const [summaryView, setSummaryView] = useState<"owners" | "cost" | null>(null);
-  const mainImg = lc.dsMau?.[0]?.img || "";
+  const mainImg = resolveLenhCatImage(lc);
+  const spCode = resolveSpCode(lc);
+  const isChuyenNhiet = isChuyenNhietOrder(lc, spCode);
   const ketQuaGiaVon = tinhGiaVonLenhCat(lc, giaoDich);
   const giaVon1SP = ketQuaGiaVon.giaVon1SP;
 
@@ -55,6 +58,11 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                 src={mainImg}
                 alt={lc.tenSP}
                 className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                onError={(e) => {
+                  if (lc.maSP && !e.currentTarget.src.includes(`/product-models/${lc.maSP}.png`)) {
+                    e.currentTarget.src = `/product-models/${lc.maSP}.png`;
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3.5 text-white">
                 <span className="text-xs font-bold flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
@@ -66,6 +74,15 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
                   📸 Ảnh bìa
                 </span>
               </div>
+
+              {/* ĐÓNG DẤU GHI MÃ SẢN PHẨM Ở DƯỚI ẢNH BÌA NHƯ LÚC ĐẦU (trừ 13 mã in chuyển nhiệt vì đã có sẵn mã trong ảnh gốc) */}
+              {spCode && !isChuyenNhiet && (
+                <div className="absolute bottom-3 left-3 z-10 pointer-events-none">
+                  <span className="text-xs font-mono font-black tracking-wider uppercase bg-black/85 text-amber-300 backdrop-blur-md px-3 py-1.5 rounded-lg border border-amber-400/60 shadow-lg flex items-center gap-1.5">
+                    🏷️ MÃ SP: {spCode}
+                  </span>
+                </div>
+              )}
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-2">
@@ -330,7 +347,7 @@ export function LenhCatCardV2({ lc, onColorClick, renderStatus, children, bangCh
       )}
 
       {zoomLogo && (
-        <ImageLightbox src={zoomLogo} onClose={() => setZoomLogo(null)} />
+        <ImageLightbox src={zoomLogo} alt={`Hình In/Thêu - ${lc.tenSP}`} onClose={() => setZoomLogo(null)} />
       )}
       {summaryView && <LenhCatSummaryModal lc={lc} view={summaryView} onClose={() => setSummaryView(null)} />}
     </div>

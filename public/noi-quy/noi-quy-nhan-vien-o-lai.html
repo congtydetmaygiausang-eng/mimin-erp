@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Nội Quy Nhân Viên Ở Lại - POLOMIMIN / MANPJ</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+      background: #0f172a;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .poster {
+      width: 1040px;
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER GỌN GÀNG, SANG TRỌNG */
+    .top-header {
+      background: linear-gradient(135deg, #022c22 0%, #0f766e 55%, #0369a1 100%);
+      color: #ffffff;
+      padding: 24px 36px 20px;
+      text-align: center;
+      border-bottom: 5px solid #f59e0b;
+    }
+
+    .company-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #5eead4;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .brand-pill {
+      background: #f59e0b;
+      color: #78350f;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 3px 12px;
+      border-radius: 999px;
+    }
+
+    .brand-pill-sub {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 3px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .main-title {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .sub-title {
+      font-size: 16px;
+      color: #ccfbf1;
+      font-weight: 600;
+    }
+
+    /* NỘI DUNG CHỮ LỚN */
+    .body-content {
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #f8fafc;
+    }
+
+    .rule-card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1.5px solid #e2e8f0;
+      padding: 18px 22px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    }
+
+    .rule-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #f1f5f9;
+    }
+
+    .rule-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .bg-rose   { background: #e11d48; }
+    .bg-teal   { background: #0f766e; }
+    .bg-blue   { background: #0284c7; }
+    .bg-amber  { background: #d97706; }
+    .bg-emerald{ background: #059669; }
+
+    .rule-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .rule-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rule-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 17px;
+      color: #1e293b;
+      line-height: 1.6;
+    }
+
+    .rule-bullet {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #f0fdfa;
+      border: 1.5px solid #0d9488;
+      color: #0d9488;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 900;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .rule-bullet-alert {
+      background: #fee2e2;
+      border-color: #f87171;
+      color: #dc2626;
+    }
+
+    .rule-item strong {
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    .tag-alert {
+      display: inline-block;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #fecaca;
+    }
+
+    .tag-notice {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #fde68a;
+    }
+
+    .tag-ok {
+      display: inline-block;
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 1px 8px;
+      border-radius: 5px;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* KHỐI PHÂN KHU RÕ RÀNG */
+    .manager-box-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 6px 0;
+      padding: 10px;
+      background: #f1f5f9;
+      border-radius: 12px;
+      border: 1.5px solid #cbd5e1;
+    }
+
+    .manager-col {
+      background: #ffffff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .manager-col-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #475569;
+      text-transform: uppercase;
+    }
+
+    .manager-col-name {
+      font-size: 16px;
+      font-weight: 900;
+      color: #0f766e;
+    }
+
+    /* FOOTER CHỮ KÝ GỌN GÀNG */
+    .bottom-row {
+      background: #ffffff;
+      border-top: 2px solid #e2e8f0;
+      padding: 18px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sign-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sign-left .role {
+      font-size: 15px;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+    }
+
+    .sign-left .name {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .sign-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sign-right .company {
+      font-size: 13px;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+
+    .sign-right .director {
+      font-size: 16px;
+      font-weight: 900;
+      color: #0f766e;
+      text-transform: uppercase;
+    }
+
+    /* BAR DƯỚI CÙNG */
+    .bar-footer {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 10px 36px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="poster">
+    <!-- HEADER -->
+    <div class="top-header">
+      <div class="company-top">
+        <div>🏢 CÔNG TY TNHH DỆT MAY GIÀU SANG</div>
+        <div class="brand-pills">
+          <span class="brand-pill">POLOMIMIN</span>
+          <span class="brand-pill-sub">MANPJ</span>
+        </div>
+      </div>
+      <h1 class="main-title">NỘI QUY NHÂN VIÊN Ở LẠI</h1>
+      <p class="sub-title">Quy định về sinh hoạt, vệ sinh môi trường, an ninh & an toàn tại khu vực lưu trú xưởng</p>
+    </div>
+
+    <!-- NỘI DUNG 5 ĐIỀU CHỮ LỚN -->
+    <div class="body-content">
+      
+      <!-- ĐIỀU 1 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-rose">I</div>
+          <div class="rule-title">QUY ĐỊNH SINH HOẠT CHUNG & TRẬT TỰ</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Nếp sống văn minh:</strong> Nhân viên ở lại tại công ty phải giữ gìn trật tự, vệ sinh chung và tôn trọng không gian sinh hoạt của mọi người.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet rule-bullet-alert">✕</div>
+            <div><strong>Cấm hút thuốc lá trong nhà:</strong> <span class="tag-alert">NGHIÊM CẤM 100%</span> Nghiêm cấm hút thuốc bên trong nhà và các khu vực trong nhà của công ty. Chỉ sử dụng đúng khu vực hút thuốc riêng ngoài trời nếu có bố trí.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Trật tự & người ngoài:</strong> Không gây ồn ào, mở nhạc to làm ảnh hưởng đến người khác; <span class="tag-alert">KHÔNG TỰ Ý ĐƯA NGƯỜI NGOÀI VÀO</span> khu vực lưu trú khi chưa được quản lý cho phép.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 2 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-teal">II</div>
+          <div class="rule-title">VỆ SINH SAU KHI TẮM VÀ GIẶT GIŨ QUẦN ÁO</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Vệ sinh sau tắm:</strong> <span class="tag-ok">GIỮ SÀN KHÔ RÁO</span> Sau khi tắm, người sử dụng phải vệ sinh sạch khu vực tắm, thu gom rác/tóc và giữ sàn sạch, không để nước đọng gây trơn trượt.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Thu gom quần áo:</strong> Quần áo đã giặt phải phơi/sấy đúng nơi quy định. Khi đồ đã khô, nhân viên tự thu gom ngay, cất gọn đúng vị trí; không để quần áo phơi lâu hoặc rải rác ở khu vực chung.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Lối đi chung:</strong> Không để đồ dùng cá nhân, khăn hoặc quần áo làm cản trở lối đi và khu vực sinh hoạt chung.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 3 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-blue">III</div>
+          <div class="rule-title">SỬ DỤNG ĐÚNG PHÂN KHU NHÀ VỆ SINH</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Phân khu nhà vệ sinh:</strong> Nhân viên phải sử dụng đúng phòng vệ sinh được phân khu và hướng dẫn:</div>
+          </li>
+
+          <!-- KHỐI QUẢN LÝ -->
+          <div class="manager-box-grid">
+            <div class="manager-col">
+              <span class="manager-col-label">📍 KHÂU CẮT & KHU VỰC VẢI</span>
+              <span class="manager-col-name">👉 Do ANH GIANG phụ trách quản lý</span>
+            </div>
+            <div class="manager-col">
+              <span class="manager-col-label">📍 KHU VỰC PHÍA DƯỚI PHÒNG CẮT</span>
+              <span class="manager-col-name">👉 Do BỘ PHẬN NHÂN SỰ phụ trách quản lý</span>
+            </div>
+          </div>
+
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Quy định cụ thể:</strong> Phòng vệ sinh khu vực khâu cắt và khu vải do <strong>anh Giang phụ trách</strong>; phòng vệ sinh bên khâu còn lại (dưới phòng cắt) do <strong>bộ phận Nhân sự phụ trách</strong>.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Giữ gìn thiết bị:</strong> Sau khi dùng phải xả nước, bỏ rác đúng nơi, giữ sạch bồn cầu, lavabo và sàn; nếu phát sinh hư hỏng hoặc thiếu đồ dùng vệ sinh, báo ngay người phụ trách khu vực.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 4 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-amber">IV</div>
+          <div class="rule-title">THỜI GIAN VÀ KHU VỰC SINH HOẠT LƯU TRÚ</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Giờ nghỉ sau 22h00:</strong> <span class="tag-notice">SAU 22:00 (10H TỐI)</span> Nếu có nhu cầu cá nhân, nhân viên ở đúng khu vực trên gác đã bố trí; <strong>không tự ý sinh hoạt tại khu vực sản xuất</strong> hoặc làm ảnh hưởng hoạt động công ty.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>An ninh & PCCC:</strong> Tuân thủ hướng dẫn giờ nghỉ, an ninh trật tự, phòng cháy chữa cháy và việc sử dụng điện, nước tiết kiệm, an toàn.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Tắt thiết bị điện:</strong> Trước khi ngủ hoặc ra khỏi phòng, kiểm tra và tắt toàn bộ thiết bị điện cá nhân không cần thiết; không dùng thiết bị có nguy cơ cháy nổ.</div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ĐIỀU 5 -->
+      <div class="rule-card">
+        <div class="rule-card-header">
+          <div class="rule-num bg-emerald">V</div>
+          <div class="rule-title">TRÁCH NHIỆM THỰC HIỆN VÀ XỬ LÝ VI PHẠM</div>
+        </div>
+        <ul class="rule-list">
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Ý thức tự giác:</strong> Mỗi người tự giác giữ gìn tài sản và vệ sinh khu vực mình sử dụng; cùng nhắc nhở nhau thực hiện đúng nội quy.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Phản ánh vướng mắc:</strong> Khi có vấn đề về chỗ ở, vệ sinh, an toàn hoặc sinh hoạt, báo ngay quản lý hoặc bộ phận Nhân sự để được giải quyết.</div>
+          </li>
+          <li class="rule-item">
+            <div class="rule-bullet">✓</div>
+            <div><strong>Xử lý vi phạm:</strong> Các trường hợp vi phạm được xử lý căn cứ theo nội quy, quy chế công ty đã phổ biến và quy định pháp luật hiện hành.</div>
+          </li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- CHỮ KÝ GỌN GÀNG -->
+    <div class="bottom-row">
+      <div class="sign-left">
+        <div class="role">ĐẠI DIỆN NHÂN SỰ Ở LẠI XƯỞNG</div>
+        <div class="name">Tập thể Nhân sự lưu trú (Cam kết chấp hành)</div>
+      </div>
+      <div class="sign-right">
+        <div class="company">ĐẠI DIỆN BAN GIÁM ĐỐC ĐÃ DUYỆT</div>
+        <div class="director">HỒ MINH SANG · GIÁM ĐỐC</div>
+      </div>
+    </div>
+
+    <!-- BAR FOOTER -->
+    <div class="bar-footer">
+      <div>MIMIN ERP · Hệ thống Quản trị & Sản xuất May mặc</div>
+      <div>Website: mimin.vn</div>
+    </div>
+  </div>
+
+</body>
+</html>

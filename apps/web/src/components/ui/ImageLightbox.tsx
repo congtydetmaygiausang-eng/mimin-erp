@@ -21,12 +21,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn, ZoomOut, RotateCcw, RotateCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { applyWatermark } from "@/lib/watermark";
 
 interface Props {
   /** URL anh dang zoom. null = dong. */
   src: string | null;
   /** Alt text hien thi duoi anh */
   alt?: string;
+  /** Con dau badge / ma SP dong len tren anh */
+  badge?: string;
   /** Callback dong */
   onClose: () => void;
   /** List anh de xem lan luot (optional - neu co se hien thi prev/next) */
@@ -39,18 +42,32 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 4;
 const SCALE_STEP = 0.5;
 
-export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: Props) {
+export default function ImageLightbox({ src, alt, badge, onClose, gallery, onChange }: Props) {
   const [mounted, setMounted] = useState(false);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [activeSrc, setActiveSrc] = useState<string>(src || "");
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Đóng dấu mã sản phẩm trực tiếp vào ảnh bằng Canvas (Hard Watermark)
+  useEffect(() => {
+    if (!src) return;
+    setActiveSrc(src);
+    if (badge) {
+      applyWatermark(src, badge).then((watermarked) => {
+        if (watermarked) {
+          setActiveSrc(watermarked);
+        }
+      });
+    }
+  }, [src, badge]);
 
   // Reset khi src thay doi
   useEffect(() => {
@@ -99,18 +116,20 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
   const rotate = () => setRotation((r) => (r + 90) % 360);
 
   const handleDownload = () => {
-    if (!src) return;
+    const targetSrc = activeSrc || src;
+    if (!targetSrc) return;
     try {
       const link = document.createElement("a");
-      link.href = src;
-      const safeName = (alt ? alt.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9-]/g, "_") : "chung-tu");
-      link.download = `${safeName}.jpg`;
+      link.href = targetSrc;
+      const prefix = badge ? `[${badge.replace(/[^a-zA-Z0-9_-]/g, "")}]_` : "";
+      const safeName = (alt ? alt.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9-]/g, "_") : "san-pham");
+      link.download = `${prefix}${safeName}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch {
       // Fallback
-      window.open(src, "_blank");
+      window.open(targetSrc, "_blank");
     }
   };
 
@@ -264,7 +283,7 @@ export default function ImageLightbox({ src, alt, onClose, gallery, onChange }: 
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
+          src={activeSrc || src}
           alt={alt || "image"}
           draggable={false}
           className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl bg-white"

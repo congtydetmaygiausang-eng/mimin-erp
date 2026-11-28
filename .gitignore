@@ -50,6 +50,10 @@ patches2/
 screenshots/
 screenshots-old/
 screenshots-new/
+**/.test-dist*/
+**/.test-dist-cham-cong/
+.test-dist/
+.test-dist-cham-cong/
 
 # Commit message drafts (khong commit)
 scripts/commit-msg-*.txt

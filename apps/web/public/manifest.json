@@ -4,7 +4,7 @@
   "description": "Hệ thống quản lý sản xuất may mặc cho xưởng Polomimin",
   "lang": "vi",
   "dir": "ltr",
-  "start_url": "/dashboard/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

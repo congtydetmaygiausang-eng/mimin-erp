@@ -34,6 +34,7 @@ import {
 } from "@/lib/fabric-cost-breakdown";
 import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import ImageLightbox from "@/components/ui/ImageLightbox";
+import { getFabricSwatchImage } from "@/lib/fabric-swatches";
 
 const TINH_MAN_PHAN_LOAI = [
   "Áo thun cotton",
@@ -134,6 +135,14 @@ export default function KhoVaiPage() {
   });
   const newVaiImgRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const getEffectiveVaiImage = (v: KhoVai) => {
+    const custom = vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl;
+    if (custom && !custom.includes("1787667") && !custom.includes("1787648")) {
+      return custom;
+    }
+    return getFabricSwatchImage(v.mauSac || v.tenVT, v.maVT);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -828,7 +837,7 @@ export default function KhoVaiPage() {
                           const validDonGia = getValidDonGiaVai(v);
                           const thanhTien = v.tonKho * validDonGia;
                           const isManPJ = detectThuongHieuVai(v) === "manpj";
-                          const imgUrl = vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl;
+                          const imgUrl = getEffectiveVaiImage(v);
 
                           return (
                             <tr
@@ -1014,7 +1023,7 @@ export default function KhoVaiPage() {
                   const validDonGia = getValidDonGiaVai(v);
                   const thanhTien = v.tonKho * validDonGia;
                   const isManPJ = detectThuongHieuVai(v) === "manpj";
-                  const imgUrl = vaiImages[v.maVT] || (v as KhoVaiWithImage).imageUrl;
+                  const imgUrl = getEffectiveVaiImage(v);
 
                   return (
                     <div
