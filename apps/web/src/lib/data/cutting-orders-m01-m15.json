@@ -33081,8 +33081,8 @@
         ]
       },
       {
-        "ten": "ĐEN CM",
-        "maSKU": "M15-EN-CM",
+        "ten": "ĐEN",
+        "maSKU": "M15-DEN",
         "maVai": "V-DENCAMMAU",
         "dinhMuc": 0.26,
         "slDuKien": 100,
@@ -33371,8 +33371,8 @@
         ]
       },
       {
-        "ten": "XANH NHỚT",
-        "maSKU": "M15-XANH-NHT",
+        "ten": "RÊU",
+        "maSKU": "M15-REU",
         "maVai": "V-XANHNHOT069",
         "dinhMuc": 0.26,
         "slDuKien": 100,

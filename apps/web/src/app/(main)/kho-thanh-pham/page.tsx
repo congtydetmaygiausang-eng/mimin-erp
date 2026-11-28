@@ -119,12 +119,16 @@ export default function KhoThanhPhamPage() {
       if (rawDel) deletedIds = new Set(JSON.parse(rawDel));
     } catch {}
 
+    // Loại bỏ vĩnh viễn các dòng biến thể tự sinh không mong muốn khỏi kho thành phẩm
+    deletedIds.add("TP-LC-2026-0015-M15-XANH-NHT");
+    deletedIds.add("TP-LC-2026-0015-M15-DEN-CM");
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as SanPhamTP[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          localRows = parsed.map(chuanHoaSanPhamKho).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx));
+          localRows = parsed.map(chuanHoaSanPhamKho).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx) && !r.id.startsWith("TP-LC-2026-0015-"));
           setDsSanPhamState(localRows);
         }
       }
@@ -137,7 +141,7 @@ export default function KhoThanhPhamPage() {
         if (checkSupabase()) {
           const rows = await supabaseFetchAllRaw<any>("kho_thanh_pham");
           if (!mounted) return;
-          remoteRows = rows.map(fromSupabaseRow).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx));
+          remoteRows = rows.map(fromSupabaseRow).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx) && !r.id.startsWith("TP-LC-2026-0015-"));
         }
 
         // Tự động kiểm tra và sinh tồn kho cho các Lệnh Cắt đã Hoàn Thành (hoặc hoàn thành đóng gói)
@@ -155,17 +159,35 @@ export default function KhoThanhPhamPage() {
           taoSanPhamKhoTuLenhCat(lc, {
             layGiaFn: (kenh: KenhBanBangGia, maSP: string, sku?: string, sl?: number) => layGia(kenh, maSP, sku, sl),
           })
-        ).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx));
+        ).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx) && !r.id.startsWith("TP-LC-2026-0015-"));
 
-        // Chỉ giữ lại autoLCRows cho những sản phẩm/màu chưa từng xuất hiện trên server (tránh tự sinh duplicate đè hoặc nhân đôi tồn kho)
-        const coveredColorKeys = new Set(
-          remoteRows.map((rem) => `${String(rem.maSP || "").trim().toUpperCase()}::${String(rem.mau || "").trim().toLowerCase()}`)
+        // NGUYÊN TẮC QUAN TRỌNG:
+        // Các sản phẩm đã có trong Kho thành phẩm (được người dùng nhập hoặc có sẵn trên remote/local)
+        // thì TUYỆT ĐỐI KHÔNG tự động chèn thêm màu từ Lệnh Cắt vào, chỉ giữ đúng các màu và hình ảnh người dùng đã nhập kho.
+        const coveredProductCodes = new Set(
+          remoteRows.map((rem) => String(rem.maSP || "").trim().toUpperCase())
         );
+        localRows.forEach((r) => {
+          const ma = String(r.maSP || "").trim().toUpperCase();
+          if (ma) coveredProductCodes.add(ma);
+        });
 
         const safeAutoLCRows = autoLCRows.filter((r) => {
           if (deletedIds.has(r.id) || (r.lsx && deletedIds.has(r.lsx))) return false;
-          const key = `${String(r.maSP || "").trim().toUpperCase()}::${String(r.mau || "").trim().toLowerCase()}`;
-          return !coveredColorKeys.has(key);
+          if (r.id.startsWith("TP-LC-2026-0015-")) return false;
+          const maUpper = String(r.maSP || "").trim().toUpperCase();
+          // Nếu sản phẩm đã được quản lý trong kho thì không tự ý chèn thêm màu từ Lệnh Cắt
+          if (coveredProductCodes.has(maUpper)) return false;
+          return true;
+        });
+
+        // Loại bỏ triệt để các dòng TP-LC-* cũ nếu sản phẩm đó đã có các dòng do người dùng nhập
+        localRows = localRows.filter((r) => {
+          if (deletedIds.has(r.id) || (r.lsx && deletedIds.has(r.lsx))) return false;
+          if (r.id.startsWith("TP-LC-2026-0015-")) return false;
+          const maUpper = String(r.maSP || "").trim().toUpperCase();
+          if (coveredProductCodes.has(maUpper) && r.id.startsWith("TP-LC-")) return false;
+          return true;
         });
 
         // Hợp nhất dữ liệu: safeAutoLCRows (nền) + localRows + remoteRows (ưu tiên cao nhất)
@@ -180,7 +202,14 @@ export default function KhoThanhPhamPage() {
           if (!deletedIds.has(r.id) && !deletedIds.has(r.lsx)) mergedMap.set(r.id, r);
         });
 
-        let finalMerged = Array.from(mergedMap.values()).filter(r => !deletedIds.has(r.id) && !deletedIds.has(r.lsx));
+        let finalMerged = Array.from(mergedMap.values()).filter(r => {
+          if (deletedIds.has(r.id) || (r.lsx && deletedIds.has(r.lsx))) return false;
+          if (r.id.startsWith("TP-LC-2026-0015-")) return false;
+          const maUpper = String(r.maSP || "").trim().toUpperCase();
+          const hasManualRows = remoteRows.some(x => String(x.maSP || "").trim().toUpperCase() === maUpper && !x.id.startsWith("TP-LC-"));
+          if (hasManualRows && r.id.startsWith("TP-LC-")) return false;
+          return true;
+        });
         if (finalMerged.length === 0) {
           finalMerged = generateSanPhamFromWorkflow();
         }
@@ -189,6 +218,7 @@ export default function KhoThanhPhamPage() {
           setDsSanPhamState(finalMerged);
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(finalMerged));
+            localStorage.setItem("mimin_kho_tp_deleted_ids", JSON.stringify(Array.from(deletedIds)));
           } catch {}
 
           // Nếu có dòng nào trên Supabase chưa có (ví dụ lệnh cắt vừa hoàn thành), tự động đồng bộ lên Supabase

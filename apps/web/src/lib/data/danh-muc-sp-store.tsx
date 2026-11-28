@@ -337,6 +337,9 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       return [fullUpdatedSP, ...filtered];
     });
 
+    // dsMauList: danh sách màu dùng chung cho localStorage và Supabase sync
+    const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
+
     // 2. Đồng bộ localStorage của Kho Thành Phẩm (chỉ thực hiện khi không bật skipKhoSync)
     if (!options?.skipKhoSync) {
       try {
@@ -355,7 +358,6 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
         });
 
         const newProductRows: any[] = [];
-        const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
         const bs = data.bangSize || fullUpdatedSP?.bangSize;
 
         for (let i = 0; i < dsMauList.length; i++) {
@@ -471,7 +473,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           }
 
           // 3B. BẢNG KHO_THANH_PHAM: Chính xác 1 dòng cho mỗi màu, triệt tiêu dòng trùng và xóa màu bị bỏ (chỉ chạy khi không skipKhoSync)
-          const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
+          // dsMauList đã được khai báo ở trên (dùng chung cho localStorage và Supabase sync)
 
           if (!options?.skipKhoSync) {
             const { data: currentKhoRows } = await supabase.from("kho_thanh_pham")
