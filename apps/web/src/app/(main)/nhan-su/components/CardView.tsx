@@ -1,7 +1,7 @@
 // ============ CARD VIEW + LIST VIEW ============
 // Tach tu page.tsx (2026-08-05 - toi uu B.3)
 
-import { Phone, Calendar, Star, Edit2, Trash2, Wallet, UserCheck, UserX } from "lucide-react";
+import { Phone, Calendar, Star, Edit2, Trash2, Wallet, UserCheck, UserX, Users } from "lucide-react";
 import { formatVNDShort } from "@/lib/data/real-data";
 import { Avatar } from "@/components/Avatar";
 import { EntityCard, EntityCardGrid, EntityCardList } from "@/components/EntityCard";
@@ -24,6 +24,20 @@ export function CardView({
   onDelete: (n: NhanSuExt) => void;
   onToggleTrangThai?: (n: NhanSuExt) => void;
 }) {
+  if (filtered.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-12 text-center shadow-sm">
+        <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+        <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">
+          Không tìm thấy nhân viên nào phù hợp
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Hãy thử điều chỉnh lại từ khóa tìm kiếm hoặc bấm nút &quot;Đặt lại&quot; ở bộ lọc.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <EntityCardGrid cols={4}>
       {filtered.map((n) => {
@@ -104,6 +118,20 @@ export function ListView({
   onDelete: (n: NhanSuExt) => void;
   onToggleTrangThai?: (n: NhanSuExt) => void;
 }) {
+  if (filtered.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-12 text-center shadow-sm">
+        <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+        <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">
+          Không tìm thấy nhân viên nào phù hợp
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Hãy thử điều chỉnh lại từ khóa tìm kiếm hoặc bấm nút &quot;Đặt lại&quot; ở bộ lọc.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <EntityCardList>
       {filtered.map((n) => {
