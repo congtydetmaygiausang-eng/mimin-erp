@@ -527,7 +527,7 @@ export function VaiChinhSuaModal({
                           <input
                             type="number"
                             min={0}
-                            step={1000}
+                            step="any"
                             className="w-full px-2 py-1.5 text-xs font-bold text-sky-800 dark:text-sky-300 bg-white dark:bg-slate-900 rounded-lg border border-sky-300 dark:border-sky-700"
                             value={giaSoi || ""}
                             onChange={(e) => setGiaSoi(Number(e.target.value))}
@@ -655,7 +655,7 @@ export function VaiChinhSuaModal({
                         <input
                           type="number"
                           min={0}
-                          step={1000}
+                          step="any"
                           className="w-full px-2 py-1.5 text-xs font-bold text-violet-800 dark:text-violet-300 bg-white dark:bg-slate-900 rounded-lg border border-violet-300 dark:border-violet-700"
                           value={giaDet || ""}
                           onChange={(e) => setGiaDet(Number(e.target.value))}
@@ -771,7 +771,7 @@ export function VaiChinhSuaModal({
                           <input
                             type="number"
                             min={0}
-                            step={1000}
+                            step="any"
                             className="w-full px-2 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-900 rounded-lg border border-amber-300 dark:border-amber-700"
                             value={giaNhuom || ""}
                             onChange={(e) => setGiaNhuom(Number(e.target.value))}
@@ -784,7 +784,7 @@ export function VaiChinhSuaModal({
                           <input
                             type="number"
                             min={0}
-                            step={500}
+                            step="any"
                             className="w-full px-2 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800"
                             value={phuPhiNhuom || ""}
                             onChange={(e) => setPhuPhiNhuom(Number(e.target.value))}
@@ -878,7 +878,7 @@ export function VaiChinhSuaModal({
                     <input
                       type="number"
                       min={1000}
-                      step={500}
+                      step="any"
                       className="w-32 px-2 py-1 text-lg font-black text-emerald-700 dark:text-emerald-400 font-mono text-right border border-emerald-200 dark:border-emerald-800 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/20"
                       value={donGia || ""}
                       onChange={(e) => {
@@ -937,7 +937,7 @@ export function VaiChinhSuaModal({
                   <input
                     type="number"
                     min={0}
-                    step={1}
+                    step="any"
                     required
                     className="w-full px-3 py-2 text-base font-black text-teal-700 dark:text-teal-400 bg-white dark:bg-slate-900 border-2 border-teal-400 dark:border-teal-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                     value={tonKho}

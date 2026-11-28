@@ -2258,7 +2258,7 @@ function VaiNhapKho({
                     type="number"
                     required
                     min={0.1}
-                    step="0.1"
+                    step="any"
                     placeholder="VD: 500"
                     className="input w-full text-sm font-bold text-teal-700 dark:text-teal-400 bg-teal-50/50 dark:bg-teal-950/30 border-teal-300 dark:border-teal-700"
                     value={form.soLuong || ""}
@@ -2355,7 +2355,7 @@ function VaiNhapKho({
                             <input
                               type="number"
                               min={0}
-                              step={1000}
+                              step="any"
                               className="input w-full text-xs font-bold text-sky-800 dark:text-sky-300 bg-white dark:bg-slate-900"
                               value={giaSoi || ""}
                               onChange={(e) => setGiaSoi(Number(e.target.value))}
@@ -2484,7 +2484,7 @@ function VaiNhapKho({
                           <input
                             type="number"
                             min={0}
-                            step={1000}
+                            step="any"
                             className="input w-full text-xs font-bold text-violet-800 dark:text-violet-300 bg-white dark:bg-slate-900"
                             value={giaDet || ""}
                             onChange={(e) => setGiaDet(Number(e.target.value))}
@@ -2601,7 +2601,7 @@ function VaiNhapKho({
                             <input
                               type="number"
                               min={0}
-                              step={1000}
+                              step="any"
                               className="input w-full text-xs font-bold text-amber-800 dark:text-amber-300 bg-white dark:bg-slate-900"
                               value={giaNhuom || ""}
                               onChange={(e) => setGiaNhuom(Number(e.target.value))}
@@ -2614,7 +2614,7 @@ function VaiNhapKho({
                             <input
                               type="number"
                               min={0}
-                              step={500}
+                              step="any"
                               className="input w-full text-xs font-mono bg-white dark:bg-slate-900"
                               value={phuPhiNhuom || ""}
                               onChange={(e) => setPhuPhiNhuom(Number(e.target.value))}
@@ -3174,7 +3174,7 @@ function ModalTaoMaVai({
                 <input
                   type="number"
                   min={0}
-                  step={1000}
+                  step="any"
                   value={donGia}
                   onChange={(e) => setDonGia(Number(e.target.value))}
                   placeholder="74000"
