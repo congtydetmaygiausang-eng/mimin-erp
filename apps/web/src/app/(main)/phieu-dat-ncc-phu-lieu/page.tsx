@@ -44,6 +44,7 @@ import { uploadProductFile } from "@/lib/product-upload";
 import { usePhieuDatNcc } from "@/lib/data/phieu-dat-ncc-store";
 import { TheoDoiTienDo } from "./theo-doi-tien-do";
 import { DanhSachDonHang } from "./danh-sach-don-hang";
+import { MaterialThumbnail } from "./material-thumbnail";
 import { useWorkspace } from "@/lib/workspace-context";
 
 const today = new Date().toISOString().slice(0, 10);
@@ -169,7 +170,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 800,
     giaBanDeXuat: 1200,
     soLuongToiThieu: 1000,
-    hinhAnh: "/icons/icon-192.png",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
   {
@@ -185,7 +186,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 400,
     giaBanDeXuat: 600,
     soLuongToiThieu: 1000,
-    hinhAnh: "/icons/icon-192.png",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
   {
@@ -201,7 +202,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 35000,
     giaBanDeXuat: 45000,
     soLuongToiThieu: 10,
-    hinhAnh: "/swatches/vai-01.jpg",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
   {
@@ -217,7 +218,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 18000,
     giaBanDeXuat: 24000,
     soLuongToiThieu: 20,
-    hinhAnh: "/swatches/vai-13.jpg",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
   {
@@ -233,7 +234,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 12000,
     giaBanDeXuat: 16000,
     soLuongToiThieu: 50,
-    hinhAnh: "/swatches/vai-01.jpg",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
   {
@@ -249,7 +250,7 @@ const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
     giaMuaThamKhao: 500,
     giaBanDeXuat: 750,
     soLuongToiThieu: 1000,
-    hinhAnh: "/icons/icon-192.png",
+    hinhAnh: "",
     trangThai: "Đang dùng",
   },
 ];
@@ -392,7 +393,7 @@ export default function PhieuDatNccPhuLieuPage() {
         giaMuaThamKhao: item.donGia || (cat === "bo_co" ? 6000 : cat === "nut" ? 1500 : 700),
         giaBanDeXuat: Math.ceil(((item.donGia || 6000) * 1.35) / 500) * 500,
         soLuongToiThieu: 1,
-        hinhAnh: item.hinhAnh || (cat === "bo_co" ? "/swatches/vai-01.jpg" : cat === "nut" ? "/swatches/vai-02.jpg" : "/icons/icon-192.png"),
+        hinhAnh: item.hinhAnh || "",
         trangThai: "Đang dùng",
         tonKho: item.tonKho || 0,
       });
@@ -461,7 +462,7 @@ export default function PhieuDatNccPhuLieuPage() {
         giaMuaThamKhao: item.giaMuaThamKhao,
         giaBanDeXuat: item.giaBanDeXuat,
         soLuongToiThieu: item.soLuongToiThieu,
-        hinhAnh: item.hinhAnh || "/icons/icon-192.png",
+        hinhAnh: item.hinhAnh || "",
         trangThai: item.trangThai,
       });
     });
@@ -989,22 +990,16 @@ export default function PhieuDatNccPhuLieuPage() {
                               : "border-slate-200/90 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 shadow-2xs"
                           }`}
                         >
-                          {/* Thumbnail hình ảnh swatch */}
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                            {item.hinhAnh ? (
-                              <img
-                                src={item.hinhAnh}
-                                alt={item.tenMau}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  // Fallback nếu ảnh hỏng
-                                  (e.target as HTMLElement).style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <ImageIcon className="h-6 w-6 text-slate-400" />
-                            )}
-                          </div>
+                          {/* Thumbnail hình ảnh hoặc Icon Phụ Liệu chuẩn chuyên nghiệp */}
+                          <MaterialThumbnail
+                            maMau={item.maMau}
+                            tenMau={item.tenMau}
+                            category={item.category}
+                            loai={item.loai}
+                            mauSac={item.mauSac}
+                            hinhAnh={item.hinhAnh}
+                            size="md"
+                          />
 
                           {/* Thông tin vật tư */}
                           <div className="min-w-0 flex-1">
@@ -1059,14 +1054,25 @@ export default function PhieuDatNccPhuLieuPage() {
                     )}
                   </div>
                   {selected ? (
-                    <div>
-                      <div className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                        {selected.tenMau}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400 font-mono flex items-center gap-2">
-                        <span>Mã: <b>{selected.maMau}</b></span>
-                        {selected.mauSac && <span>· Màu: <b>{selected.mauSac}</b></span>}
-                        <span>· Giá tham khảo: <b>{formatVND(selected.giaMuaThamKhao)}</b></span>
+                    <div className="flex items-center gap-3">
+                      <MaterialThumbnail
+                        maMau={selected.maMau}
+                        tenMau={selected.tenMau}
+                        category={selected.category}
+                        loai={selected.loai}
+                        mauSac={selected.mauSac}
+                        hinhAnh={selected.hinhAnh}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate">
+                          {selected.tenMau}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600 dark:text-slate-400 font-mono flex items-center gap-2 flex-wrap">
+                          <span>Mã: <b>{selected.maMau}</b></span>
+                          {selected.mauSac && <span>· Màu: <b>{selected.mauSac}</b></span>}
+                          <span>· Giá tham khảo: <b>{formatVND(selected.giaMuaThamKhao)}</b></span>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1232,11 +1238,21 @@ export default function PhieuDatNccPhuLieuPage() {
                           {orderItems.map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                               <td className="p-2.5">
-                                <div className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">
-                                  {item.maVatTu}
-                                </div>
-                                <div className="font-medium text-slate-800 dark:text-slate-200">
-                                  {item.tenVatTu}
+                                <div className="flex items-center gap-2.5">
+                                  <MaterialThumbnail
+                                    maMau={item.maVatTu}
+                                    tenMau={item.tenVatTu}
+                                    mauSac={item.mauSac}
+                                    size="sm"
+                                  />
+                                  <div>
+                                    <div className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                                      {item.maVatTu}
+                                    </div>
+                                    <div className="font-medium text-slate-800 dark:text-slate-200">
+                                      {item.tenVatTu}
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
                               <td className="p-2.5 text-slate-600 dark:text-slate-400">

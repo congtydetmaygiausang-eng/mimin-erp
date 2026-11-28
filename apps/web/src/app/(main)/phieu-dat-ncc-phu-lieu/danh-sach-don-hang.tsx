@@ -34,6 +34,7 @@ import { useKhachHang } from "@/lib/data/khach-hang-store";
 import { useWorkspace } from "@/lib/workspace-context";
 import { scopeOrders } from "./theo-doi-tien-do";
 import { formatVND } from "@/lib/data/real-data";
+import { MaterialThumbnail } from "./material-thumbnail";
 
 const safe = (value: string) =>
   value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
@@ -670,17 +671,13 @@ function OrderDetailsModal({
                     <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                       <td className="p-3">
                         <div className="flex items-center gap-3">
-                          {item.hinhAnh ? (
-                            <img
-                              src={item.hinhAnh}
-                              alt={item.tenVatTu}
-                              className="h-10 w-10 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                              <Package className="h-4 w-4 text-slate-400" />
-                            </div>
-                          )}
+                          <MaterialThumbnail
+                            maMau={item.maVatTu}
+                            tenMau={item.tenVatTu}
+                            mauSac={item.mauSac}
+                            hinhAnh={item.hinhAnh}
+                            size="sm"
+                          />
                           <div>
                             <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
                               {item.maVatTu}
