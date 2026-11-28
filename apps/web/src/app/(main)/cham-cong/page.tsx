@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flame, LogIn, LogOut, Search, TableProperties, Users, RefreshCw, type LucideIcon, Trash2 } from "lucide-react";
 import { useNhanSu } from "@/lib/data/nhan-su-store";
 import {
@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AttendanceDashboard } from "./components/AttendanceDashboard";
 import { TangCaModal } from "./components/TangCaModal";
+import { AttendanceCellTooltip, type HoveredCellState } from "./components/AttendanceCellTooltip";
 
 type Tab = "hang-ngay" | "tong-hop";
 
@@ -54,6 +55,55 @@ export default function ChamCongPage() {
     note: string;
   } | null>(null);
   const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState<string>("");
+  const [hoveredCell, setHoveredCell] = useState<HoveredCellState | null>(null);
+
+  // Tự động đóng tooltip khi người dùng cuộn trang hoặc thay đổi kích thước
+  useEffect(() => {
+    const handleScrollOrResize = () => setHoveredCell(null);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, []);
+
+  const handleCellMouseEnter = (
+    e: React.MouseEvent<HTMLTableCellElement>,
+    employee: (typeof nhanSu)[number],
+    day: Date,
+    record?: ChamCongRecord
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const tooltipWidth = 280;
+    const tooltipHeight = 240;
+
+    let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+    if (left < 12) left = 12;
+    if (typeof window !== "undefined" && left + tooltipWidth > window.innerWidth - 12) {
+      left = window.innerWidth - tooltipWidth - 12;
+    }
+
+    let top = rect.top - 8;
+    let placement: "top" | "bottom" = "top";
+    if (rect.top < tooltipHeight + 10) {
+      top = rect.bottom + 8;
+      placement = "bottom";
+    }
+
+    setHoveredCell({
+      employee,
+      day,
+      record,
+      top,
+      left,
+      placement,
+    });
+  };
+
+  const handleCellMouseLeave = () => {
+    setHoveredCell(null);
+  };
 
   const isAdmin = Boolean(
     user?.role === "admin" ||
@@ -771,6 +821,8 @@ export default function ChamCongPage() {
                         return (
                           <td
                             key={ngay}
+                            onMouseEnter={(e) => handleCellMouseEnter(e, employee, day, record)}
+                            onMouseLeave={handleCellMouseLeave}
                             className={`p-1 text-center transition-colors relative group ${isSelected
                                 ? "bg-teal-50/70 dark:bg-teal-950/30"
                                 : isToday
@@ -884,6 +936,9 @@ export default function ChamCongPage() {
           </div>
         </section>
       )}
+
+      {/* Tooltip hiển thị chi tiết khi di chuột vào ô chấm công */}
+      {hoveredCell && <AttendanceCellTooltip data={hoveredCell} />}
     </div>
   );
 }
