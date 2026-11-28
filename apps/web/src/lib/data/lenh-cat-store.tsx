@@ -645,7 +645,7 @@ export function syncOrderWithDefault(item: LenhCat, defaultVer?: LenhCat): LenhC
     daCoSoDo: res.daCoSoDo ?? defaultVer.daCoSoDo,
     tongSLThucTeAo: res.tongSLThucTeAo || defaultVer.tongSLThucTeAo || res.tongSL,
     tongSLThucTeQuan: res.tongSLThucTeQuan || defaultVer.tongSLThucTeQuan || res.tongSL,
-    hinhMauInTheu: res.hinhMauInTheu || defaultVer.hinhMauInTheu,
+    hinhMauInTheu: (defaultVer.hinhMauInTheu && defaultVer.hinhMauInTheu.startsWith("http")) ? defaultVer.hinhMauInTheu : (res.hinhMauInTheu || defaultVer.hinhMauInTheu),
     fileGocInTheu: res.fileGocInTheu || defaultVer.fileGocInTheu,
     ghiChuInTheu: res.ghiChuInTheu || defaultVer.ghiChuInTheu,
     ghiChuKyThuat: res.ghiChuKyThuat || defaultVer.ghiChuKyThuat,

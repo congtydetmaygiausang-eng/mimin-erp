@@ -746,11 +746,32 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         else setSelectedPresetId("");
         setSoMau(editing.dsMau?.length || 4);
         const currentKho = getAllInventory();
+        const matchingSp = dsSanPham.find(sp => 
+          (sp.id && editing.maSP && sp.id.toLowerCase() === editing.maSP.toLowerCase()) ||
+          (sp.maSP && editing.maSP && sp.maSP.toLowerCase() === editing.maSP.toLowerCase()) ||
+          (sp.tenSP && editing.tenSP && sp.tenSP.toLowerCase() === editing.tenSP.toLowerCase())
+        );
         const populatedDsMau = (editing.dsMau || []).map((m) => {
           const vAo = m.maVai ? (currentKho.find(x => x.maVT === m.maVai) || khoVaiReals.find(x => x.maVT === m.maVai)) : null;
           const vQuan = m.maVaiQuan ? (currentKho.find(x => x.maVT === m.maVaiQuan) || khoVaiReals.find(x => x.maVT === m.maVaiQuan)) : null;
+          let resolvedImg = m.img;
+          if (!resolvedImg || resolvedImg.startsWith('/product-models/')) {
+            if (matchingSp?.dsMau && Array.isArray(matchingSp.dsMau)) {
+              const matchedColor = matchingSp.dsMau.find((c: any) => 
+                c.ten && m.ten && (
+                  c.ten.trim().toLowerCase() === m.ten.trim().toLowerCase() ||
+                  m.ten.trim().toLowerCase().includes(c.ten.trim().toLowerCase()) ||
+                  c.ten.trim().toLowerCase().includes(m.ten.trim().toLowerCase())
+                )
+              );
+              if (matchedColor?.img) {
+                resolvedImg = matchedColor.img;
+              }
+            }
+          }
           return {
             ...m,
+            img: resolvedImg || m.img,
             donGiaVai: (m.donGiaVai && m.donGiaVai > 0) ? m.donGiaVai : (vAo?.donGia || 0),
             donGiaVaiQuan: (m.donGiaVaiQuan && m.donGiaVaiQuan > 0) ? m.donGiaVaiQuan : (vQuan?.donGia || 0),
             dinhMucQuan: (m.dinhMucQuan && m.dinhMucQuan > 0) ? m.dinhMucQuan : (isBoProduct(editing.loaiSP) ? 0.18 : 0),
