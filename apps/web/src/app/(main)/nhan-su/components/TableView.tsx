@@ -43,7 +43,14 @@ export function TableView({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((n) => {
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="p-8 text-center text-slate-400">
+                  Không tìm thấy nhân viên nào phù hợp với bộ lọc.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((n) => {
               const luongSP = luongSPTheoNV[n.maNV] || 0;
               const isNghiViec = n.trangThai === "nghi_viec";
               return (
@@ -148,7 +155,8 @@ export function TableView({
                   </td>
                 </tr>
               );
-            })}
+            })
+          )}
           </tbody>
         </table>
       </div>
