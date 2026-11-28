@@ -7,7 +7,8 @@ import { useTheme } from "next-themes";
 import { Sun, Moon, Shirt, Eye, EyeOff, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { logAudit } from "@/lib/audit-log";
-import { DEMO_USERS, supabase } from "@/lib/supabase/client";
+import { getDefaultLandingRoute } from "@/lib/permissions";
+import { DEMO_USERS } from "@/lib/supabase/client";
 import { useEffect } from "react";
 const BACKGROUNDS = [
   { id: "teal", src: "/bg/login-teal.jpg", label: "Teal" },
@@ -27,14 +28,16 @@ const QUICK_LOGIN = [
   { email: "giau@mimin.vn",   name: "Chị Giàu",   role: "planner",   icon: "📋", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30" },
   { email: "vy@mimin.vn",     name: "Cẩm Vy",     role: "content",   icon: "🎨", color: "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-500/30" },
   { email: "hau@mimin.vn",    name: "Quốc Hậu",   role: "warehouse", icon: "📦", color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
-  { email: "giang@mimin.vn",  name: "Giang",      role: "sewing",    icon: "✂️", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  { email: "giang@mimin.vn",  name: "Hoàng Giang", role: "attendance", icon: "🕒", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30" },
 ];
 // Tat ca 44 user @mimin.vn (dropdown) - phan theo role
 const ALL_USERS = [
   // Admin
   { email: "sang@mimin.vn",   name: "Hồ Minh Sang (Admin)",     role: "admin" },
-  { email: "hoa@mimin.vn",    name: "Huỳnh Xuân Hòa",           role: "admin" },
+  { email: "mrhung@mimin.vn", name: "Mr Hùng (Admin)",          role: "admin" },
   { email: "phi@mimin.vn",    name: "Lương Hoàng Phi",          role: "admin" },
+  { email: "ly@mimin.vn",     name: "Đoàn Văn Lý (Quản lý)",    role: "admin" },
+  { email: "hoa@mimin.vn",    name: "Huỳnh Xuân Hòa",           role: "admin" },
   { email: "vy2@mimin.vn",    name: "Vy (Kho)",                 role: "admin" },
   // Planner
   { email: "giau@mimin.vn",   name: "Nguyễn Thị Giàu",          role: "planner" },
@@ -48,7 +51,6 @@ const ALL_USERS = [
   // Warehouse
   { email: "hau@mimin.vn",    name: "Nguyễn Quốc Hậu",          role: "warehouse" },
   // Sewing (Cắt)
-  { email: "giang@mimin.vn",  name: "Phan Văn Giang",           role: "sewing" },
   { email: "de@mimin.vn",     name: "Phạm Văn Đệ",             role: "sewing" },
   { email: "phu@mimin.vn",    name: "Nguyễn Văn Phú",          role: "sewing" },
   { email: "vinh@mimin.vn",   name: "Dương Tấn Vĩnh",          role: "sewing" },
@@ -57,8 +59,19 @@ const ALL_USERS = [
   { email: "phuong@mimin.vn", name: "Võ Thị Phượng",           role: "finishing" },
   { email: "be@mimin.vn",     name: "Nguyễn Thị Bé",           role: "finishing" },
   { email: "duc1@mimin.vn",   name: "Nguyễn Minh Đức",         role: "finishing" },
-  { email: "dinh@mimin.vn",   name: "Lê Đỉnh",                 role: "finishing" },
   { email: "ruong@mimin.vn",  name: "Nguyễn Văn Ruộng",        role: "sewing" },
+  // Chấm công (Attendance)
+  { email: "long@mimin.vn",      name: "Long (NV16 - Chấm công)",               role: "attendance" },
+  { email: "dinh@mimin.vn",      name: "Lê Định (NV02 - Chấm công)",            role: "attendance" },
+  { email: "khang@mimin.vn",     name: "Nguyễn Triết Khang (NV03 - Chấm công)", role: "attendance" },
+  { email: "hao@mimin.vn",       name: "Trần Thái Hào (NV07 - Chấm công)",      role: "attendance" },
+  { email: "giang@mimin.vn",     name: "Nguyễn Hoàng Giang (NV08 - Chấm công)", role: "attendance" },
+  { email: "tuanthanh@mimin.vn", name: "Lê Tuấn Thành (NV09 - Chấm công)",      role: "attendance" },
+  { email: "lam@mimin.vn",       name: "Trần Hoàng Lâm (NV10 - Chấm công)",     role: "attendance" },
+  { email: "chi@mimin.vn",       name: "Lục Thị Kim Chi (NV-011 - Chấm công)",  role: "attendance" },
+  { email: "duy@mimin.vn",       name: "Hồ Lê Khánh Duy (NV-012 - Chấm công)",  role: "attendance" },
+  { email: "nhung@mimin.vn",     name: "Dương Tuyết Nhung (NV-013 - Chấm công)", role: "attendance" },
+  { email: "tu@mimin.vn",        name: "Nguyễn Tuấn Tú (NV-014 - Chấm công)",   role: "attendance" },
   // Partner (NCC gia công)
   { email: "gc-gc-in-001@mimin.vn",  name: "Bảo Ngân (IN-001)",     role: "partner" },
   { email: "gc-gc-in-002@mimin.vn",  name: "Hạnh (IN-002)",         role: "partner" },
@@ -95,9 +108,7 @@ export default function LoginPage() {
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!sessionLoading && user) {
-      // NCC partner → trang chu gia cong; cac role khac → dashboard
-      const target = user.role === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
-      router.replace(target);
+      router.replace(getDefaultLandingRoute(user.role));
     }
   }, [user, sessionLoading, router]);
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,7 +120,7 @@ export default function LoginPage() {
       // DEMO_USERS đã bị xoá ngày 2026-08-01 - dùng fallback
       const demoUser = DEMO_USERS.find((u) => u.email === email);
       logAudit({
-        user: { id: email, email, name: demoUser?.name || email.split("@")[0] || email, role: demoUser?.role || "user", title: demoUser?.title || "", source: "demo" },
+        user: { id: res.user?.id || email, email, name: res.user?.name || demoUser?.name || email.split("@")[0] || email, role: res.user?.role || demoUser?.role || "user", title: res.user?.title || demoUser?.title || "", source: res.user?.source || "demo" },
         action: "login",
         module: "auth",
         description: `Đăng nhập: ${email}`,
@@ -117,9 +128,7 @@ export default function LoginPage() {
       });
       toast.dismiss();
       toast.success("Đăng nhập thành công", { id: "auth-toast", duration: 2000 });
-      // NCC partner → trang chu gia cong; cac role khac → dashboard
-      const target = (user?.role || "admin") === "partner" ? "/trang-chu-gia-cong" : "/dashboard";
-      router.replace(target);
+      router.replace(getDefaultLandingRoute(res.user?.role || user?.role));
     } else {
       logAudit({
         user: { id: email, email, name: email, role: "guest", title: "Khách", source: "demo" },
@@ -131,23 +140,6 @@ export default function LoginPage() {
       });
       toast.dismiss();
       toast.error(res.error || "Đăng nhập thất bại", { id: "auth-toast", duration: 3000 });
-    }
-  };
-  const handleGoogleLogin = async () => {
-    if (!supabase) {
-      toast.error("Hệ thống chưa kết nối cơ sở dữ liệu");
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/login`,
-      },
-    });
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
     }
   };
   const bg = BACKGROUNDS[bgIndex];
@@ -255,28 +247,9 @@ export default function LoginPage() {
                 {loading ? "Đang đăng nhập…" : "Đăng nhập"}
               </button>
             </form>
-            <div className="relative mt-6 mb-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-background px-2 text-muted-foreground">Hoặc</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 border rounded-lg hover:bg-muted/50 transition-colors text-sm font-medium mb-6"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Đăng nhập bằng Google
-            </button>
+            <p className="text-[11px] text-center text-muted-foreground mt-4 mb-5">
+              Nhân viên vui lòng đăng nhập bằng tài khoản <span className="font-semibold">@mimin.vn</span> và mật khẩu được cấp.
+            </p>
             <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-2">
               <Link href="/forgot-password" className="hover:text-foreground transition-colors">
                 Quên mật khẩu?

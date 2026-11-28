@@ -13,25 +13,25 @@ interface HeaderProps {
 
 export function PremiumHeader({ stats, onReset, onCreate }: HeaderProps) {
   return (
-    <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-3xl p-5 mb-5 space-y-4">
+    <div className="bg-white/30 backdrop-blur-md border border-white/50 shadow-sm rounded-2xl md:rounded-3xl p-4 sm:p-5 mb-4 sm:mb-5 space-y-4">
       {/* Top: Title & Actions */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-black flex items-center gap-2 text-slate-800 drop-shadow-sm">
             <Scissors className="w-7 h-7 text-sky-600" /> Tổng Quan Sản Xuất
           </h1>
-          <p className="text-sm font-bold text-slate-600 mt-1 max-w-xl">
+          <p className="text-xs sm:text-sm font-semibold text-slate-600 mt-1 max-w-xl">
             Quản lý toàn bộ vòng đời lệnh cắt: phân bổ size, theo dõi tiến độ các khâu gia công và kiểm soát giá vốn tự động.
           </p>
         </div>
 
-        <div className="flex items-stretch sm:items-center gap-3 w-full md:w-auto mt-2 md:mt-0 flex-col sm:flex-row">
-          <button onClick={onReset} className="flex-1 md:flex-none justify-center px-5 py-2.5 rounded-xl bg-white/50 hover:bg-white/80 border border-white text-slate-700 font-bold text-sm transition-all shadow-sm flex items-center">
+        <div className="grid grid-cols-2 gap-2 w-full md:w-auto md:flex md:items-center shrink-0">
+          <button onClick={onReset} className="justify-center px-4 py-2.5 rounded-xl bg-white/50 hover:bg-white/80 border border-white text-slate-700 font-bold text-xs sm:text-sm transition-all shadow-sm flex items-center">
             Làm mới
           </button>
           <button
             onClick={onCreate}
-            className="flex-1 md:flex-none justify-center group px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm shadow-sm transition-all flex items-center gap-2"
+            className="justify-center group px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs sm:text-sm shadow-sm transition-all flex items-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
             <span className="uppercase tracking-wide">Tạo lệnh cắt</span>

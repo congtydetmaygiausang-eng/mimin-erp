@@ -10,7 +10,7 @@ export const MODULE_SX_INFO: Record<ModuleSX, { name: string; icon: string; colo
   "ui":       { name: "Ủi/Đóng gói", icon: "♨️", color: "cyan" },
   "dong-goi": { name: "Đóng gói",    icon: "📦", color: "emerald" },
 };
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant";
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "attendance";
 export interface UserAccount {
   id: string;
   maNV: string;
@@ -83,14 +83,26 @@ export const USERS: UserAccount[] = [
     sdt: "0938625594",
   },
   {
-    id: "hung",
+    id: "ly",
+    maNV: "NV-015",
+    email: "ly@mimin.vn",
+    name: "Đoàn Văn Lý",
+    role: "admin",
+    chucVu: "Quản Lý",
+    phongBan: "ban-giam-doc",
+    nhom: "quan-tri",
+    laCongNhan: false,
+    sdt: "0973590749",
+  },
+  {
+    id: "mrhung",
     maNV: "NV05",
-    email: "hung@mimin.vn",
-    name: "Trần Lương Hùng",
-    role: "planner",
-    chucVu: "Trưởng Phòng KD",
-    phongBan: "kinh-doanh",
-    nhom: "ban-si",
+    email: "mrhung@mimin.vn",
+    name: "Mr Hùng",
+    role: "admin",
+    chucVu: "Quản trị hệ thống",
+    phongBan: "ban-giam-doc",
+    nhom: "quan-tri",
     laCongNhan: false,
     sdt: "0835228999",
   },
@@ -105,6 +117,18 @@ export const USERS: UserAccount[] = [
     nhom: "quan-tri",
     laCongNhan: false,
     isMock: true,
+  },
+  {
+    id: "long",
+    maNV: "NV-016",
+    email: "long@mimin.vn",
+    name: "Dương Hoàng Long",
+    role: "attendance",
+    chucVu: "Nhân sự",
+    phongBan: "Hành chính",
+    nhom: "cham-cong",
+    laCongNhan: false,
+    sdt: "",
   },
 ];
 

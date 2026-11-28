@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { type LenhCat, type MauVai } from "@/lib/data/lenh-cat-store";
+import { Image as ImageIcon } from "lucide-react";
 
 export function MauCardStage({ 
   title, 
@@ -14,6 +15,14 @@ export function MauCardStage({
 }) {
   const imageUrl = type === "ao" ? mau.img : mau.imgQuan;
   const phanBoSize = type === "ao" ? mau.phanBoSize : (mau.phanBoSizeQuan || mau.phanBoSize);
+  const [hasError, setHasError] = useState(false);
+
+  const isValidSrc = Boolean(
+    imageUrl && 
+    typeof imageUrl === "string" && 
+    imageUrl.trim() !== "" && 
+    !hasError
+  );
 
   return (
     <div className={`p-5 rounded-xl border-2 ${type === "ao" ? "border-blue-100 bg-blue-50/30" : "border-rose-100 bg-rose-50/30"}`}>
@@ -22,12 +31,22 @@ export function MauCardStage({
       </h4>
       
       <div className="flex flex-col sm:flex-row gap-4">
-        {/* Image */}
-        <div className={`w-32 h-32 shrink-0 rounded-lg overflow-hidden border ${type === "ao" ? "border-blue-200" : "border-rose-200"} bg-white flex items-center justify-center`}>
-          {imageUrl ? (
-            <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+        {/* Image: Chữ nhật tỉ lệ 3:4 chuẩn Danh Mục Sản Phẩm */}
+        <div className={`w-28 h-36 shrink-0 rounded-lg overflow-hidden border ${type === "ao" ? "border-blue-200" : "border-rose-200"} bg-white flex items-center justify-center aspect-[3/4] shadow-xs`}>
+          {isValidSrc ? (
+            <img 
+              src={imageUrl} 
+              alt={title} 
+              className="w-full h-full object-cover object-top" 
+              style={{ imageRendering: "-webkit-optimize-contrast" }}
+              onError={() => setHasError(true)}
+            />
           ) : (
-            <span className="text-[10px] font-bold text-slate-400 text-center">NO IMG<br/>{type.toUpperCase()}</span>
+            <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-slate-50 border border-dashed border-slate-200">
+              <ImageIcon className="w-5 h-5 text-amber-600 mb-1" />
+              <span className="text-[9px] font-bold text-slate-600 leading-tight">Đang cập nhật</span>
+              <span className="text-[8px] text-slate-400">{type.toUpperCase()}</span>
+            </div>
           )}
         </div>
 

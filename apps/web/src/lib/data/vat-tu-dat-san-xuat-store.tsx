@@ -59,11 +59,13 @@ const mapIn = (row: Record<string, unknown>): VatTuDatSanXuat => ({
   updatedAt: String(row.updated_at || new Date().toISOString()),
 });
 
+const EMPTY_INITIAL_VAT_TU: VatTuDatSanXuat[] = [];
+
 export function VatTuDatSanXuatProvider({ children }: { children: ReactNode }) {
   const { data, setData, loading, error } = useSupabaseSync<VatTuDatSanXuat>(
     STORAGE_KEY,
     "vat_tu_dat_san_xuat",
-    [],
+    EMPTY_INITIAL_VAT_TU,
     { mapOut, mapIn, onConflict: "id" },
   );
 

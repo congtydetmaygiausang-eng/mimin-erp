@@ -128,6 +128,8 @@ const DEFAULT_CNGC: Omit<CongNhanGiaCong, "nguoiTao" | "ngayTao">[] = [
   { id: "CNGC-025", stt: 25, hoTen: "Đầm Lê", sdt: "0965000281", loaiHang: "cổ tròn", soTho: 9, diaChi: "Thủ Đức", ghiChu: "Xưởng nhỏ gần trường", trangThai: "san_sang" },
   { id: "CNGC-026", stt: 26, hoTen: "(SĐT 372639336)", sdt: "0372639336", loaiHang: "cổ tròn", soTho: 10, diaChi: "Bà Điểm", ghiChu: "Khu vực Hóc Môn", trangThai: "san_sang" },
   { id: "CNGC-027", stt: 27, hoTen: "Duy Tú", sdt: "0345635667", loaiHang: "đa dạng", soTho: 7, diaChi: "Bệnh viện Hóc Môn", ghiChu: "Gần bệnh viện, tiện liên hệ", trangThai: "san_sang" },
+  { id: "CNGC-028", stt: 28, hoTen: "GC chị Vân cổ tròn trụ (Vân Anh)", sdt: "0903627835", loaiHang: "cổ trụ", soTho: 10, diaChi: "442/20/44 quốc lộ 1A phường An Phú Đông quận 12", ghiChu: "Chuyên may cổ tròn, cổ trụ", trangThai: "san_sang" },
+  { id: "CNGC-029", stt: 29, hoTen: "GC cô Liên cổ tròn", sdt: "0937522934", loaiHang: "cổ tròn", soTho: 10, diaChi: "19/5 đường trần văn mười ấp 12 xã xuân thới thượng hóc môn", ghiChu: "Chuyên may áo cổ tròn", trangThai: "san_sang" },
 ];
 
 // ============ STORE ============

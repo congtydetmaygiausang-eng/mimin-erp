@@ -26,6 +26,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 // ============ PRE-COMPUTED HASHES (tính trước để seed nhanh) ============
 export const PRECOMPUTED_HASHES: Record<string, string> = {
   "123": "1a598a77881c0f6475450d93e0f9b7314a955141391ffaa652ab1629214c6b79",
+  "123456789": "9ddf2941b69ef79c4a8460e59b078c742d7b6c8fe032c149537291456328daf9",
   "admin123": "082baf62a62001b0ec7c23c91154208d60d24f0468503c335edf2053dce34f11",
   "planner123": "db88dafd4b4e4d81517d9257c546beaf27de892e8bc18293a387ad3bbe799a62",
   "warehouse123": "fed969f5bd5bd94929a30bca3043a6cdd02d9ce9dbf82a214705caf67d035272",

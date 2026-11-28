@@ -5,7 +5,7 @@
 
 import { isSupabaseEnabled, supabase } from "./supabase/client";
 
-export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "supplier" | "workshop_customer" | "buyer_customer" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging";
+export type Role = "admin" | "planner" | "warehouse" | "sewing" | "qc" | "finishing" | "accountant" | "content" | "partner" | "supplier" | "workshop_customer" | "buyer_customer" | "cutting" | "printing" | "buttoning" | "ironing" | "packaging" | "attendance";
 export type Action = "view" | "create" | "edit" | "delete";
 
 export type Module =
@@ -75,6 +75,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   buttoning: "Tổ trưởng khuy nút",
   ironing: "Tổ trưởng ủi",
   packaging: "Tổ trưởng đóng gói",
+  attendance: "Nhân viên Chấm công",
 };
 
 export const ROLE_COLORS: Record<Role, string> = {
@@ -95,6 +96,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   buttoning: "from-teal-500 to-emerald-500",
   ironing: "from-orange-500 to-yellow-500",
   packaging: "from-stone-500 to-neutral-500",
+  attendance: "from-teal-500 to-cyan-500",
 };
 
 export const MODULE_LABELS: Record<Module, string> = {
@@ -209,7 +211,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "r",
     "hoan-thien": "r",
     "giao-hang": "r",
-    "cham-cong": "r",
+    "cham-cong": "rcu",
     "bang-luong": "",
     "nha-cung-cap": "rcu",
     "gia-cong-ngoai": "rcu",
@@ -248,7 +250,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "",
     "hoan-thien": "r",
     "giao-hang": "r",
-    "cham-cong": "",
+    "cham-cong": "rcu",
     "bang-luong": "",
     "nha-cung-cap": "rcu",
     "gia-cong-ngoai": "r",
@@ -314,7 +316,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "r",
     "hoan-thien": "r",
     "giao-hang": "r",
-    "cham-cong": "",
+    "cham-cong": "rcu",
     "bang-luong": "",
     "nha-cung-cap": "",
     "gia-cong-ngoai": "r",
@@ -349,7 +351,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "r",
     "hoan-thien": "rcu",
     "giao-hang": "rcu",
-    "cham-cong": "r",
+    "cham-cong": "rcu",
     "bang-luong": "",
     "nha-cung-cap": "",
     "gia-cong-ngoai": "r",
@@ -373,30 +375,35 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-cat": "rcu",
+    "cham-cong": "rcu",
     "thu-chi": "rcud",
   },
   printing: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-in-theu": "rcu",
+    "cham-cong": "rcu",
     "thu-chi": "rcud",
   },
   buttoning: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-khuy-nut": "rcu",
+    "cham-cong": "rcu",
     "thu-chi": "rcud",
   },
   ironing: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-ui": "rcu",
+    "cham-cong": "rcu",
     "thu-chi": "rcud",
   },
   packaging: {
     "dashboard": "r",
     "lenh-cat": "r",
     "to-dong-goi": "rcu",
+    "cham-cong": "rcu",
     "thu-chi": "rcud",
   },
   // Accountant (kế toán): CRUD bảng lương, công nợ, NCC, xem báo cáo
@@ -415,7 +422,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "",
     "hoan-thien": "r",
     "giao-hang": "r",
-    "cham-cong": "r",
+    "cham-cong": "rcu",
     "bang-luong": "rcu",
     "nha-cung-cap": "rcu",
     "gia-cong-ngoai": "rcu",
@@ -451,7 +458,7 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "to-may": "",
     "hoan-thien": "",
     "giao-hang": "",
-    "cham-cong": "",
+    "cham-cong": "rcu",
     "bang-luong": "",
     "nha-cung-cap": "r",
     "gia-cong-ngoai": "",
@@ -526,6 +533,10 @@ const PERMISSIONS: Record<Role, Partial<Record<Module, string>>> = {
     "don-hang": "rcu",
     "danh-muc-sp": "r",
     "giao-hang": "r",
+  },
+  // Nhân viên chỉ vào chấm công hằng ngày (không xem các phân hệ quản trị/sản xuất khác).
+  attendance: {
+    "cham-cong": "rcu",
   },
 };
 
@@ -604,7 +615,23 @@ function getAdminOnlyMatrix(): PermissionMatrix {
   ) as PermissionMatrix;
 }
 
-function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
+const INTERNAL_ATTENDANCE_ROLES: Role[] = [
+  "planner",
+  "warehouse",
+  "sewing",
+  "qc",
+  "finishing",
+  "accountant",
+  "content",
+  "cutting",
+  "printing",
+  "buttoning",
+  "ironing",
+  "packaging",
+  "attendance",
+];
+
+function normalizeMatrixInternal(matrix?: PermissionMatrix): PermissionMatrix {
   const base = getAdminOnlyMatrix();
   if (!matrix) return base;
   (Object.keys(base) as Role[]).forEach((role) => {
@@ -613,7 +640,28 @@ function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
       base[role][module] = matrix[role]?.[module] ?? (PERMISSIONS[role]?.[module] || "");
     });
   });
+
+  // Auto-heal ma trận cũ trong DB/localStorage khi mới mở quyền Chấm công cho toàn bộ nhân viên nội bộ
+  const isLegacyAttendanceMatrix =
+    matrix.cutting?.["cham-cong"] === undefined ||
+    matrix.attendance?.["cham-cong"] === undefined ||
+    (!matrix.warehouse?.["cham-cong"] &&
+      !matrix.qc?.["cham-cong"] &&
+      !matrix.content?.["cham-cong"] &&
+      !matrix.cutting?.["cham-cong"]);
+  if (isLegacyAttendanceMatrix) {
+    INTERNAL_ATTENDANCE_ROLES.forEach((role) => {
+      if (!base[role]["cham-cong"]) {
+        base[role]["cham-cong"] = "rcu";
+      }
+    });
+  }
+
   return base;
+}
+
+export function normalizeMatrix(matrix?: PermissionMatrix): PermissionMatrix {
+  return normalizeMatrixInternal(matrix);
 }
 
 function cacheMatrix(matrix: PermissionMatrix): PermissionMatrix {
@@ -739,8 +787,31 @@ export function getFullMatrix(): Record<Role, Partial<Record<Module, string>>> {
 
 export const ALL_ROLES: Role[] = [
   "admin", "planner", "warehouse", "sewing", "qc", "finishing", "accountant", "content", "partner", "supplier", "workshop_customer", "buyer_customer",
-  "cutting", "printing", "buttoning", "ironing", "packaging"
+  "cutting", "printing", "buttoning", "ironing", "packaging", "attendance"
 ];
+
+/** Tuyến mặc định sau khi đăng nhập hoặc quay về trang chính theo vai trò. */
+export function getDefaultLandingRoute(role?: string | null): string {
+  if (!role) return "/login/";
+  if (role === "partner") return "/trang-chu-gia-cong/";
+  if (canView(role, "dashboard")) return "/dashboard/";
+  if (canView(role, "cham-cong")) return "/cham-cong/";
+  const fallbackRoutes: ReadonlyArray<readonly [Module, string]> = [
+    ["to-cat", "/to-cat-work/"],
+    ["to-may", "/to-may-work/"],
+    ["to-in-theu", "/ui-intd/"],
+    ["to-khuy-nut", "/ui-khuy-nut/"],
+    ["to-ui", "/ui-ui/"],
+    ["to-dong-goi", "/ui-dong-goi/"],
+    ["hoan-thien", "/to-ht-work/"],
+    ["kiem-tra-chat-luong", "/qc/"],
+    ["kho-thanh-pham", "/kho-thanh-pham/"],
+  ];
+  for (const [mod, href] of fallbackRoutes) {
+    if (canView(role, mod)) return href;
+  }
+  return "/dashboard/";
+}
 
 export const ALL_MODULES: Module[] = [
   "dashboard", "lenh-cat", "khach-hang", "ke-hoach-sx", "nhan-su",

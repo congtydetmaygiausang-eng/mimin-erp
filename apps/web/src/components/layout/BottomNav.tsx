@@ -11,7 +11,8 @@ import {
   Bell,
   Shirt,
   CheckCircle2,
-  Palette
+  Palette,
+  CalendarDays
 } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { canView, type Module } from "@/lib/permissions";
@@ -45,8 +46,14 @@ export function BottomNav({ onMenuClick }: { onMenuClick: () => void }) {
   const navItems: Array<{ href: string; label: string; icon: LucideIcon; perm?: Module }> = [
     { href: "/dashboard", label: "Tổng quan", icon: LayoutDashboard, perm: "dashboard" },
     ...(workLink ? [workLink] : []),
+    ...(user?.laCongNhan
+      ? [{ href: "/cham-cong", label: "Chấm công", icon: CalendarDays, perm: "cham-cong" as Module }]
+      : []),
     { href: "/kho-thanh-pham", label: "Kho", icon: Boxes, perm: "kho-thanh-pham" },
-    { href: "/canh-bao", label: "Cảnh báo", icon: Bell, perm: "bao-cao" }
+    { href: "/canh-bao", label: "Cảnh báo", icon: Bell, perm: "bao-cao" },
+    ...(!user?.laCongNhan
+      ? [{ href: "/cham-cong", label: "Chấm công", icon: CalendarDays, perm: "cham-cong" as Module }]
+      : []),
   ];
 
   // Lọc theo quyền

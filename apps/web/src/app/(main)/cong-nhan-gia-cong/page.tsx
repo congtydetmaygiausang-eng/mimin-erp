@@ -19,6 +19,7 @@ import {
 } from "@/lib/data/cong-nhan-gia-cong";
 import { usePermission } from "@/components/PermissionGuard";
 import { useSession } from "@/components/session-provider";
+import { DataViewToggle, type ViewMode } from "@/components/DataViewToggle";
 import { toast } from "sonner";
 
 const LOAI_TABS: { key: LoaiHang | "ALL"; label: string; emoji: string; color: string }[] = [
@@ -38,6 +39,7 @@ export default function CongNhanGiaCongPage() {
   const [search, setSearch] = useState("");
   const [loaiFilter, setLoaiFilter] = useState<LoaiHang | "ALL">("ALL");
   const [trangThaiFilter, setTrangThaiFilter] = useState<TrangThaiCongNhan | "ALL">("ALL");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [selected, setSelected] = useState<CongNhanGiaCong | null>(null);
   const [showForm, setShowForm] = useState<{ mode: "add" | "edit"; cn?: CongNhanGiaCong } | null>(null);
 
@@ -84,200 +86,329 @@ export default function CongNhanGiaCongPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Hero Header Banner */}
-      <div className="relative rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0d9488 0%, #14b8a6 35%, #0891b2 75%, #06b6d4 100%)" }}>
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: "radial-gradient(circle, #5eead4 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15" style={{ background: "radial-gradient(circle, #67e8f9 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 py-5">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold flex items-center gap-2.5 text-white drop-shadow">
-              <Hammer className="w-7 h-7 text-cyan-300" />
-              Công nhân Gia công Dự phòng
+      {/* Executive Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-r from-amber-500/10 via-teal-500/10 to-emerald-500/10 border border-teal-500/20 backdrop-blur-sm shadow-sm">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                Lực Lượng Dự Phòng & Thầu Phụ
+              </span>
+              <span className="text-xs text-slate-500 font-medium">27 Xưởng & Thợ Chờ Việc</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+              <Hammer className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              Công Nhân Gia Công Dự Phòng
             </h1>
-            <p className="text-white/80 mt-1 text-sm font-medium">
-              {stats.tong} công nhân / xưởng · <b className="text-emerald-300">{stats.sanSang} sẵn sàng</b> · {stats.tamNgung} tạm ngưng · {stats.hetViec} hết việc
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {stats.tong} công nhân / xưởng · <b className="text-emerald-600 font-bold">{stats.sanSang} sẵn sàng nhận đơn</b> · {stats.tamNgung} tạm ngưng · {stats.hetViec} hết việc
             </p>
           </div>
           <button
             onClick={() => setShowForm({ mode: "add" })}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm transition shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-600 to-teal-600 hover:from-amber-700 hover:to-teal-700 text-white shadow-md shadow-amber-500/20 transition hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           >
-            <Plus className="w-4 h-4" /> Thêm công nhân
+            <Plus className="w-4 h-4" /> Thêm Công Nhân / Xưởng
           </button>
         </div>
       </div>
 
-      {/* Info Box */}
-      <div className="card p-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200">
-        <div className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-200">
-          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+      {/* Info Callout */}
+      <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3.5 shadow-sm">
+        <div className="flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
-            <b>Khác với Đối tác Gia công chính thức (20 NCC):</b> Danh sách này là các xưởng nhỏ, thợ rảnh, có thể nhận thầu phụ khi 20 NCC chính thức hết lịch hoặc quá tải. Dùng để tra cứu nhanh SĐT + chuyên môn + số thợ.
+            <span className="font-bold text-amber-800 dark:text-amber-300">Khác với 35 Đối tác Gia công chính thức:</span> Đây là danh sách các xưởng nhỏ, thợ may rảnh tay, dùng để backup khi 35 đối tác chính thức kín lịch hoặc cần chi viện gấp cho đơn hàng tiến độ nhanh. Dùng để tra cứu nhanh SĐT, Zalo, chuyên môn và số lượng thợ.
           </div>
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* 4 KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-4">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Users className="w-3 h-3" /> Tổng</div>
-          <div className="text-2xl font-bold mt-1">{stats.tong}</div>
+        <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">Tổng công nhân / xưởng</span>
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-slate-800">{stats.tong}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Toàn bộ danh bạ backup</div>
         </div>
-        <div className="card p-4 border-emerald-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-600" /> Sẵn sàng</div>
-          <div className="text-2xl font-bold mt-1 text-emerald-600">{stats.sanSang}</div>
+
+        <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-emerald-700">Đang sẵn sàng nhận việc</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-emerald-700">{stats.sanSang}</div>
+          <div className="mt-1 text-xs text-emerald-600 font-semibold">Có thể điều phối ngay</div>
         </div>
-        <div className="card p-4 border-amber-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Briefcase className="w-3 h-3 text-amber-600" /> Tổng thợ</div>
-          <div className="text-2xl font-bold mt-1 text-amber-600">{stats.tongTho}</div>
+
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-700">Tổng thợ may sẵn có</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+              <Briefcase className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-amber-700">{stats.tongTho} thợ</div>
+          <div className="mt-1 text-xs text-amber-700 font-medium">Năng lực chi viện tối đa</div>
         </div>
-        <div className="card p-4 border-cyan-200">
-          <div className="text-xs opacity-70 flex items-center gap-1"><Hammer className="w-3 h-3 text-cyan-600" /> Loại hàng</div>
-          <div className="text-2xl font-bold mt-1 text-cyan-600">{Object.keys(stats.theoLoai).length}</div>
+
+        <div className="rounded-xl border border-teal-200/80 bg-teal-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-teal-700">Chuyên môn may</span>
+            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
+              <Shirt className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-teal-700">{Object.keys(stats.theoLoai).length} phân loại</div>
+          <div className="mt-1 text-xs text-teal-700 font-medium">Cổ tròn, trụ, polo, thun...</div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-2 flex-1">
+      {/* Filters & Search */}
+      <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 flex-1">
             {LOAI_TABS.map((tab) => {
               const count = countByLoai[tab.key] || 0;
+              const active = loaiFilter === tab.key;
               return (
                 <button
                   key={tab.key}
                   onClick={() => setLoaiFilter(tab.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${
-                    loaiFilter === tab.key ? "bg-brand-500 text-white" : "bg-white/40 dark:bg-white/5 hover:bg-white/60"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    active
+                      ? "bg-amber-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
-                  <span>{tab.emoji}</span> {tab.label} ({count})
+                  <span>{tab.emoji}</span>
+                  {tab.label}
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"}`}>
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <select
-            value={trangThaiFilter}
-            onChange={(e) => setTrangThaiFilter(e.target.value as any)}
-            className="px-3 py-1.5 rounded-lg text-xs border border-slate-200 bg-white"
-          >
-            <option value="ALL">Tất cả trạng thái</option>
-            <option value="san_sang">✅ Sẵn sàng</option>
-            <option value="tam_ngung">⏸️ Tạm ngưng</option>
-            <option value="het_viec">🚫 Hết việc</option>
-          </select>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={trangThaiFilter}
+              onChange={(e) => setTrangThaiFilter(e.target.value as any)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="san_sang">🟢 Sẵn sàng</option>
+              <option value="tam_ngung">🟡 Tạm ngưng</option>
+              <option value="het_viec">🔴 Hết việc</option>
+            </select>
+            <DataViewToggle onChange={setViewMode} />
+          </div>
         </div>
+
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
-            className="input pl-9"
-            placeholder="Tìm tên, SĐT, địa chỉ, ghi chú..."
+            className="w-full pl-9 pr-8 py-2 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            placeholder="Tìm tên thợ, xưởng, SĐT, địa chỉ, ghi chú..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Table view */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left border-b bg-slate-50" style={{ borderColor: "var(--border)" }}>
-                <th className="p-3 font-semibold">Mã</th>
-                <th className="p-3 font-semibold">Họ tên / Xưởng</th>
-                <th className="p-3 font-semibold">Loại hàng</th>
-                <th className="p-3 font-semibold text-center">Số thợ</th>
-                <th className="p-3 font-semibold">SĐT</th>
-                <th className="p-3 font-semibold">Địa chỉ</th>
-                <th className="p-3 font-semibold text-center">Trạng thái</th>
-                <th className="p-3 font-semibold text-center">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="p-8 text-center text-slate-500 text-sm">Không tìm thấy công nhân nào</td></tr>
-              ) : filtered.map((c) => {
-                const ttStyle = TRANG_THAI_CNGC_STYLE[c.trangThai];
-                return (
-                  <tr key={c.id} className="border-b last:border-0 hover:bg-slate-50/50" style={{ borderColor: "var(--border)" }}>
-                    <td className="p-3 font-mono text-xs">
-                      <div className="font-semibold text-cyan-600">{c.id}</div>
-                      <div className="text-[10px] text-slate-400">STT {c.stt}</div>
-                    </td>
-                    <td className="p-3">
-                      <div className="font-medium">{c.hoTen}</div>
-                      {c.ghiChu && (
-                        <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <FileText className="w-3 h-3" /> <span className="line-clamp-1">{c.ghiChu}</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 text-xs">
-                      <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-700">
-                        {LOAI_HANG_LABELS[c.loaiHang]}
-                      </span>
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full font-bold text-amber-700 bg-amber-100 text-sm">
-                        {c.soTho}
-                      </span>
-                    </td>
-                    <td className="p-3 text-xs">
-                      <div className="flex items-center gap-1">
-                        <a href={`tel:${c.sdt}`} className="flex items-center gap-1 text-brand-600 hover:underline">
-                          <Phone className="w-3 h-3" /> {c.sdt}
-                        </a>
-                        <a
-                          href={`https://zalo.me/${c.sdt.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-1 p-1 rounded text-blue-600 hover:bg-blue-50"
-                          title="Nhắn Zalo"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </a>
-                        {c.facebookUrl && (
-                          <a
-                            href={c.facebookUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-0.5 p-1 rounded text-[#1877F2] hover:bg-blue-50"
-                            title="Mở Facebook"
-                          >
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3 text-xs max-w-xs">
-                      {c.diaChi ? (
-                        <div className="flex items-start gap-1 text-slate-700">
-                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-2">{c.diaChi}</span>
-                        </div>
-                      ) : <span className="text-slate-400">—</span>}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${ttStyle.bg} ${ttStyle.color}`}>
-                        {ttStyle.emoji} {TRANG_THAI_CNGC_LABELS[c.trangThai]}
-                      </span>
-                    </td>
-                    <td className="p-3 text-center">
-                      <button
-                        onClick={() => setSelected(c)}
-                        className="text-xs px-2.5 py-1 rounded bg-brand-500 text-white hover:bg-brand-600"
-                      >
-                        Xem chi tiết
-                      </button>
+      {/* View Content */}
+      {viewMode === "table" ? (
+        <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-slate-200 bg-slate-50/80 text-xs text-slate-600 uppercase tracking-wider font-semibold">
+                  <th className="p-3.5">Mã</th>
+                  <th className="p-3.5">Họ tên / Xưởng</th>
+                  <th className="p-3.5">Loại hàng</th>
+                  <th className="p-3.5 text-center">Số thợ</th>
+                  <th className="p-3.5">SĐT & Zalo</th>
+                  <th className="p-3.5">Địa chỉ</th>
+                  <th className="p-3.5 text-center">Trạng thái</th>
+                  <th className="p-3.5 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-500 text-sm">
+                      Không tìm thấy công nhân gia công nào phù hợp
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : (
+                  filtered.map((c) => {
+                    const ttStyle = TRANG_THAI_CNGC_STYLE[c.trangThai];
+                    return (
+                      <tr key={c.id} className="hover:bg-amber-50/30 transition">
+                        <td className="p-3.5 font-mono text-xs">
+                          <div className="font-bold text-amber-700">{c.id}</div>
+                          <div className="text-[10px] text-slate-400">STT {c.stt}</div>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-bold text-slate-800">{c.hoTen}</div>
+                          {c.ghiChu && (
+                            <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                              <FileText className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                              <span className="line-clamp-1">{c.ghiChu}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-xs">
+                          <span className="px-2.5 py-1 rounded-lg font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200/60">
+                            {LOAI_HANG_LABELS[c.loaiHang]}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full font-black text-amber-700 bg-amber-100 text-xs">
+                            {c.soTho} thợ
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <a href={`tel:${c.sdt}`} className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-teal-600 hover:underline">
+                              <Phone className="w-3.5 h-3.5 text-teal-600" /> {c.sdt}
+                            </a>
+                            <a
+                              href={`https://zalo.me/${c.sdt.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition"
+                              title="Nhắn Zalo"
+                            >
+                              Zalo
+                            </a>
+                            {c.facebookUrl && (
+                              <a
+                                href={c.facebookUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 rounded text-[#1877F2] hover:bg-blue-50"
+                                title="Mở Facebook"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg>
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-xs max-w-xs">
+                          {c.diaChi ? (
+                            <div className="flex items-start gap-1 text-slate-600">
+                              <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-slate-400" />
+                              <span className="line-clamp-2">{c.diaChi}</span>
+                            </div>
+                          ) : <span className="text-slate-400">—</span>}
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${ttStyle.bg} ${ttStyle.color}`}>
+                            {ttStyle.emoji} {TRANG_THAI_CNGC_LABELS[c.trangThai]}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <button
+                            onClick={() => setSelected(c)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-semibold border border-teal-200 transition"
+                          >
+                            Chi tiết
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Card View */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {filtered.map((c) => {
+            const ttStyle = TRANG_THAI_CNGC_STYLE[c.trangThai];
+            return (
+              <div key={c.id} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-[10px] font-mono text-amber-700 font-bold">{c.id} · STT {c.stt}</div>
+                      <h4 className="font-bold text-base text-slate-800">{c.hoTen}</h4>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${ttStyle.bg} ${ttStyle.color}`}>
+                      {ttStyle.emoji} {TRANG_THAI_CNGC_LABELS[c.trangThai]}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200/60">
+                      {LOAI_HANG_LABELS[c.loaiHang]}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
+                      {c.soTho} thợ may
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-teal-600" />
+                      <a href={`tel:${c.sdt}`} className="hover:underline font-medium text-slate-800">{c.sdt}</a>
+                      <a
+                        href={`https://zalo.me/${c.sdt.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200"
+                      >
+                        Nhắn Zalo
+                      </a>
+                    </div>
+                    {c.diaChi && (
+                      <div className="flex items-start gap-1.5 pt-1 text-slate-500">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-2">{c.diaChi}</span>
+                      </div>
+                    )}
+                    {c.ghiChu && (
+                      <div className="flex items-start gap-1.5 pt-0.5 text-slate-500 italic text-[11px]">
+                        <FileText className="w-3 h-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-1">{c.ghiChu}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">Dự phòng xưởng may</span>
+                  <button
+                    onClick={() => setSelected(c)}
+                    className="text-xs px-3 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-semibold border border-teal-200 transition"
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selected && (

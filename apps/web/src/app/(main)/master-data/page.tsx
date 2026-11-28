@@ -47,208 +47,352 @@ export default function MasterDataPage() {
   const loaiXuongSet = Array.from(new Set(XUONG_GIA_CONG.map((x) => x.loai)));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 p-3 md:p-5">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-700 text-white p-5 md:p-7 shadow-xl">
-          <div className="text-xs font-medium opacity-90 mb-1">🏭 MIMIN OS · Bước 1 - Nhập liệu Master Data</div>
-          <h1 className="text-2xl md:text-3xl font-bold">📋 Master Data - NCC + Xưởng + Khách hàng</h1>
-          <p className="text-sm opacity-95 mt-1 max-w-3xl">
-            Tổng hợp <b>{MASTER_DATA_SUMMARY.tongNCC} NCC</b> + <b>{MASTER_DATA_SUMMARY.tongKHSi} KH sỉ</b> + <b>{MASTER_DATA_SUMMARY.tongXuong} xưởng</b> + <b>{MASTER_DATA_SUMMARY.tongDoiTac} đối tác gia công</b> để chuẩn bị nhập liệu LSX.
-          </p>
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{MASTER_DATA_SUMMARY.tongNCC}</div><div className="opacity-90">NCC</div></div>
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{MASTER_DATA_SUMMARY.tongKHSi}</div><div className="opacity-90">KH sỉ</div></div>
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{MASTER_DATA_SUMMARY.tongXuong}</div><div className="opacity-90">Xưởng</div></div>
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{MASTER_DATA_SUMMARY.tongDoiTac}</div><div className="opacity-90">Đối tác GC</div></div>
-            <div className="bg-white/15 backdrop-blur rounded-lg p-2"><div className="text-xl font-bold">{MASTER_DATA_SUMMARY.tongUser}</div><div className="opacity-90">User</div></div>
-          </div>
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-            <div className="bg-white/10 rounded p-2">
-              <div className="opacity-90">Tổng công nợ KH</div>
-              <div className="text-base font-bold text-amber-200">{fmtVND(MASTER_DATA_SUMMARY.tongCongNoKH)}</div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Executive Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-teal-500/10 border border-indigo-500/20 backdrop-blur-sm shadow-sm">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                Dữ Liệu Nguồn Cốt Lõi · MIMIN OS
+              </span>
+              <span className="text-xs text-slate-500 font-medium">Khởi tạo kế hoạch & lệnh SX</span>
             </div>
-            <div className="bg-white/10 rounded p-2">
-              <div className="opacity-90">Tổng công nợ NCC</div>
-              <div className="text-base font-bold text-rose-200">{fmtVND(MASTER_DATA_SUMMARY.tongCongNoNCC)}</div>
-            </div>
-            <div className="bg-white/10 rounded p-2">
-              <div className="opacity-90">Doanh số KH/năm</div>
-              <div className="text-base font-bold text-emerald-200">{(MASTER_DATA_SUMMARY.tongDoanhSoKH / 1_000_000_000).toFixed(1)} tỷ</div>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2.5">
+              <Building2 className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+              Master Data - Nhà Cung Cấp, Khách Hàng & Xưởng
+            </h1>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Tổng hợp {MASTER_DATA_SUMMARY.tongNCC} NCC · {MASTER_DATA_SUMMARY.tongKHSi} KH sỉ · {MASTER_DATA_SUMMARY.tongXuong} xưởng nội bộ · {MASTER_DATA_SUMMARY.tongDoiTac} đối tác gia công outside
+            </p>
           </div>
         </div>
+      </div>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { id: "ncc" as Tab,   label: "🏭 Nhà cung cấp", count: MASTER_DATA_SUMMARY.tongNCC, color: "from-blue-500 to-indigo-500" },
-            { id: "kh" as Tab,    label: "🤝 Khách hàng sỉ", count: MASTER_DATA_SUMMARY.tongKHSi, color: "from-emerald-500 to-teal-500" },
-            { id: "xuong" as Tab, label: "🏗️ Xưởng gia công", count: MASTER_DATA_SUMMARY.tongXuong, color: "from-amber-500 to-orange-500" },
-          ].map((t) => (
+      {/* Overview Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="rounded-xl border border-blue-200/80 bg-blue-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-blue-700">Nhà cung cấp</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+              <Building2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-blue-700">{MASTER_DATA_SUMMARY.tongNCC}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Vải & phụ liệu</div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-emerald-700">Khách hàng sỉ</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-emerald-700">{MASTER_DATA_SUMMARY.tongKHSi}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Đại lý & đối tác</div>
+        </div>
+
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-700">Xưởng sản xuất</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+              <Factory className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-amber-700">{MASTER_DATA_SUMMARY.tongXuong}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Xưởng may nội bộ</div>
+        </div>
+
+        <div className="rounded-xl border border-violet-200/80 bg-violet-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-violet-700">Đối tác gia công</span>
+            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
+              <Truck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-violet-700">{MASTER_DATA_SUMMARY.tongDoiTac}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Outside liên kết</div>
+        </div>
+
+        <div className="rounded-xl border border-teal-200/80 bg-teal-50/40 p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-teal-700">Tài khoản nhân sự</span>
+            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
+              <Award className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-2xl font-black text-teal-700">{MASTER_DATA_SUMMARY.tongUser}</div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">Nhân sự nội bộ</div>
+        </div>
+      </div>
+
+      {/* Financial Health Ribbon */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-xl border border-amber-200/70 bg-gradient-to-r from-amber-50 to-orange-50/40 p-3.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-amber-800">Tổng công nợ Khách Hàng</span>
+            <DollarSign className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="mt-1 text-xl font-black text-amber-700">{fmtVND(MASTER_DATA_SUMMARY.tongCongNoKH)}</div>
+          <div className="text-[11px] text-amber-600/80 mt-0.5">Tiền hàng khách cần thanh toán</div>
+        </div>
+
+        <div className="rounded-xl border border-rose-200/70 bg-gradient-to-r from-rose-50 to-red-50/40 p-3.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-800">Tổng công nợ Nhà Cung Cấp</span>
+            <DollarSign className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className="mt-1 text-xl font-black text-rose-700">{fmtVND(MASTER_DATA_SUMMARY.tongCongNoNCC)}</div>
+          <div className="text-[11px] text-rose-600/80 mt-0.5">Tiền nguyên phụ liệu còn nợ NCC</div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50 to-teal-50/40 p-3.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-800">Doanh số khách hàng / năm</span>
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="mt-1 text-xl font-black text-emerald-700">{(MASTER_DATA_SUMMARY.tongDoanhSoKH / 1_000_000_000).toFixed(1)} tỷ VNĐ</div>
+          <div className="text-[11px] text-emerald-600/80 mt-0.5">Tổng giá trị đơn hàng thực hiện</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[
+          { id: "ncc" as Tab, label: "Nhà Cung Cấp", sub: "Vải chính, bo cổ, phụ liệu", count: MASTER_DATA_SUMMARY.tongNCC, icon: Building2, color: "text-blue-600", activeBg: "bg-blue-600 text-white" },
+          { id: "kh" as Tab, label: "Khách Hàng Sỉ", sub: "Đại lý, chuỗi thời trang", count: MASTER_DATA_SUMMARY.tongKHSi, icon: Users, color: "text-emerald-600", activeBg: "bg-emerald-600 text-white" },
+          { id: "xuong" as Tab, label: "Xưởng Sản Xuất", sub: "Xưởng may & liên kết", count: MASTER_DATA_SUMMARY.tongXuong, icon: Factory, color: "text-amber-600", activeBg: "bg-amber-600 text-white" },
+        ].map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
             <button
               key={t.id}
               onClick={() => { setTab(t.id); setFilterLoai(""); }}
-              className={`card p-3 text-left transition ${tab === t.id ? `ring-2 ring-offset-2 ring-indigo-500 bg-gradient-to-br ${t.color} text-white` : "bg-white"}`}
+              className={`p-4 rounded-xl text-left transition border ${
+                active
+                  ? `${t.activeBg} border-transparent shadow-md scale-[1.01]`
+                  : "bg-white border-slate-200/80 hover:bg-slate-50 text-slate-800"
+              }`}
             >
-              <div className="font-bold text-base">{t.label}</div>
-              <div className={`text-2xl font-bold ${tab === t.id ? "text-white" : "text-slate-700"}`}>{t.count}</div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon className={`w-5 h-5 ${active ? "text-white" : t.color}`} />
+                  <span className="font-bold text-sm">{t.label}</span>
+                </div>
+                <span className={`text-xl font-black ${active ? "text-white" : "text-slate-800"}`}>{t.count}</span>
+              </div>
+              <div className={`text-xs mt-1 ${active ? "text-white/80" : "text-slate-500"}`}>{t.sub}</div>
             </button>
-          ))}
-        </div>
-
-        {/* Search + Filter */}
-        <div className="card p-3 flex flex-col md:flex-row gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder={`Tìm ${tab === "ncc" ? "NCC" : tab === "kh" ? "khách hàng" : "xưởng"}...`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <select
-            value={filterLoai}
-            onChange={(e) => setFilterLoai(e.target.value)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
-          >
-            <option value="">-- Tất cả loại --</option>
-            {tab === "ncc" && loaiNCCSet.map((l) => <option key={l} value={l}>{l}</option>)}
-            {tab === "kh" && loaiKHSet.map((l) => <option key={l} value={l}>{l}</option>)}
-            {tab === "xuong" && loaiXuongSet.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-          <button className="text-sm px-3 py-2 bg-indigo-500 text-white rounded-lg flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Thêm mới
-          </button>
-        </div>
-
-        {/* Content */}
-        {tab === "ncc" && <NCCTab data={filteredNCC} fmtVND={fmtVND} fmtFull={fmtFull} />}
-        {tab === "kh" && <KHTab data={filteredKH} fmtVND={fmtVND} fmtFull={fmtFull} />}
-        {tab === "xuong" && <XuongTab data={filteredXuong} fmtVND={fmtVND} fmtFull={fmtFull} />}
+          );
+        })}
       </div>
+
+      {/* Search + Filter */}
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm flex flex-col md:flex-row items-center gap-3">
+        <div className="flex-1 relative w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder={`Tìm theo tên, mã, người liên hệ của ${tab === "ncc" ? "NCC" : tab === "kh" ? "khách hàng" : "xưởng"}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 text-sm border border-slate-200 bg-slate-50/50 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <select
+          value={filterLoai}
+          onChange={(e) => setFilterLoai(e.target.value)}
+          className="px-3.5 py-2 text-xs font-semibold border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto"
+        >
+          <option value="">-- Tất cả phân loại --</option>
+          {tab === "ncc" && loaiNCCSet.map((l) => <option key={l} value={l}>{l}</option>)}
+          {tab === "kh" && loaiKHSet.map((l) => <option key={l} value={l}>{l}</option>)}
+          {tab === "xuong" && loaiXuongSet.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </div>
+
+      {/* Content */}
+      {tab === "ncc" && <NCCTab data={filteredNCC} fmtVND={fmtVND} fmtFull={fmtFull} />}
+      {tab === "kh" && <KHTab data={filteredKH} fmtVND={fmtVND} fmtFull={fmtFull} />}
+      {tab === "xuong" && <XuongTab data={filteredXuong} fmtVND={fmtVND} fmtFull={fmtFull} />}
     </div>
   );
 }
 
 function NCCTab({ data, fmtVND, fmtFull }: any) {
   return (
-    <div className="space-y-2">
-      {data.map((n: any) => (
-        <div key={n.id} className="card p-4 border-l-4 border-blue-500">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">{n.maNCC}</span>
-                <h3 className="font-bold text-sm">{n.tenNCC}</h3>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">{n.loai}</span>
-                {n.congNo > 50_000_000 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">⚠️ Nợ nhiều</span>}
+    <div className="space-y-3">
+      {data.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
+          Không tìm thấy nhà cung cấp nào phù hợp
+        </div>
+      ) : (
+        data.map((n: any) => (
+          <div key={n.id} className="rounded-xl border border-slate-200/80 border-l-4 border-l-blue-500 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200/60">{n.maNCC}</span>
+                  <h3 className="font-bold text-sm text-slate-900">{n.tenNCC}</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-700">{n.loai}</span>
+                  {n.congNo > 50_000_000 && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700">⚠️ Dư nợ cao</span>}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-slate-600 pt-1">
+                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{n.diaChi}</span></div>
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                    <a href={`tel:${n.sdt}`} className="hover:underline font-semibold text-slate-700">{n.sdt}</a>
+                  </div>
+                  <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{n.email}</span></div>
+                </div>
+                <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3 pt-1">
+                  <span>👤 Người LH: <b className="text-slate-700">{n.nguoiLH}</b></span>
+                  <span>MST: <b className="text-slate-700 font-mono">{n.mst || "—"}</b></span>
+                  {n.donGia && <span className="text-emerald-700 font-semibold">💰 Đơn giá: {n.donGia}</span>}
+                </div>
+                {n.ghiChu && <div className="text-[11px] text-slate-400 italic pt-0.5">"{n.ghiChu}"</div>}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600">
-                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {n.diaChi}</div>
-                <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {n.sdt}</div>
-                <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {n.email}</div>
-              </div>
-              <div className="text-[10px] text-slate-500 mt-1.5">👤 {n.nguoiLH} · MST: {n.mst || "—"}</div>
-              {n.donGia && <div className="text-[10px] text-emerald-700 mt-1">💰 {n.donGia}</div>}
-              <div className="text-[10px] text-slate-500 mt-1 italic">"{n.ghiChu}"</div>
-            </div>
-            <div className="text-right ml-3">
-              <div className="text-[10px] text-slate-500">Công nợ</div>
-              <div className={`text-base font-bold ${n.congNo > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtVND(n.congNo)}</div>
-              <div className="flex gap-1 mt-2 justify-end">
-                <button className="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600"><Edit2 className="w-3 h-3 inline" /></button>
-                <button className="text-[10px] px-2 py-1 bg-rose-50 text-rose-600 rounded"><Trash2 className="w-3 h-3 inline" /></button>
+              <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <div>
+                  <div className="text-[11px] text-slate-400 font-medium">Dư nợ NCC</div>
+                  <div className={`text-base font-black ${n.congNo > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtVND(n.congNo)}</div>
+                </div>
+                <div className="flex gap-1.5 mt-2">
+                  <button className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button className="text-xs px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xoá
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }
 
 function KHTab({ data, fmtVND, fmtFull }: any) {
   return (
-    <div className="space-y-2">
-      {data.map((k: any) => (
-        <div key={k.id} className="card p-4 border-l-4 border-emerald-500">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">{k.maKH}</span>
-                <h3 className="font-bold text-sm">{k.tenKH}</h3>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">{k.loai}</span>
-                {k.trangThai === "VIP" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 flex items-center gap-0.5"><Award className="w-3 h-3" />VIP</span>}
-                {k.trangThai === "Mới" && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">Mới</span>}
-                {k.congNoHT > k.hanMucNo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">⚠️ Vượt hạn mức</span>}
+    <div className="space-y-3">
+      {data.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
+          Không tìm thấy khách hàng nào phù hợp
+        </div>
+      ) : (
+        data.map((k: any) => (
+          <div key={k.id} className="rounded-xl border border-slate-200/80 border-l-4 border-l-emerald-500 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200/60">{k.maKH}</span>
+                  <h3 className="font-bold text-sm text-slate-900">{k.tenKH}</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">{k.loai}</span>
+                  {k.trangThai === "VIP" && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 flex items-center gap-0.5"><Award className="w-3 h-3" />VIP</span>}
+                  {k.trangThai === "Mới" && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Mới</span>}
+                  {k.congNoHT > k.hanMucNo && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700">⚠️ Vượt hạn mức</span>}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-slate-600 pt-1">
+                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{k.diaChi}</span></div>
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <a href={`tel:${k.sdt}`} className="hover:underline font-semibold text-slate-700">{k.sdt}</a>
+                  </div>
+                  <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{k.email}</span></div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 text-xs text-slate-500">
+                  <div>👤 Đại diện: <b className="text-slate-700">{k.nguoiLH}</b></div>
+                  <div>💳 CS: <b className="text-slate-700">{k.chinhSach}</b></div>
+                  <div>📦 SP chính: <b className="text-slate-700">{k.spChinh}</b></div>
+                  <div>💵 Hạn mức: <b className="text-slate-700">{fmtVND(k.hanMucNo)}</b></div>
+                </div>
+                {k.ghiChu && <div className="text-[11px] text-slate-400 italic pt-0.5">"{k.ghiChu}"</div>}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600">
-                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {k.diaChi}</div>
-                <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {k.sdt}</div>
-                <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {k.email}</div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-[10px]">
-                <div><span className="text-slate-500">👤 {k.nguoiLH}</span></div>
-                <div><span className="text-slate-500">💳 {k.chinhSach}</span></div>
-                <div><span className="text-slate-500">📦 SP chính: {k.spChinh}</span></div>
-                <div><span className="text-slate-500">💵 Hạn mức: {fmtVND(k.hanMucNo)}</span></div>
-              </div>
-              {k.ghiChu && <div className="text-[10px] text-slate-500 mt-1.5 italic">"{k.ghiChu}"</div>}
-            </div>
-            <div className="text-right ml-3">
-              <div className="text-[10px] text-slate-500">Công nợ HT</div>
-              <div className={`text-base font-bold ${k.congNoHT > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtVND(k.congNoHT)}</div>
-              <div className="text-[10px] text-slate-500 mt-2">DS năm</div>
-              <div className="text-xs font-bold text-indigo-600">{fmtVND(k.doanhSoNam)}</div>
-              <div className="flex gap-1 mt-2 justify-end">
-                <button className="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600"><Edit2 className="w-3 h-3 inline" /></button>
-                <button className="text-[10px] px-2 py-1 bg-rose-50 text-rose-600 rounded"><Trash2 className="w-3 h-3 inline" /></button>
+              <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <div>
+                  <div className="text-[11px] text-slate-400 font-medium">Công nợ hiện tại</div>
+                  <div className={`text-base font-black ${k.congNoHT > 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtVND(k.congNoHT)}</div>
+                  <div className="text-[11px] text-slate-400 mt-1">Doanh số năm: <b className="text-indigo-600">{fmtVND(k.doanhSoNam)}</b></div>
+                </div>
+                <div className="flex gap-1.5 mt-2">
+                  <button className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button className="text-xs px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xoá
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }
 
 function XuongTab({ data, fmtVND, fmtFull }: any) {
   return (
-    <div className="space-y-2">
-      {data.map((x: any) => (
-        <div key={x.id} className="card p-4 border-l-4 border-amber-500">
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">{x.maXuong}</span>
-                <h3 className="font-bold text-sm">{x.tenXuong}</h3>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{x.loai}</span>
+    <div className="space-y-3">
+      {data.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 text-sm">
+          Không tìm thấy xưởng nào phù hợp
+        </div>
+      ) : (
+        data.map((x: any) => (
+          <div key={x.id} className="rounded-xl border border-slate-200/80 border-l-4 border-l-amber-500 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200/60">{x.maXuong}</span>
+                  <h3 className="font-bold text-sm text-slate-900">{x.tenXuong}</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">{x.loai}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-slate-600 pt-1">
+                  <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{x.diaChi}</span></div>
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <a href={`tel:${x.sdt}`} className="hover:underline font-semibold text-slate-700">{x.sdt}</a>
+                  </div>
+                  <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> <span className="line-clamp-1">{x.email}</span></div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-1 text-xs text-slate-500">
+                  <div>👤 Quản lý xưởng: <b className="text-slate-700">{x.nguoiLH}</b></div>
+                  <div>⚙️ Công suất: <b className="text-slate-700">{x.congSuat}</b></div>
+                  <div>💰 Đơn giá TB: <b className="text-emerald-700 font-bold">{x.donGiaTB.toLocaleString("vi-VN")} {x.donVi}</b></div>
+                </div>
+                {x.ghiChu && <div className="text-[11px] text-slate-400 italic pt-0.5">"{x.ghiChu}"</div>}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600">
-                <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {x.diaChi}</div>
-                <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {x.sdt}</div>
-                <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {x.email}</div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-[10px]">
-                <div><span className="text-slate-500">👤 {x.nguoiLH}</span></div>
-                <div><span className="text-slate-500">⚙️ CS: {x.congSuat}</span></div>
-                <div><span className="text-emerald-700 font-semibold">💰 {x.donGiaTB.toLocaleString("vi-VN")} {x.donVi}</span></div>
-              </div>
-              {x.ghiChu && <div className="text-[10px] text-slate-500 mt-1.5 italic">"{x.ghiChu}"</div>}
-            </div>
-            <div className="text-right ml-3">
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${x.trangThai === "Đang hợp tác" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{x.trangThai}</span>
-              <div className="flex gap-1 mt-2 justify-end">
-                <button className="text-[10px] px-2 py-1 bg-slate-100 rounded text-slate-600"><Edit2 className="w-3 h-3 inline" /></button>
-                <button className="text-[10px] px-2 py-1 bg-rose-50 text-rose-600 rounded"><Trash2 className="w-3 h-3 inline" /></button>
+              <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${x.trangThai === "Đang hợp tác" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                  <CheckCircle2 className="w-3 h-3" /> {x.trangThai}
+                </span>
+                <div className="flex gap-1.5 mt-2">
+                  <button className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Edit2 className="w-3 h-3" /> Sửa
+                  </button>
+                  <button className="text-xs px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-medium transition flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Xoá
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

@@ -46,6 +46,12 @@ export function detectLoaiSP(text: string): LoaiSP {
   return "BoTru";
 }
 
+export function isBoProduct(loai?: string): boolean {
+  if (!loai) return false;
+  const s = loai.toLowerCase();
+  return s.includes("bo") || s.includes("bộ");
+}
+
 export const BANG_CHI_PHI_CO_DINH: Record<LoaiSP, ChiPhiCoDinh> = {
   "BoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 1400, "THUNQUAN": 1500 },
   "AoTru": { "EPKEOTRU": 300, "EPNHAN": 300, "BAOBI_GIAY": 700, "THEBAI": 700, "DAYKEO": 0, "THUNQUAN": 0 },
@@ -77,6 +83,7 @@ export type MauVai = {
   ten: string;
   maSKU?: string;
   maVai: string;
+  donGiaVai?: number;
   dinhMuc: number;
   slDuKien: number;
   slThucTe?: number;
@@ -88,6 +95,7 @@ export type MauVai = {
   
   // NẾU LÀ BỘ THÌ CÓ THÊM QUẦN
   maVaiQuan?: string;
+  donGiaVaiQuan?: number;
   dinhMucQuan?: number;
   imgQuan?: string;    // Ảnh mẫu QUẦN (hàng Bộ) - img ở trên là ảnh ÁO
   phanBoSizeQuan?: { size: string; sl: number }[];
@@ -289,6 +297,7 @@ export type LenhCat = RecordAssignment & {
   daiSoDoQuan?: string;
   soDoQuan?: string;
   // Sơ đồ cắt
+  loaiSoDoPhoi?: string;
   soDoChinh?: string;
   pdfSoDoChinh?: string;
   khoSoDoChinh?: string;
@@ -305,6 +314,9 @@ export type LenhCat = RecordAssignment & {
   hinhMauInTheu?: string;
   fileGocInTheu?: string;
   ghiChuInTheu?: string;
+
+  // Hình ảnh đại diện sản phẩm
+  hinhAnh?: string;
   
   // Meta
   phuTrachCat: string;
@@ -335,56 +347,56 @@ const DEFAULT_MAU_CONG_DOAN: MauCongDoanItem[] = [
     id: "MCD-AO-TRON",
     ten: "Áo tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
-      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "XUONG_NHA", nguoiTen: "Xưởng nhà", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "GC-IN-007", nguoiTen: "Xưởng in anh Trung Nha Trang", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "GC-TRON-001", nguoiTen: "Xưởng may tròn anh Trai", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "TO_QC", nguoiTen: "Tổ QC", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "TO_UI", nguoiTen: "Tổ Ủi", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "TO_DONG_GOI", nguoiTen: "Tổ Đóng Gói", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "KHO_THANH_PHAM", nguoiTen: "Kho thành phẩm", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-AO-TRU",
     ten: "Áo trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "", nguoiTen: "", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
-      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt áo", nguoiMa: "XUONG_NHA", nguoiTen: "Xưởng nhà", donGia: 1400, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "GC-IN-006", nguoiTen: "Xưởng thêu anh Vui", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "GC-TRU-006", nguoiTen: "Xưởng may trụ cô Cúc", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "TO_QC", nguoiTen: "Tổ QC", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "TO_KHUY_NUT", nguoiTen: "Tổ Khuy Nút", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "TO_UI", nguoiTen: "Tổ Ủi", donGia: 900, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "TO_DONG_GOI", nguoiTen: "Tổ Đóng Gói", donGia: 700, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "KHO_THANH_PHAM", nguoiTen: "Kho thành phẩm", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-BO-TRON",
     ten: "Bộ tròn",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
-      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_ao", loaiNguoi: "noi_bo", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_quan", loaiNguoi: "noi_bo", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "XUONG_NHA", nguoiTen: "Xưởng nhà", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "khong_can" } },
+      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "GC-IN-007", nguoiTen: "Xưởng in anh Trung Nha Trang", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "GC-TRON-001", nguoiTen: "Xưởng may tròn anh Trai", donGia: 13000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_quan", loaiNguoi: "xuong_ngoai", tenCongDoan: "May quần", nguoiMa: "GC-QUAN-001", nguoiTen: "Xưởng may quần chị Dung", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "TO_QC", nguoiTen: "Tổ QC", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "TO_UI", nguoiTen: "Tổ Ủi", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "TO_DONG_GOI", nguoiTen: "Tổ Đóng Gói", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "KHO_THANH_PHAM", nguoiTen: "Kho thành phẩm", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   },
   {
     id: "MCD-BO-TRU",
     ten: "Bộ trụ",
     giaCong: [
-      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "", nguoiTen: "", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
-      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "", nguoiTen: "", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "may_quan", loaiNguoi: "xuong_ngoai", tenCongDoan: "May quần", nguoiMa: "", nguoiTen: "", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "", nguoiTen: "", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "", nguoiTen: "", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "", nguoiTen: "", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "", nguoiTen: "", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
-      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "", nguoiTen: "", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
+      { id: "cat", loaiNguoi: "noi_bo", tenCongDoan: "Cắt bộ", nguoiMa: "XUONG_NHA", nguoiTen: "Xưởng nhà", donGia: 2300, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra", catChiTiet: { nhanLieu: "cho_lam", traiVai: "cho_lam", catHang: "cho_lam", epNhan: "cho_lam", epKeo: "cho_lam" } },
+      { id: "in_theu", loaiNguoi: "xuong_ngoai", tenCongDoan: "In/Thêu", nguoiMa: "GC-IN-006", nguoiTen: "Xưởng thêu anh Vui", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_ao", loaiNguoi: "xuong_ngoai", tenCongDoan: "May áo", nguoiMa: "GC-TRU-006", nguoiTen: "Xưởng may trụ cô Cúc", donGia: 15000, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "may_quan", loaiNguoi: "xuong_ngoai", tenCongDoan: "May quần", nguoiMa: "GC-QUAN-001", nguoiTen: "Xưởng may quần chị Dung", donGia: 9500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "qc", loaiNguoi: "noi_bo", tenCongDoan: "QC (Kiểm hàng)", nguoiMa: "TO_QC", nguoiTen: "Tổ QC", donGia: 500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "khuy_nut", loaiNguoi: "noi_bo", tenCongDoan: "Khuy nút", nguoiMa: "TO_KHUY_NUT", nguoiTen: "Tổ Khuy Nút", donGia: 750, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "ui", loaiNguoi: "noi_bo", tenCongDoan: "Ủi", nguoiMa: "TO_UI", nguoiTen: "Tổ Ủi", donGia: 1500, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "dong_goi", loaiNguoi: "noi_bo", tenCongDoan: "Đóng gói", nguoiMa: "TO_DONG_GOI", nguoiTen: "Tổ Đóng Gói", donGia: 1200, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" },
+      { id: "nhap_kho", loaiNguoi: "noi_bo", tenCongDoan: "Nhập kho", nguoiMa: "KHO_THANH_PHAM", nguoiTen: "Kho thành phẩm", donGia: 0, soLuong: 0, thanhTien: 0, daThanhToan: 0, conLai: 0, trangThaiTT: "chua_tra" }
     ]
   }
 ];
@@ -449,35 +461,199 @@ const LenhCatContext = createContext<LenhCatStore | null>(null);
 
 const DUMMY_DATA: LenhCat[] = defaultOrdersData as unknown as LenhCat[];
 
-const mapLenhCatFromDB = (item: any): LenhCat => ({
-  id: item.id,
-  loaiLenh: item.loai_lenh || item.loaiLenh,
-  khachHang: item.khach_hang || item.khachHang,
-  loaiSP: item.loai_sp || item.loaiSP,
-  maSP: item.ma_sp || item.maSp || item.maSP,
-  tenSP: item.ten_sp || item.tenSp || item.tenSP,
-  tongSL: item.tong_sl || item.tongSl || item.tongSL,
-  tongSLThucTe: item.tong_sl_thuc_te || item.tongSlThucTe || item.tongSLThucTe,
-  tongSLThucTeAo: item.tong_sl_thuc_te_ao || item.tongSlThucTeAo || item.tongSLThucTeAo,
-  tongSLThucTeQuan: item.tong_sl_thuc_te_quan || item.tongSlThucTeQuan || item.tongSLThucTeQuan,
-  hanHoanThanh: item.han_hoan_thanh || item.hanHoanThanh,
-  tiLeSize: item.ti_le_size || item.tiLeSize,
-  dsMau: item.ds_mau || item.dsMau || [],
-  dsPhuLieu: item.ds_phu_lieu || item.dsPhuLieu || [],
-  mauCongDoan: item.mau_cong_doan || item.mauCongDoan,
-  phanCong: item.phan_cong || item.phanCong || [],
-  mauChiPhi: item.mau_chi_phi || item.mauChiPhi,
-  chiPhiCoDinh: item.chi_phi_co_dinh || item.chiPhiCoDinh || {},
-  bangCOGS: item.bang_cogs || item.bangCogs || item.bangCOGS,
-  phuTrachCat: item.phu_trach_cat || item.phuTrachCat,
-  phuTrachSX: item.phu_trach_sx || item.phuTrachSX,
-  phuTrachSoDo: item.phu_trach_so_do || item.phuTrachSoDo,
-  ghiChu: item.ghi_chu || item.ghiChu,
-  trangThai: item.trang_thai || item.trangThai,
-  phienBanDinhMuc: item.phien_ban_dinh_muc || item.phienBanDinhMuc,
-  ngayTao: item.ngay_tao || item.ngayTao,
-  nguoiTao: item.nguoi_tao || item.nguoiTao
-} as LenhCat);
+const mapLenhCatFromDB = (item: any): LenhCat => {
+  const tl = item.bang_cogs?.taiLieuSanXuat || item.bangCogs?.taiLieuSanXuat || item.bangCOGS?.taiLieuSanXuat || {};
+  return {
+    id: item.id,
+    loaiLenh: item.loai_lenh || item.loaiLenh,
+    khachHang: item.khach_hang || item.khachHang,
+    loaiSP: item.loai_sp || item.loaiSP,
+    maSP: item.ma_sp || item.maSp || item.maSP,
+    tenSP: item.ten_sp || item.tenSp || item.tenSP,
+    tongSL: item.tong_sl || item.tongSl || item.tongSL,
+    tongSLThucTe: item.tong_sl_thuc_te || item.tongSlThucTe || item.tongSLThucTe,
+    tongSLThucTeAo: item.tong_sl_thuc_te_ao || item.tongSlThucTeAo || item.tongSLThucTeAo,
+    tongSLThucTeQuan: item.tong_sl_thuc_te_quan || item.tongSlThucTeQuan || item.tongSLThucTeQuan,
+    hanHoanThanh: item.han_hoan_thanh || item.hanHoanThanh,
+    tiLeSize: item.ti_le_size || item.tiLeSize,
+    dsMau: item.ds_mau || item.dsMau || [],
+    dsPhuLieu: item.ds_phu_lieu || item.dsPhuLieu || [],
+    mauCongDoan: item.mau_cong_doan || item.mauCongDoan,
+    phanCong: item.phan_cong || item.phanCong || [],
+    mauChiPhi: item.mau_chi_phi || item.mauChiPhi,
+    chiPhiCoDinh: item.chi_phi_co_dinh || item.chiPhiCoDinh || {},
+    bangCOGS: item.bang_cogs || item.bangCogs || item.bangCOGS,
+    phuTrachCat: item.phu_trach_cat || item.phuTrachCat,
+    phuTrachSX: item.phu_trach_sx || item.phuTrachSX,
+    phuTrachSoDo: item.phu_trach_so_do || item.phuTrachSoDo || tl.phuTrachSoDo,
+    ghiChu: item.ghi_chu || item.ghiChu,
+    trangThai: item.trang_thai || item.trangThai,
+    phienBanDinhMuc: item.phien_ban_dinh_muc || item.phienBanDinhMuc,
+    ngayTao: item.ngay_tao || item.ngayTao,
+    nguoiTao: item.nguoi_tao || item.nguoiTao,
+
+    // Sơ đồ & tài liệu sản xuất (Lưu trong bang_cogs.taiLieuSanXuat để đồng bộ bền vững với Supabase)
+    loaiSoDoPhoi: item.loai_so_do_phoi || item.loaiSoDoPhoi || tl.loaiSoDoPhoi,
+    daiSoDoAo: item.dai_so_do_ao || item.daiSoDoAo || tl.daiSoDoAo,
+    soDoAo: item.so_do_ao || item.soDoAo || tl.soDoAo,
+    daiSoDoQuan: item.dai_so_do_quan || item.daiSoDoQuan || tl.daiSoDoQuan,
+    soDoQuan: item.so_do_quan || item.soDoQuan || tl.soDoQuan,
+    soDoChinh: item.so_do_chinh || item.soDoChinh || tl.soDoChinh,
+    pdfSoDoChinh: item.pdf_so_do_chinh || item.pdfSoDoChinh || tl.pdfSoDoChinh,
+    khoSoDoChinh: item.kho_so_do_chinh || item.khoSoDoChinh || tl.khoSoDoChinh,
+    daiSoDoChinh: item.dai_so_do_chinh || item.daiSoDoChinh || tl.daiSoDoChinh,
+    soDoPhoi: item.so_do_phoi || item.soDoPhoi || tl.soDoPhoi,
+    pdfSoDoPhoi: item.pdf_so_do_phoi || item.pdfSoDoPhoi || tl.pdfSoDoPhoi,
+    khoSoDoPhoi: item.kho_so_do_phoi || item.khoSoDoPhoi || tl.khoSoDoPhoi,
+    daiSoDoPhoi: item.dai_so_do_phoi || item.daiSoDoPhoi || tl.daiSoDoPhoi,
+    ghiChuSoDoChinh: item.ghi_chu_so_do_chinh || item.ghiChuSoDoChinh || tl.ghiChuSoDoChinh,
+    ghiChuSoDoPhoi: item.ghi_chu_so_do_phoi || item.ghiChuSoDoPhoi || tl.ghiChuSoDoPhoi,
+    daCoSoDo: item.da_co_so_do ?? item.daCoSoDo ?? tl.daCoSoDo ?? false,
+    hinhMauInTheu: item.hinh_mau_in_theu || item.hinhMauInTheu || tl.hinhMauInTheu,
+    fileGocInTheu: item.file_goc_in_theu || item.fileGocInTheu || tl.fileGocInTheu,
+    ghiChuInTheu: item.ghi_chu_in_theu || item.ghiChuInTheu || tl.ghiChuInTheu,
+    ghiChuKyThuat: item.ghi_chu_ky_thuat || item.ghiChuKyThuat || tl.ghiChuKyThuat,
+    hinhAnh: item.hinh_anh || item.hinhAnh || tl.hinhAnh || (item.ds_mau?.[0]?.img) || (item.dsMau?.[0]?.img),
+  } as LenhCat;
+};
+
+export function syncOrderWithDefault(item: LenhCat, defaultVer?: LenhCat): LenhCat {
+  if (!defaultVer) return item;
+  let res = { ...item };
+
+  // 1. Phân công: hoàn thành & các công đoạn quan trọng
+  if (
+    defaultVer.phanCong?.some((p) => p.trangThaiCD === "hoan_thanh") &&
+    (!item.phanCong || !item.phanCong.some((p) => p.trangThaiCD === "hoan_thanh"))
+  ) {
+    res.phanCong = defaultVer.phanCong;
+  }
+
+  // Đồng bộ xưởng may quần & áo & in thêu từ defaultVer nếu thiếu hoặc chưa gán đúng
+  if (Array.isArray(defaultVer.phanCong)) {
+    const mayQuanDef = defaultVer.phanCong.find((p) => p.id === "may_quan" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("quần")));
+    const hasMayQuan = (res.phanCong || []).some((p) => p.id === "may_quan" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("quần")));
+    
+    if (mayQuanDef) {
+      if (!hasMayQuan) {
+        res.phanCong = [...(res.phanCong || []), mayQuanDef];
+      } else {
+        res.phanCong = (res.phanCong || []).map((p) => {
+          if (p.id === "may_quan" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("quần"))) {
+            return {
+              ...p,
+              nguoiMa: (p.nguoiMa && p.nguoiMa !== "" && p.nguoiMa !== "---") ? p.nguoiMa : mayQuanDef.nguoiMa,
+              nguoiTen: (p.nguoiTen && p.nguoiTen !== "" && p.nguoiTen !== "Chưa giao" && !p.nguoiTen.includes("---")) ? p.nguoiTen : mayQuanDef.nguoiTen,
+              donGia: (p.donGia && p.donGia > 0) ? p.donGia : (mayQuanDef.donGia || 9500),
+              soLuong: (p.soLuong && p.soLuong > 0) ? p.soLuong : (mayQuanDef.soLuong || res.tongSL),
+              thanhTien: (p.thanhTien && p.thanhTien > 0) ? p.thanhTien : (mayQuanDef.thanhTien || (res.tongSL * 9500)),
+              trangThaiCD: p.trangThaiCD || mayQuanDef.trangThaiCD || "hoan_thanh",
+              soLuongHoanThanh: p.soLuongHoanThanh || mayQuanDef.soLuongHoanThanh || res.tongSL,
+              soLuongDatCuoi: p.soLuongDatCuoi || mayQuanDef.soLuongDatCuoi || res.tongSL,
+              chiTietMau: (p.chiTietMau && p.chiTietMau.length > 0) ? p.chiTietMau : mayQuanDef.chiTietMau,
+            };
+          }
+          return p;
+        });
+      }
+    }
+
+    const mayAoDef = defaultVer.phanCong.find((p) => p.id === "may_ao" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("may") && !p.tenCongDoan.toLowerCase().includes("quần")));
+    if (mayAoDef) {
+      const hasMayAo = (res.phanCong || []).some((p) => p.id === "may_ao" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("may") && !p.tenCongDoan.toLowerCase().includes("quần")));
+      if (!hasMayAo) {
+        res.phanCong = [...(res.phanCong || []), mayAoDef];
+      } else {
+        res.phanCong = (res.phanCong || []).map((p) => {
+          if (p.id === "may_ao" || (p.tenCongDoan && p.tenCongDoan.toLowerCase().includes("may") && !p.tenCongDoan.toLowerCase().includes("quần"))) {
+            return {
+              ...p,
+              nguoiMa: (p.nguoiMa && p.nguoiMa !== "" && p.nguoiMa !== "---") ? p.nguoiMa : mayAoDef.nguoiMa,
+              nguoiTen: (p.nguoiTen && p.nguoiTen !== "" && p.nguoiTen !== "Chưa giao" && !p.nguoiTen.includes("---")) ? p.nguoiTen : mayAoDef.nguoiTen,
+              donGia: (p.donGia && p.donGia > 0) ? p.donGia : mayAoDef.donGia,
+            };
+          }
+          return p;
+        });
+      }
+    }
+
+    const inTheuDef = defaultVer.phanCong.find((p) => p.id === "in_theu" || p.tenCongDoan?.toLowerCase().includes("in") || p.tenCongDoan?.toLowerCase().includes("thêu"));
+    if (inTheuDef) {
+      const hasInTheu = (res.phanCong || []).some((p) => p.id === "in_theu" || p.tenCongDoan?.toLowerCase().includes("in") || p.tenCongDoan?.toLowerCase().includes("thêu"));
+      if (!hasInTheu) {
+        res.phanCong = [...(res.phanCong || []), inTheuDef];
+      } else {
+        res.phanCong = (res.phanCong || []).map((p) => {
+          if (p.id === "in_theu" || p.tenCongDoan?.toLowerCase().includes("in") || p.tenCongDoan?.toLowerCase().includes("thêu")) {
+            return {
+              ...p,
+              nguoiMa: (p.nguoiMa && p.nguoiMa !== "" && p.nguoiMa !== "---") ? p.nguoiMa : inTheuDef.nguoiMa,
+              nguoiTen: (p.nguoiTen && p.nguoiTen !== "" && p.nguoiTen !== "Chưa giao" && !p.nguoiTen.includes("---")) ? p.nguoiTen : inTheuDef.nguoiTen,
+              donGia: (p.donGia && p.donGia > 0) ? p.donGia : inTheuDef.donGia,
+            };
+          }
+          return p;
+        });
+      }
+    }
+  }
+
+  // 2. Sơ đồ cắt & số lượng thực tế
+  res = {
+    ...res,
+    loaiSoDoPhoi: res.loaiSoDoPhoi || defaultVer.loaiSoDoPhoi,
+    soDoQuan: res.soDoQuan || defaultVer.soDoQuan,
+    daiSoDoQuan: res.daiSoDoQuan || defaultVer.daiSoDoQuan,
+    soDoAo: res.soDoAo || defaultVer.soDoAo,
+    daiSoDoAo: res.daiSoDoAo || defaultVer.daiSoDoAo,
+    soDoChinh: res.soDoChinh || defaultVer.soDoChinh,
+    pdfSoDoChinh: res.pdfSoDoChinh || defaultVer.pdfSoDoChinh,
+    khoSoDoChinh: res.khoSoDoChinh || defaultVer.khoSoDoChinh,
+    daiSoDoChinh: res.daiSoDoChinh || defaultVer.daiSoDoChinh,
+    soDoPhoi: res.soDoPhoi || defaultVer.soDoPhoi,
+    pdfSoDoPhoi: res.pdfSoDoPhoi || defaultVer.pdfSoDoPhoi,
+    khoSoDoPhoi: res.khoSoDoPhoi || defaultVer.khoSoDoPhoi,
+    daiSoDoPhoi: res.daiSoDoPhoi || defaultVer.daiSoDoPhoi,
+    ghiChuSoDoChinh: res.ghiChuSoDoChinh || defaultVer.ghiChuSoDoChinh,
+    ghiChuSoDoPhoi: res.ghiChuSoDoPhoi || defaultVer.ghiChuSoDoPhoi,
+    daCoSoDo: res.daCoSoDo ?? defaultVer.daCoSoDo,
+    tongSLThucTeAo: res.tongSLThucTeAo || defaultVer.tongSLThucTeAo || res.tongSL,
+    tongSLThucTeQuan: res.tongSLThucTeQuan || defaultVer.tongSLThucTeQuan || res.tongSL,
+    hinhMauInTheu: res.hinhMauInTheu || defaultVer.hinhMauInTheu,
+    fileGocInTheu: res.fileGocInTheu || defaultVer.fileGocInTheu,
+    ghiChuInTheu: res.ghiChuInTheu || defaultVer.ghiChuInTheu,
+    ghiChuKyThuat: res.ghiChuKyThuat || defaultVer.ghiChuKyThuat,
+    phuTrachSoDo: res.phuTrachSoDo || defaultVer.phuTrachSoDo,
+    hinhAnh: (defaultVer.hinhAnh && defaultVer.hinhAnh.startsWith("http")) ? defaultVer.hinhAnh : (res.hinhAnh || defaultVer.hinhAnh || res.dsMau?.[0]?.img || defaultVer.dsMau?.[0]?.img),
+  };
+
+  // 3. Danh sách màu & Vải quần
+  if (Array.isArray(defaultVer.dsMau) && defaultVer.dsMau.length > 0) {
+    if (res.dsMau && res.dsMau.length === defaultVer.dsMau.length) {
+      res.dsMau = res.dsMau.map((m: any, idx: number) => {
+        const defM = defaultVer.dsMau[idx];
+        return {
+          ...m,
+          ten: defM?.ten || m.ten,
+          img: (defM?.img && defM.img.startsWith("http")) ? defM.img : (defM?.img || m.img),
+          imgQuan: (defM?.imgQuan && defM.imgQuan.startsWith("http")) ? defM.imgQuan : (defM?.imgQuan || m.imgQuan),
+          maVai: m.maVai || defM?.maVai || "",
+          donGiaVai: (m.donGiaVai && m.donGiaVai > 0) ? m.donGiaVai : (defM?.donGiaVai || 0),
+          maVaiQuan: defM?.maVaiQuan || m.maVaiQuan || "",
+          tenVaiQuan: defM?.tenVaiQuan || m.tenVaiQuan || "",
+          donGiaVaiQuan: (defM?.donGiaVaiQuan && defM.donGiaVaiQuan > 0) ? defM.donGiaVaiQuan : (m.donGiaVaiQuan || 0),
+          dinhMucQuan: (defM?.dinhMucQuan && defM.dinhMucQuan > 0) ? defM.dinhMucQuan : (m.dinhMucQuan || 0.18),
+          phanBoSizeQuan: (defM?.phanBoSizeQuan && defM.phanBoSizeQuan.length > 0) ? defM.phanBoSizeQuan : (m.phanBoSizeQuan && m.phanBoSizeQuan.length > 0 ? m.phanBoSizeQuan : m.phanBoSize),
+        };
+      });
+    } else {
+      res.dsMau = defaultVer.dsMau;
+    }
+  }
+
+  return res;
+}
 
 export function LenhCatProvider({ children }: { children: ReactNode }) {
   const { upsertTuLenhCat, dongBoToanBoCongNoTuLenhCat } = usePhanCong();
@@ -488,7 +664,13 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored) as LenhCat[];
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const dummyMap = new Map(DUMMY_DATA.map((d) => [d.id, d]));
+            const existingIds = new Set(parsed.map((item) => item.id));
+            const missingFromDummy = DUMMY_DATA.filter((d) => !existingIds.has(d.id));
+            const updated = parsed.map((item) => syncOrderWithDefault(item, dummyMap.get(item.id)));
+            return [...missingFromDummy, ...updated];
+          }
         }
       } catch {}
     }
@@ -521,7 +703,15 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored) as LenhCat[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setDsLenhCat((prev) => (prev.length === 0 ? parsed : prev));
+          const dummyMap = new Map(DUMMY_DATA.map((d) => [d.id, d]));
+          const existingIds = new Set(parsed.map((item) => item.id));
+          const missingFromDummy = DUMMY_DATA.filter((d) => !existingIds.has(d.id));
+          const merged = parsed.map((item) => syncOrderWithDefault(item, dummyMap.get(item.id)));
+          const fullMerged = [...missingFromDummy, ...merged];
+          setDsLenhCat(fullMerged);
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fullMerged));
+          } catch {}
           setLoading(false);
         }
       }
@@ -552,9 +742,42 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
             // Merge: ưu tiên bản ghi Supabase (nguồn sự thật), giữ lại lệnh chỉ có ở local
             const remoteIds = new Set(mapped.map((r) => r.id));
             setDsLenhCat((prev) => {
+              const allExisting = new Set([...mapped.map((r) => r.id), ...prev.map((x) => x.id)]);
+              const missingDummy = DUMMY_DATA.filter((d) => !allExisting.has(d.id));
+              const dummyMap = new Map(DUMMY_DATA.map((d) => [d.id, d]));
+              const prevMap = new Map(prev.map((p) => [p.id, p]));
               const combined = [
-                ...(mapped as LenhCat[]),
-                ...prev.filter((x) => !remoteIds.has(x.id)),
+                ...missingDummy,
+                ...(mapped as LenhCat[]).map(item => {
+                  const synced = syncOrderWithDefault(item, dummyMap.get(item.id));
+                  const local = prevMap.get(item.id);
+                  if (!local) return synced;
+                  return {
+                    ...synced,
+                    loaiSoDoPhoi: synced.loaiSoDoPhoi || local.loaiSoDoPhoi,
+                    daiSoDoAo: synced.daiSoDoAo || local.daiSoDoAo,
+                    soDoAo: synced.soDoAo || local.soDoAo,
+                    daiSoDoQuan: synced.daiSoDoQuan || local.daiSoDoQuan,
+                    soDoQuan: synced.soDoQuan || local.soDoQuan,
+                    soDoChinh: synced.soDoChinh || local.soDoChinh,
+                    pdfSoDoChinh: synced.pdfSoDoChinh || local.pdfSoDoChinh,
+                    khoSoDoChinh: synced.khoSoDoChinh || local.khoSoDoChinh,
+                    daiSoDoChinh: synced.daiSoDoChinh || local.daiSoDoChinh,
+                    soDoPhoi: synced.soDoPhoi || local.soDoPhoi,
+                    pdfSoDoPhoi: synced.pdfSoDoPhoi || local.pdfSoDoPhoi,
+                    khoSoDoPhoi: synced.khoSoDoPhoi || local.khoSoDoPhoi,
+                    daiSoDoPhoi: synced.daiSoDoPhoi || local.daiSoDoPhoi,
+                    ghiChuSoDoChinh: synced.ghiChuSoDoChinh || local.ghiChuSoDoChinh,
+                    ghiChuSoDoPhoi: synced.ghiChuSoDoPhoi || local.ghiChuSoDoPhoi,
+                    daCoSoDo: synced.daCoSoDo ?? local.daCoSoDo,
+                    hinhMauInTheu: synced.hinhMauInTheu || local.hinhMauInTheu,
+                    fileGocInTheu: synced.fileGocInTheu || local.fileGocInTheu,
+                    ghiChuInTheu: synced.ghiChuInTheu || local.ghiChuInTheu,
+                    ghiChuKyThuat: synced.ghiChuKyThuat || local.ghiChuKyThuat,
+                    phuTrachSoDo: synced.phuTrachSoDo || local.phuTrachSoDo,
+                  };
+                }),
+                ...prev.filter((x) => !remoteIds.has(x.id)).map(item => syncOrderWithDefault(item, dummyMap.get(item.id))),
               ];
               try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(combined));
@@ -586,8 +809,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (storedMCD) {
         try {
           const parsed = JSON.parse(storedMCD);
-          // If old format (object instead of array), reset
-          if (parsed.length > 0 && !Array.isArray(parsed[0].giaCong)) {
+          // If old format or missing assigned workshops, refresh to DEFAULT_MAU_CONG_DOAN
+          if (parsed.length > 0 && (!Array.isArray(parsed[0].giaCong) || !parsed[0].giaCong.some((g: any) => g.nguoiMa))) {
             setDsMauCongDoan(DEFAULT_MAU_CONG_DOAN);
             localStorage.setItem(STORAGE_KEY_MCD, JSON.stringify(DEFAULT_MAU_CONG_DOAN));
           } else {
@@ -636,31 +859,96 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setDsLenhCat((prev) => [lenh, ...prev]);
+    // Đóng gói tài liệu sản xuất & sơ đồ vào bang_cogs (JSONB) để lưu trữ bền vững trên Supabase
+    const existingCogs = (typeof lenh.bangCOGS === "object" && lenh.bangCOGS !== null) ? lenh.bangCOGS : {};
+    const cogsWithDocs = {
+      ...existingCogs,
+      taiLieuSanXuat: {
+        loaiSoDoPhoi: lenh.loaiSoDoPhoi,
+        daiSoDoAo: lenh.daiSoDoAo,
+        soDoAo: lenh.soDoAo,
+        daiSoDoQuan: lenh.daiSoDoQuan,
+        soDoQuan: lenh.soDoQuan,
+        soDoChinh: lenh.soDoChinh,
+        pdfSoDoChinh: lenh.pdfSoDoChinh,
+        khoSoDoChinh: lenh.khoSoDoChinh,
+        daiSoDoChinh: lenh.daiSoDoChinh,
+        soDoPhoi: lenh.soDoPhoi,
+        pdfSoDoPhoi: lenh.pdfSoDoPhoi,
+        khoSoDoPhoi: lenh.khoSoDoPhoi,
+        daiSoDoPhoi: lenh.daiSoDoPhoi,
+        ghiChuSoDoChinh: lenh.ghiChuSoDoChinh,
+        ghiChuSoDoPhoi: lenh.ghiChuSoDoPhoi,
+        daCoSoDo: lenh.daCoSoDo,
+        hinhMauInTheu: lenh.hinhMauInTheu,
+        fileGocInTheu: lenh.fileGocInTheu,
+        ghiChuInTheu: lenh.ghiChuInTheu,
+        ghiChuKyThuat: lenh.ghiChuKyThuat,
+        phuTrachSoDo: lenh.phuTrachSoDo,
+      }
+    };
+    const fullLenh: LenhCat = {
+      ...lenh,
+      bangCOGS: cogsWithDocs,
+    };
+    setDsLenhCat((prev) => [fullLenh, ...prev]);
     logWorkflow(u, "create", `Tạo lệnh cắt ${lenh.id}`, lenh.id, { module: "lenh-cat" });
     if (LOCAL_ACCOUNT_MODE) return;
     const { supabase } = await import("@/lib/supabase/client");
     if (!supabase) throw new Error("Supabase chưa kết nối");
+
     const { error } = await supabase!.from("lenh_cat").upsert({
       id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
       ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
       han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
-      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: lenh.bangCOGS, phu_trach_cat: lenh.phuTrachCat,
-      phu_trach_sx: lenh.phuTrachSX, /* phu_trach_so_do: lenh.phuTrachSoDo, */ ghi_chu: lenh.ghiChu, 
-      /* ghi_chu_ky_thuat: lenh.ghiChuKyThuat, */ trang_thai: lenh.trangThai,
+      chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: cogsWithDocs, phu_trach_cat: lenh.phuTrachCat,
+      phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, 
+      trang_thai: lenh.trangThai,
       phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao,
-      // dai_so_do_ao: lenh.daiSoDoAo, so_do_ao: lenh.soDoAo, dai_so_do_quan: lenh.daiSoDoQuan, so_do_quan: lenh.soDoQuan,
-      // so_do_chinh: lenh.soDoChinh, pdf_so_do_chinh: lenh.pdfSoDoChinh, kho_so_do_chinh: lenh.khoSoDoChinh, dai_so_do_chinh: lenh.daiSoDoChinh,
-      // so_do_phoi: lenh.soDoPhoi, pdf_so_do_phoi: lenh.pdfSoDoPhoi, kho_so_do_phoi: lenh.khoSoDoPhoi, dai_so_do_phoi: lenh.daiSoDoPhoi,
-      // ghi_chu_so_do_chinh: lenh.ghiChuSoDoChinh, ghi_chu_so_do_phoi: lenh.ghiChuSoDoPhoi, da_co_so_do: lenh.daCoSoDo,
-      // hinh_mau_in_theu: lenh.hinhMauInTheu, file_goc_in_theu: lenh.fileGocInTheu, ghi_chu_in_theu: lenh.ghiChuInTheu
     });
     if (error) throw error;
   }, []);
 
   const suaLenhCat = useCallback(async (id: string, lenh: Partial<LenhCat>, u: AppUser) => {
-    setDsLenhCat((prev) => prev.map((item) => item.id === id ? { ...item, ...lenh } : item));
+    let currentItem: LenhCat | undefined;
+    setDsLenhCat((prev) => {
+      currentItem = prev.find((item) => item.id === id);
+      const targetCogs = lenh.bangCOGS !== undefined ? lenh.bangCOGS : currentItem?.bangCOGS;
+      const existingCogsObj = (typeof targetCogs === "object" && targetCogs !== null) ? targetCogs : {};
+      const existingTaiLieu = (existingCogsObj as any).taiLieuSanXuat || {};
+      const updatedTaiLieu = {
+        loaiSoDoPhoi: lenh.loaiSoDoPhoi !== undefined ? lenh.loaiSoDoPhoi : (currentItem?.loaiSoDoPhoi ?? existingTaiLieu.loaiSoDoPhoi),
+        daiSoDoAo: lenh.daiSoDoAo !== undefined ? lenh.daiSoDoAo : (currentItem?.daiSoDoAo ?? existingTaiLieu.daiSoDoAo),
+        soDoAo: lenh.soDoAo !== undefined ? lenh.soDoAo : (currentItem?.soDoAo ?? existingTaiLieu.soDoAo),
+        daiSoDoQuan: lenh.daiSoDoQuan !== undefined ? lenh.daiSoDoQuan : (currentItem?.daiSoDoQuan ?? existingTaiLieu.daiSoDoQuan),
+        soDoQuan: lenh.soDoQuan !== undefined ? lenh.soDoQuan : (currentItem?.soDoQuan ?? existingTaiLieu.soDoQuan),
+        soDoChinh: lenh.soDoChinh !== undefined ? lenh.soDoChinh : (currentItem?.soDoChinh ?? existingTaiLieu.soDoChinh),
+        pdfSoDoChinh: lenh.pdfSoDoChinh !== undefined ? lenh.pdfSoDoChinh : (currentItem?.pdfSoDoChinh ?? existingTaiLieu.pdfSoDoChinh),
+        khoSoDoChinh: lenh.khoSoDoChinh !== undefined ? lenh.khoSoDoChinh : (currentItem?.khoSoDoChinh ?? existingTaiLieu.khoSoDoChinh),
+        daiSoDoChinh: lenh.daiSoDoChinh !== undefined ? lenh.daiSoDoChinh : (currentItem?.daiSoDoChinh ?? existingTaiLieu.daiSoDoChinh),
+        soDoPhoi: lenh.soDoPhoi !== undefined ? lenh.soDoPhoi : (currentItem?.soDoPhoi ?? existingTaiLieu.soDoPhoi),
+        pdfSoDoPhoi: lenh.pdfSoDoPhoi !== undefined ? lenh.pdfSoDoPhoi : (currentItem?.pdfSoDoPhoi ?? existingTaiLieu.pdfSoDoPhoi),
+        khoSoDoPhoi: lenh.khoSoDoPhoi !== undefined ? lenh.khoSoDoPhoi : (currentItem?.khoSoDoPhoi ?? existingTaiLieu.khoSoDoPhoi),
+        daiSoDoPhoi: lenh.daiSoDoPhoi !== undefined ? lenh.daiSoDoPhoi : (currentItem?.daiSoDoPhoi ?? existingTaiLieu.daiSoDoPhoi),
+        ghiChuSoDoChinh: lenh.ghiChuSoDoChinh !== undefined ? lenh.ghiChuSoDoChinh : (currentItem?.ghiChuSoDoChinh ?? existingTaiLieu.ghiChuSoDoChinh),
+        ghiChuSoDoPhoi: lenh.ghiChuSoDoPhoi !== undefined ? lenh.ghiChuSoDoPhoi : (currentItem?.ghiChuSoDoPhoi ?? existingTaiLieu.ghiChuSoDoPhoi),
+        daCoSoDo: lenh.daCoSoDo !== undefined ? lenh.daCoSoDo : (currentItem?.daCoSoDo ?? existingTaiLieu.daCoSoDo ?? false),
+        hinhMauInTheu: lenh.hinhMauInTheu !== undefined ? lenh.hinhMauInTheu : (currentItem?.hinhMauInTheu ?? existingTaiLieu.hinhMauInTheu),
+        fileGocInTheu: lenh.fileGocInTheu !== undefined ? lenh.fileGocInTheu : (currentItem?.fileGocInTheu ?? existingTaiLieu.fileGocInTheu),
+        ghiChuInTheu: lenh.ghiChuInTheu !== undefined ? lenh.ghiChuInTheu : (currentItem?.ghiChuInTheu ?? existingTaiLieu.ghiChuInTheu),
+        ghiChuKyThuat: lenh.ghiChuKyThuat !== undefined ? lenh.ghiChuKyThuat : (currentItem?.ghiChuKyThuat ?? existingTaiLieu.ghiChuKyThuat),
+        phuTrachSoDo: lenh.phuTrachSoDo !== undefined ? lenh.phuTrachSoDo : (currentItem?.phuTrachSoDo ?? existingTaiLieu.phuTrachSoDo),
+      };
+      return prev.map((item) => item.id === id ? { 
+        ...item, 
+        ...lenh,
+        bangCOGS: {
+          ...existingCogsObj,
+          taiLieuSanXuat: updatedTaiLieu,
+        }
+      } : item);
+    });
     logWorkflow(u, "update", `Cập nhật lệnh cắt ${id}`, id, { module: "lenh-cat" });
     if (LOCAL_ACCOUNT_MODE) return;
     const { supabase } = await import("@/lib/supabase/client");
@@ -680,35 +968,46 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.mauCongDoan !== undefined)       updateData.mau_cong_doan = lenh.mauCongDoan;
       if (lenh.phanCong !== undefined)          updateData.phan_cong = lenh.phanCong;
       if (lenh.chiPhiCoDinh !== undefined)      updateData.chi_phi_co_dinh = lenh.chiPhiCoDinh;
-      if (lenh.bangCOGS !== undefined)          updateData.bang_cogs = lenh.bangCOGS;
       if (lenh.phuTrachCat !== undefined)       updateData.phu_trach_cat = lenh.phuTrachCat;
       if (lenh.phuTrachSX !== undefined)        updateData.phu_trach_sx = lenh.phuTrachSX;
-      // if (lenh.phuTrachSoDo !== undefined)      updateData.phu_trach_so_do = lenh.phuTrachSoDo;
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;
       if (lenh.ngayTao !== undefined)           updateData.ngay_tao = lenh.ngayTao;
 
-      // New BOM fields
-      // if (lenh.daiSoDoAo !== undefined)         updateData.dai_so_do_ao = lenh.daiSoDoAo;
-      // if (lenh.soDoAo !== undefined)            updateData.so_do_ao = lenh.soDoAo;
-      // if (lenh.daiSoDoQuan !== undefined)       updateData.dai_so_do_quan = lenh.daiSoDoQuan;
-      // if (lenh.soDoQuan !== undefined)          updateData.so_do_quan = lenh.soDoQuan;
-      // if (lenh.soDoChinh !== undefined)         updateData.so_do_chinh = lenh.soDoChinh;
-      // if (lenh.pdfSoDoChinh !== undefined)      updateData.pdf_so_do_chinh = lenh.pdfSoDoChinh;
-      // if (lenh.khoSoDoChinh !== undefined)      updateData.kho_so_do_chinh = lenh.khoSoDoChinh;
-      // if (lenh.daiSoDoChinh !== undefined)      updateData.dai_so_do_chinh = lenh.daiSoDoChinh;
-      // if (lenh.soDoPhoi !== undefined)          updateData.so_do_phoi = lenh.soDoPhoi;
-      // if (lenh.pdfSoDoPhoi !== undefined)       updateData.pdf_so_do_phoi = lenh.pdfSoDoPhoi;
-      // if (lenh.khoSoDoPhoi !== undefined)       updateData.kho_so_do_phoi = lenh.khoSoDoPhoi;
-      // if (lenh.daiSoDoPhoi !== undefined)       updateData.dai_so_do_phoi = lenh.daiSoDoPhoi;
-      // if (lenh.ghiChuSoDoChinh !== undefined)   updateData.ghi_chu_so_do_chinh = lenh.ghiChuSoDoChinh;
-      // if (lenh.ghiChuSoDoPhoi !== undefined)    updateData.ghi_chu_so_do_phoi = lenh.ghiChuSoDoPhoi;
-      // if (lenh.daCoSoDo !== undefined)          updateData.da_co_so_do = lenh.daCoSoDo;
-      // if (lenh.hinhMauInTheu !== undefined)     updateData.hinh_mau_in_theu = lenh.hinhMauInTheu;
-      // if (lenh.fileGocInTheu !== undefined)     updateData.file_goc_in_theu = lenh.fileGocInTheu;
-      // if (lenh.ghiChuInTheu !== undefined)      updateData.ghi_chu_in_theu = lenh.ghiChuInTheu;
-      // if (lenh.ghiChuKyThuat !== undefined)     updateData.ghi_chu_ky_thuat = lenh.ghiChuKyThuat;
+      // Đóng gói tài liệu sản xuất & sơ đồ vào bang_cogs (JSONB)
+      const targetCogs = lenh.bangCOGS !== undefined ? lenh.bangCOGS : currentItem?.bangCOGS;
+      const existingCogsObj = (typeof targetCogs === "object" && targetCogs !== null) ? targetCogs : {};
+      const existingTaiLieu = (existingCogsObj as any).taiLieuSanXuat || {};
+
+      const updatedTaiLieu = {
+        loaiSoDoPhoi: lenh.loaiSoDoPhoi !== undefined ? lenh.loaiSoDoPhoi : (currentItem?.loaiSoDoPhoi ?? existingTaiLieu.loaiSoDoPhoi),
+        daiSoDoAo: lenh.daiSoDoAo !== undefined ? lenh.daiSoDoAo : (currentItem?.daiSoDoAo ?? existingTaiLieu.daiSoDoAo),
+        soDoAo: lenh.soDoAo !== undefined ? lenh.soDoAo : (currentItem?.soDoAo ?? existingTaiLieu.soDoAo),
+        daiSoDoQuan: lenh.daiSoDoQuan !== undefined ? lenh.daiSoDoQuan : (currentItem?.daiSoDoQuan ?? existingTaiLieu.daiSoDoQuan),
+        soDoQuan: lenh.soDoQuan !== undefined ? lenh.soDoQuan : (currentItem?.soDoQuan ?? existingTaiLieu.soDoQuan),
+        soDoChinh: lenh.soDoChinh !== undefined ? lenh.soDoChinh : (currentItem?.soDoChinh ?? existingTaiLieu.soDoChinh),
+        pdfSoDoChinh: lenh.pdfSoDoChinh !== undefined ? lenh.pdfSoDoChinh : (currentItem?.pdfSoDoChinh ?? existingTaiLieu.pdfSoDoChinh),
+        khoSoDoChinh: lenh.khoSoDoChinh !== undefined ? lenh.khoSoDoChinh : (currentItem?.khoSoDoChinh ?? existingTaiLieu.khoSoDoChinh),
+        daiSoDoChinh: lenh.daiSoDoChinh !== undefined ? lenh.daiSoDoChinh : (currentItem?.daiSoDoChinh ?? existingTaiLieu.daiSoDoChinh),
+        soDoPhoi: lenh.soDoPhoi !== undefined ? lenh.soDoPhoi : (currentItem?.soDoPhoi ?? existingTaiLieu.soDoPhoi),
+        pdfSoDoPhoi: lenh.pdfSoDoPhoi !== undefined ? lenh.pdfSoDoPhoi : (currentItem?.pdfSoDoPhoi ?? existingTaiLieu.pdfSoDoPhoi),
+        khoSoDoPhoi: lenh.khoSoDoPhoi !== undefined ? lenh.khoSoDoPhoi : (currentItem?.khoSoDoPhoi ?? existingTaiLieu.khoSoDoPhoi),
+        daiSoDoPhoi: lenh.daiSoDoPhoi !== undefined ? lenh.daiSoDoPhoi : (currentItem?.daiSoDoPhoi ?? existingTaiLieu.daiSoDoPhoi),
+        ghiChuSoDoChinh: lenh.ghiChuSoDoChinh !== undefined ? lenh.ghiChuSoDoChinh : (currentItem?.ghiChuSoDoChinh ?? existingTaiLieu.ghiChuSoDoChinh),
+        ghiChuSoDoPhoi: lenh.ghiChuSoDoPhoi !== undefined ? lenh.ghiChuSoDoPhoi : (currentItem?.ghiChuSoDoPhoi ?? existingTaiLieu.ghiChuSoDoPhoi),
+        daCoSoDo: lenh.daCoSoDo !== undefined ? lenh.daCoSoDo : (currentItem?.daCoSoDo ?? existingTaiLieu.daCoSoDo ?? false),
+        hinhMauInTheu: lenh.hinhMauInTheu !== undefined ? lenh.hinhMauInTheu : (currentItem?.hinhMauInTheu ?? existingTaiLieu.hinhMauInTheu),
+        fileGocInTheu: lenh.fileGocInTheu !== undefined ? lenh.fileGocInTheu : (currentItem?.fileGocInTheu ?? existingTaiLieu.fileGocInTheu),
+        ghiChuInTheu: lenh.ghiChuInTheu !== undefined ? lenh.ghiChuInTheu : (currentItem?.ghiChuInTheu ?? existingTaiLieu.ghiChuInTheu),
+        ghiChuKyThuat: lenh.ghiChuKyThuat !== undefined ? lenh.ghiChuKyThuat : (currentItem?.ghiChuKyThuat ?? existingTaiLieu.ghiChuKyThuat),
+        phuTrachSoDo: lenh.phuTrachSoDo !== undefined ? lenh.phuTrachSoDo : (currentItem?.phuTrachSoDo ?? existingTaiLieu.phuTrachSoDo),
+      };
+
+      updateData.bang_cogs = {
+        ...existingCogsObj,
+        taiLieuSanXuat: updatedTaiLieu
+      };
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await supabase!.from("lenh_cat").update(updateData).eq("id", id);

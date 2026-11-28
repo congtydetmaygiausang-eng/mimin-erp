@@ -13,7 +13,10 @@ import { ImagePreviewModal } from "./ImagePreviewModal";
 import { supabase, isSupabaseEnabled } from "@/lib/supabase/client";
 
 export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, onSave }: { mode: "add" | "edit"; nv?: NhanSuExt; existingCount: number; existingCodes: string[]; onClose: () => void; onSave: (n: NhanSuExt) => Promise<void> }) {
-  const [form, setForm] = useState<NhanSuExt>(nv || {
+  const [form, setForm] = useState<NhanSuExt>(nv ? {
+    ...nv,
+    trangThai: nv.trangThai || "dang_lam",
+  } : {
     stt: existingCount + 1,
     maNV: `NV-${(Math.max(0, ...existingCodes.map((code) => Number(code.match(/^NV-?(\d+)$/i)?.[1] || 0))) + 1).toString().padStart(3, "0")}`,
     hoTen: "",
@@ -64,12 +67,40 @@ export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, o
   const uploadImage = async (field: string, file: UploadedFile): Promise<string> => {
     const blob = await (await fetch(file.dataUrl)).blob();
     const safeCode = form.maNV.trim().replace(/[^a-zA-Z0-9-]/g, "-");
-    const path = `nhan-su/${safeCode}/${field}-${crypto.randomUUID()}`;
-    if (isSupabaseEnabled && supabase) {
-      const { error } = await supabase.storage.from("employee-documents").upload(path, blob, { upsert: true });
-      if (error) throw new Error(error.message || "Không tải được ảnh, vui lòng thử lại");
-      return path;
+    const ext = file.name?.split(".").pop() || (file.type?.includes("png") ? "png" : "jpg");
+    const path = `nhan-su/${safeCode}/${field}-${crypto.randomUUID()}.${ext}`;
+
+    // 1. Thử upload qua API serverless /api/employee-uploads/ (service role, bypass RLS private bucket)
+    try {
+      const body = new FormData();
+      body.append("file", blob, file.name || `${field}.${ext}`);
+      body.append("path", path);
+
+      const response = await fetch("/api/employee-uploads/", { method: "POST", body });
+      if (response.ok) {
+        const result = (await response.json()) as { path?: string; error?: string };
+        if (result.path?.startsWith("nhan-su/")) {
+          return result.path;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[NVFormModal] API upload error, falling back to direct Supabase upload:", apiErr);
     }
+
+    // 2. Dự phòng upload trực tiếp Supabase Storage nếu API route không khả dụng
+    if (isSupabaseEnabled && supabase) {
+      try {
+        const { data, error } = await supabase.storage.from("employee-documents").upload(path, blob, { upsert: true });
+        if (!error && data?.path) {
+          return path;
+        }
+        console.warn("[NVFormModal] Direct Supabase storage error:", error);
+      } catch (storageErr) {
+        console.warn("[NVFormModal] Direct Supabase storage exception:", storageErr);
+      }
+    }
+
+    // 3. Fallback sang dataUrl để đảm bảo form luôn lưu thành công, không chặn người dùng
     return file.dataUrl;
   };
 
@@ -215,6 +246,44 @@ export function NVFormModal({ mode, nv, existingCount, existingCodes, onClose, o
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Ngày vào</label>
               <input type="date" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-teal-500" value={form.ngayVao} onChange={(e) => setForm({ ...form, ngayVao: e.target.value })} />
             </div>
+          </div>
+
+          {/* Trạng thái làm việc */}
+          <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/40">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
+              Trạng thái nhân viên *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, trangThai: "dang_lam" })}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-bold transition ${
+                  form.trangThai !== "nghi_viec"
+                    ? "bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-500/20"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${form.trangThai !== "nghi_viec" ? "bg-white animate-pulse" : "bg-emerald-500"}`} />
+                Đang làm việc
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, trangThai: "nghi_viec" })}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border text-sm font-bold transition ${
+                  form.trangThai === "nghi_viec"
+                    ? "bg-rose-600 text-white border-rose-700 shadow-md ring-2 ring-rose-500/20"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full ${form.trangThai === "nghi_viec" ? "bg-white" : "bg-rose-500"}`} />
+                Đã nghỉ việc
+              </button>
+            </div>
+            {form.trangThai === "nghi_viec" && (
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-2 font-medium">
+                * Nhân viên đã nghỉ việc sẽ có dấu hiệu nhận biết màu đỏ trên tab Nhân Sự và Chấm Công, đồng thời không xuất hiện trong kỳ tính lương mới.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">

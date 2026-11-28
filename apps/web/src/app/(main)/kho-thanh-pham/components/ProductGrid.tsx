@@ -3,8 +3,26 @@
 // giống lưới sản phẩm e-commerce. Tông màu trắng/slate/emerald khớp phần còn lại của app.
 
 import React, { type RefObject, useState } from "react";
-import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw } from "lucide-react";
+import { Box, Edit, Trash2, Truck, Eye, Plus, Camera, Package, Tag, Hash, DollarSign, MapPin, RefreshCw, Maximize2 } from "lucide-react";
 import { DS_KENH_BAN, type SanPhamTP } from "../data";
+
+function getColorHex(colorName?: string): string {
+  const c = (colorName || "").toLowerCase().trim();
+  if (c.includes("đen") || c.includes("black")) return "#0f172a";
+  if (c.includes("trắng") || c.includes("white")) return "#f8fafc";
+  if (c.includes("xám nhạt") || c.includes("tiêu nhạt")) return "#cbd5e1";
+  if (c.includes("xám") || c.includes("grey") || c.includes("gray")) return "#64748b";
+  if (c.includes("xanh nhớt") || c.includes("rêu") || c.includes("cỏ úa")) return "#3f6212";
+  if (c.includes("xanh đen") || c.includes("navy")) return "#172554";
+  if (c.includes("xanh dạ quang")) return "#84cc16";
+  if (c.includes("xanh dương") || c.includes("blue") || c.includes("bích") || c.includes("xanh")) return "#2563eb";
+  if (c.includes("da") || c.includes("kem") || c.includes("be") || c.includes("begi") || c.includes("beige")) return "#fde68a";
+  if (c.includes("nâu") || c.includes("brown") || c.includes("cà phê")) return "#78350f";
+  if (c.includes("vàng bò") || c.includes("bò")) return "#d97706";
+  if (c.includes("vàng")) return "#eab308";
+  if (c.includes("đỏ")) return "#dc2626";
+  return "#94a3b8";
+}
 
 interface ProductGroup {
   maSP: string;
@@ -32,24 +50,27 @@ interface ProductGridProps {
   onRebuildFromLC: (group: ProductGroup) => void;
   onSuaTong?: (group: ProductGroup) => void;
   onXoaTong?: (group: ProductGroup) => void;
+  onDeleteVariant?: (id: string) => void;
   dsLenhCat: any[];
+  highlightedMaSP?: string | null;
 }
 
 export function ProductGrid({ 
   groups, productImages, productVariantImages, productVideos, setUploadingSP, setUploadType, fileInputRef, setViewingImage, 
   setShowAdd, setShowMasterDetails, setEditing, handleXuatKho, update, dsSanPham, onDangBan, 
-  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, dsLenhCat 
+  onOpenVariant, onRebuildFromLC, onSuaTong, onXoaTong, onDeleteVariant, dsLenhCat, highlightedMaSP 
 }: ProductGridProps) {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={() => {}} />
       {groups.map(group => {
-        const totalQty = group.items.reduce((s, x) => s + x.soLuong, 0);
-        const totalValue = group.items.reduce((s, x) => s + x.giaTri, 0);
-        const priceRange = Array.from(new Set(group.items.map(x => x.giaBanLe || x.donGia).filter(Boolean)));
+        if (!group || !group.items || group.items.length === 0) return null;
+        const totalQty = group.items.reduce((s, x) => s + (Number(x?.soLuong) || 0), 0);
+        const totalValue = group.items.reduce((s, x) => s + (Number(x?.giaTri) || 0), 0);
+        const priceRange = Array.from(new Set(group.items.map(x => x?.giaBanLe || x?.donGia).filter(Boolean)));
         const priceDisplay = priceRange.length === 0 ? null
-          : priceRange.length === 1 ? priceRange[0].toLocaleString()
-          : `${Math.min(...priceRange).toLocaleString()} - ${Math.max(...priceRange).toLocaleString()}`;
+          : priceRange.length === 1 ? (Number(priceRange[0]) || 0).toLocaleString()
+          : `${(Number(Math.min(...priceRange)) || 0).toLocaleString()} - ${(Number(Math.max(...priceRange)) || 0).toLocaleString()}`;
 
         const lsx = group.items[0]?.maLenhCat || group.maSP;
         const lc = dsLenhCat.find((l) => l.id === lsx);
@@ -59,7 +80,15 @@ export function ProductGrid({
         const canRebuild = soMauThat > 0 && (group.items.length < soMauThat || maSPSai);
 
         return (
-          <div key={group.maSP} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div 
+            key={group.maSP} 
+            id={`product-group-${group.maSP}`}
+            className={`bg-white rounded-2xl border ${
+              highlightedMaSP === group.maSP 
+                ? "border-emerald-500 ring-4 ring-emerald-300 shadow-xl bg-emerald-50/10" 
+                : "border-slate-200 shadow-sm"
+            } overflow-hidden transition-all duration-500`}
+          >
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
               <div>
@@ -82,9 +111,9 @@ export function ProductGrid({
               </div>
             </div>
 
-            {/* Lưới biến thể - mỗi màu 1 card, 2 ảnh cạnh nhau lấy nguyên từ lệnh cắt gốc */}
-            <div className="p-5 bg-slate-50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {/* Lưới biến thể - Bố cục tỉ lệ 3:4 chuẩn thời trang, hiển thị trọn vẹn sản phẩm */}
+            <div className="p-4 sm:p-5 bg-slate-50/80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5">
                 {group.items.map(s => (
                   <VariantCard
                     key={s.id}
@@ -94,6 +123,8 @@ export function ProductGrid({
                     onOpen={() => onOpenVariant(s)}
                     onEdit={() => setEditing(s)}
                     onXuatKho={() => handleXuatKho(s.id)}
+                    onDelete={onDeleteVariant ? () => onDeleteVariant(s.id) : undefined}
+                    onZoom={(url) => setViewingImage(url)}
                   />
                 ))}
               </div>
@@ -146,90 +177,235 @@ const TRANG_THAI_STYLE: Record<string, { label: string; bg: string; text: string
   "khong-dat": { label: "Không đạt", bg: "bg-rose-500", text: "text-white" },
 };
 
-function VariantCard({ sp, image, imageQuan, onOpen, onEdit, onXuatKho }: { sp: SanPhamTP; image?: string; imageQuan?: string; onOpen: () => void; onEdit: () => void; onXuatKho: () => void }) {
+function VariantCard({
+  sp,
+  image,
+  imageQuan,
+  onOpen,
+  onEdit,
+  onXuatKho,
+  onDelete,
+  onZoom,
+}: {
+  sp: SanPhamTP;
+  image?: string;
+  imageQuan?: string;
+  onOpen: () => void;
+  onEdit: () => void;
+  onXuatKho: () => void;
+  onDelete?: () => void;
+  onZoom?: (imgUrl: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"ao" | "quan">("ao");
   const trangThai = TRANG_THAI_STYLE[sp.trangThai] || TRANG_THAI_STYLE["con"];
+
+  // Kiểm tra ảnh quần riêng biệt (khác ảnh áo và không phải ảnh sơ đồ cắt)
+  const hasSeparateQuan = Boolean(
+    imageQuan &&
+    imageQuan !== image &&
+    !imageQuan.includes("/phieu-cat/")
+  );
+
+  const currentDisplayImg = (hasSeparateQuan && activeTab === "quan") ? imageQuan : image;
+  const isOutOfStock = (Number(sp.soLuong) || 0) <= 0;
+  const isLowStock = !isOutOfStock && (Number(sp.soLuong) || 0) < 10;
+  const colorHex = getColorHex(sp.mau);
 
   return (
     <div
-      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:border-emerald-300 transition-all duration-300 flex flex-col"
       onClick={onOpen}
-      title="Xem chi tiết màu"
+      title="Bấm để xem & chỉnh sửa chi tiết màu"
     >
-      {/* 2 ảnh cạnh nhau - lấy nguyên từ lệnh cắt gốc, không chỉnh sửa */}
-      <div className="relative flex bg-slate-100 aspect-[16/11]">
-        {image ? (
-          <div className={`flex-1 overflow-hidden ${imageQuan ? "border-r border-slate-200" : ""}`}>
-            <img src={image} alt={sp.mau} className="w-full h-full object-cover" />
-          </div>
+      {/* Container Ảnh - Tỉ lệ 3:4 chuẩn thời trang thương mại điện tử, không bị cắt cụt */}
+      <div className="relative w-full aspect-[3/4] bg-slate-100 overflow-hidden select-none">
+        {currentDisplayImg ? (
+          <img
+            src={currentDisplayImg}
+            alt={sp.mau}
+            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+          />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-300 border-r border-slate-200">
-            <Camera className="w-8 h-8" />
-          </div>
-        )}
-        {imageQuan && (
-          <div className="flex-1 overflow-hidden">
-            <img src={imageQuan} alt={`${sp.mau} - ảnh 2`} className="w-full h-full object-cover" />
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2 bg-gradient-to-b from-slate-50 to-slate-100">
+            <Camera className="w-10 h-10 stroke-[1.5]" />
+            <span className="text-xs font-semibold text-slate-400">Chưa có ảnh</span>
           </div>
         )}
 
-        {/* OVERLAY HẾT HÀNG */}
-        {sp.soLuong <= 0 && (
-          <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
-             <div className="bg-rose-500 text-white font-black text-xs md:text-sm tracking-widest px-4 py-1 border-y-2 border-rose-600 -rotate-12 uppercase drop-shadow-lg shadow-xl">
-               Hết Hàng
-             </div>
+        {/* Nút Tab chuyển đổi xem Áo / Quần (nếu có 2 ảnh riêng) */}
+        {hasSeparateQuan && (
+          <div
+            className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center bg-slate-900/75 backdrop-blur-md p-0.5 rounded-full border border-white/20 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveTab("ao")}
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all ${
+                activeTab === "ao"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-white/80 hover:text-white"
+              }`}
+            >
+              Áo
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("quan")}
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all ${
+                activeTab === "quan"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-white/80 hover:text-white"
+              }`}
+            >
+              Quần
+            </button>
           </div>
         )}
 
-        {sp.soLuong <= 0 ? (
-          <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm bg-rose-500 text-white z-20">
-            Hết hàng
-          </span>
-        ) : (
-          <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${trangThai.bg} ${trangThai.text} z-20`}>
-            {trangThai.label}
-          </span>
-        )}
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Sửa">
+        {/* Badge Trạng Thái Tồn Kho (Góc trên bên trái - Thanh lịch, không che ngực người mẫu) */}
+        <div className="absolute top-2.5 left-2.5 z-20">
+          {isOutOfStock ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide uppercase bg-rose-600/95 text-white shadow-md backdrop-blur-sm border border-rose-400/40">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Hết hàng
+            </span>
+          ) : isLowStock ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide uppercase bg-amber-500/95 text-white shadow-md backdrop-blur-sm border border-amber-300/40">
+              Sắp hết
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide uppercase bg-emerald-600/95 text-white shadow-md backdrop-blur-sm border border-emerald-400/40">
+              Còn hàng
+            </span>
+          )}
+        </div>
+
+        {/* Floating Quick Action Bar (Góc trên bên phải khi hover) */}
+        <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
+          {currentDisplayImg && onZoom && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onZoom(currentDisplayImg);
+              }}
+              className="p-2 bg-slate-900/70 hover:bg-slate-900 text-white backdrop-blur-md rounded-xl shadow-md transition-all hover:scale-105"
+              title="Phóng to ảnh"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="p-2 bg-slate-900/70 hover:bg-slate-900 text-white backdrop-blur-md rounded-xl shadow-md transition-all hover:scale-105"
+            title="Chỉnh sửa biến thể"
+          >
             <Edit className="w-3.5 h-3.5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onXuatKho(); }} className="p-1.5 bg-black/50 hover:bg-black/75 backdrop-blur rounded-lg text-white" title="Xuất kho">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onXuatKho();
+            }}
+            className="p-2 bg-slate-900/70 hover:bg-slate-900 text-white backdrop-blur-md rounded-xl shadow-md transition-all hover:scale-105"
+            title="Xuất kho"
+          >
             <Truck className="w-3.5 h-3.5" />
           </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-2 bg-rose-600/80 hover:bg-rose-600 text-white backdrop-blur-md rounded-xl shadow-md transition-all hover:scale-105"
+              title="Xóa biến thể"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Thông tin màu */}
-      <div className="p-3.5">
-        <div className="font-black text-slate-800 text-lg leading-tight mb-2 truncate">{sp.mau}</div>
+      {/* Thông tin chi tiết biến thể */}
+      <div className="p-3.5 flex-1 flex flex-col justify-between">
+        <div>
+          {/* Tên Màu & Tổng Số Lượng */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-xs flex-shrink-0"
+                style={{ backgroundColor: colorHex }}
+                title={`Màu ${sp.mau}`}
+              />
+              <span className="font-black text-slate-800 text-base leading-tight truncate">
+                {sp.mau}
+              </span>
+            </div>
+            <span className={`text-xs font-black px-2 py-0.5 rounded-md flex-shrink-0 ${
+              isOutOfStock 
+                ? "bg-rose-50 text-rose-700 border border-rose-200" 
+                : "bg-slate-100 text-slate-800 border border-slate-200"
+            }`}>
+              {(Number(sp.soLuong) || 0).toLocaleString()} SP
+            </span>
+          </div>
 
-        {sp.chiTietSize && sp.chiTietSize.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {sp.chiTietSize.map((s) => (
-              <span key={s.size} className="px-2 py-0.5 rounded-md shadow-sm border bg-sky-50 border-sky-200 text-sky-800 text-xs">
-                <strong className="text-sky-900">{s.size}:</strong> {s.sl.toLocaleString()}
+          {/* Ma Trận Chi Tiết Size (Grid 4 cột vuông vắn, rõ ràng) */}
+          {sp.chiTietSize && sp.chiTietSize.length > 0 ? (
+            <div className="grid grid-cols-4 gap-1 mb-2.5">
+              {sp.chiTietSize.map((s) => {
+                const qty = Number(s.sl) || 0;
+                return (
+                  <div
+                    key={s.size}
+                    className={`rounded-lg py-1 px-0.5 text-center border transition-all ${
+                      qty > 0
+                        ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                        : "bg-slate-50 border-slate-100 text-slate-400"
+                    }`}
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {s.size}
+                    </div>
+                    <div className={`text-xs font-black leading-tight ${qty > 0 ? "text-emerald-700" : "text-slate-300"}`}>
+                      {qty}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-[11px] text-slate-400 italic mb-2.5">Chưa phân bổ size</div>
+          )}
+
+          {/* Kênh Bán */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {(sp.kenhBan?.length ? sp.kenhBan : ["ban-le"]).map((value) => (
+              <span
+                key={value}
+                className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-100"
+              >
+                {DS_KENH_BAN.find((kenh) => kenh.value === value)?.label ?? value}
               </span>
             ))}
           </div>
-        )}
-
-        <div className="flex flex-wrap gap-1 mb-2">
-          {(sp.kenhBan?.length ? sp.kenhBan : ["ban-le"]).map((value) => (
-            <span key={value} className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-100">
-              {DS_KENH_BAN.find((kenh) => kenh.value === value)?.label ?? value}
-            </span>
-          ))}
         </div>
 
-        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
-          <span className="text-slate-600 text-xs font-bold flex items-center gap-1">
-            <Box className="w-3.5 h-3.5" /> {sp.soLuong.toLocaleString()} sp
-          </span>
-        </div>
+        {/* Footer: Vị trí kho */}
         {sp.viTri && (
-          <div className="text-slate-400 text-[11px] font-semibold flex items-center gap-1 mt-1.5">
-            <MapPin className="w-3 h-3" /> {sp.viTri}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-slate-400 text-[11px] font-medium">
+            <span className="flex items-center gap-1 truncate">
+              <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+              <span className="truncate">{sp.viTri}</span>
+            </span>
           </div>
         )}
       </div>
@@ -251,7 +427,7 @@ function PriceChip({ label, price }: { label: string; price?: number }) {
           : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700'
       }`}
     >
-      {label}{show ? `: ${price.toLocaleString()}đ` : ''}
+      {label}{show ? `: ${(Number(price) || 0).toLocaleString()}đ` : ''}
     </button>
   );
 }

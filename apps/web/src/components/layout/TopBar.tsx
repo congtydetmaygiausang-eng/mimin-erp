@@ -21,7 +21,7 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B4D5D] text-white border-b border-white/10 shadow-sm">
+    <header className="sticky top-0 z-50 bg-[#0B4D5D] text-white border-b border-white/10 shadow-sm pt-[env(safe-area-inset-top,0px)]">
       <DemoBanner user={user} />
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
         {onMenuClick && (
@@ -67,30 +67,33 @@ export function TopBar({ user, onSignOut, onMenuClick }: { user: AppUser; onSign
             {mounted && theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           
-          <NotificationToggle />
+          <div className="hidden sm:block">
+            <NotificationToggle />
+          </div>
           
           <NotificationBell />
           
           {/* <RoleSwitcher /> - Đã ẩn theo yêu cầu bố cục mới */}
           
-          <div className="flex items-center gap-1 sm:gap-3 pl-1.5 sm:pl-3 border-l border-white/10 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 pl-1.5 sm:pl-3 border-l border-white/10 shrink-0">
             <Avatar name={user.name} src={user.avatar} size="sm" className="hidden sm:block" />
             <div className="hidden lg:block leading-tight">
-            <div className="text-sm font-bold text-white">{user.name}</div>
-            <div className="text-xs font-medium text-slate-300">{user.title}</div>
+              <div className="text-sm font-bold text-white">{user.name}</div>
+              <div className="text-xs font-medium text-slate-300">{user.title}</div>
+            </div>
+            <button
+              onClick={async () => {
+                await onSignOut();
+                router.replace("/login");
+              }}
+              className="px-2 py-1.5 sm:p-2 rounded-xl bg-red-500/25 hover:bg-red-500/35 text-red-100 border border-red-400/35 transition-all shrink-0 flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 font-bold text-xs"
+              aria-label="Đăng xuất"
+              title="Đăng xuất khỏi hệ thống"
+            >
+              <LogOut className="w-4 h-4 text-red-200" />
+              <span className="sm:hidden font-black">Thoát</span>
+            </button>
           </div>
-          <button
-            onClick={async () => {
-              await onSignOut();
-              router.replace("/login");
-            }}
-            className="p-1.5 sm:p-2 rounded-lg hover:bg-red-500/20 text-red-300 transition-colors shrink-0"
-            aria-label="Đăng xuất"
-            title="Đăng xuất"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
         </div>
       </div>
     </header>

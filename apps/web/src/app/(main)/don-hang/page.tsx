@@ -466,7 +466,7 @@ export default function DonHangPage() {
 
         {/* ROW 2: BỘ LỌC TRẠNG THÁI + TÌM KIẾM */}
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar tab-scroll-mobile max-w-full pb-1">
             {([
               { id: "all", label: `Tất cả (${dsTheoTep.length})` },
               { id: "Mới", label: `Mới (${dsTheoTep.filter(d => d.trangThai === "Mới").length})`, danger: dsTheoTep.filter(d => d.trangThai === "Mới").length > 0 },
@@ -479,7 +479,7 @@ export default function DonHangPage() {
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id as any)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition ${
                   filter === f.id
                     ? f.danger ? "bg-sky-500 text-white shadow-sm" : "bg-brand-500 text-white shadow-sm"
                     : f.danger ? "bg-sky-500/10 text-sky-700 hover:bg-sky-500/20" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"

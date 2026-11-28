@@ -48,7 +48,7 @@ export default function ChamCongPage() {
   const [filterTrangThai, setFilterTrangThai] = useState<"all" | "dang_lam" | "nghi_viec">("all");
   const [submittingPunch, setSubmittingPunch] = useState(false);
   const [tangCaTarget, setTangCaTarget] = useState<{
-    employee: { maNV: string; hoTen: string; boPhan: string };
+    employee: { maNV: string; hoTen: string; boPhan: string; chucVu?: string };
     date: string;
     hours: number;
     note: string;
@@ -125,7 +125,15 @@ export default function ChamCongPage() {
 
   // Fallback: tìm trong danh sách USERS tĩnh nếu chưa có trong Supabase
   const currentEmployee = useMemo(() => {
-    if (currentEmployeeFromDB) return currentEmployeeFromDB;
+    if (currentEmployeeFromDB) {
+      return {
+        maNV: currentEmployeeFromDB.maNV,
+        hoTen: currentEmployeeFromDB.hoTen,
+        boPhan: currentEmployeeFromDB.boPhan,
+        chucVu: currentEmployeeFromDB.chucVu || (currentEmployeeFromDB as any).viTri || "Nhân viên",
+        email: currentEmployeeFromDB.email,
+      };
+    }
     if (!user) return undefined;
 
     const staticUser = USERS.find((u) =>
@@ -139,8 +147,9 @@ export default function ChamCongPage() {
         maNV: staticUser.maNV,
         hoTen: staticUser.name,
         boPhan: staticUser.phongBan,
+        chucVu: staticUser.chucVu || (staticUser as any).role || "Nhân viên",
         email: staticUser.email,
-      } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+      };
     }
 
     // Nếu vẫn không tìm thấy, tạo profile tạm từ thông tin user đăng nhập 
@@ -150,8 +159,9 @@ export default function ChamCongPage() {
       maNV: user.maNV || prefix.toUpperCase(),
       hoTen: user.name || prefix,
       boPhan: user.phongBan || "Hành chính",
+      chucVu: (user as any).role || (user as any).chucVu || "Nhân viên",
       email: user.email,
-    } as { maNV: string; hoTen: string; boPhan: string; email?: string };
+    };
   }, [currentEmployeeFromDB, user]);
 
   const activeEmployeesCount = useMemo(() => nhanSu.filter((item) => item.trangThai !== "nghi_viec").length, [nhanSu]);
@@ -285,10 +295,22 @@ export default function ChamCongPage() {
     }
   };
 
-  const handleOpenTangCaModal = (emp: { maNV: string; hoTen: string; boPhan: string }, dateStr: string) => {
+  const handleOpenTangCaModal = (emp: { maNV: string; hoTen: string; boPhan: string; chucVu?: string; viTri?: string }, dateStr: string) => {
+    const chucVuFound =
+      emp.chucVu ||
+      emp.viTri ||
+      nhanSu.find((n) => n.maNV.trim().toUpperCase() === emp.maNV.trim().toUpperCase())?.chucVu ||
+      USERS.find((u) => u.maNV.trim().toUpperCase() === emp.maNV.trim().toUpperCase())?.chucVu ||
+      "Nhân viên";
+
     const rec = recordMap.get(chamCongRecordKey(emp.maNV, dateStr));
     setTangCaTarget({
-      employee: emp,
+      employee: {
+        maNV: emp.maNV,
+        hoTen: emp.hoTen,
+        boPhan: emp.boPhan,
+        chucVu: chucVuFound,
+      },
       date: dateStr,
       hours: rec?.soGioTangCa || 0,
       note: rec?.ghiChu || "",
@@ -564,8 +586,19 @@ export default function ChamCongPage() {
           onCheckOut={() => void checkOut()}
           onOvertime={() => {
             if (currentEmployee) {
+              const chucVuFound =
+                (currentEmployee as any).chucVu ||
+                nhanSu.find((n) => n.maNV.trim().toUpperCase() === currentEmployee.maNV.trim().toUpperCase())?.chucVu ||
+                USERS.find((u) => u.maNV.trim().toUpperCase() === currentEmployee.maNV.trim().toUpperCase())?.chucVu ||
+                "Nhân viên";
+
               setTangCaTarget({
-                employee: currentEmployee,
+                employee: {
+                  maNV: currentEmployee.maNV,
+                  hoTen: currentEmployee.hoTen,
+                  boPhan: currentEmployee.boPhan,
+                  chucVu: chucVuFound,
+                },
                 date: today,
                 hours: todayRecord?.soGioTangCa || 0,
                 note: todayRecord?.ghiChu || "",
@@ -716,14 +749,18 @@ export default function ChamCongPage() {
                         className={`sticky left-0 z-20 p-2.5 sm:p-3 border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)] ${isNghiViec ? "bg-rose-50 dark:bg-slate-900" : "bg-white dark:bg-slate-900"}`}
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="block font-semibold">{employee.hoTen}</span>
+                          <span className="block font-bold text-slate-900 dark:text-white">{employee.hoTen}</span>
                           {isNghiViec && (
                             <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
                               Đã nghỉ việc
                             </span>
                           )}
                         </div>
-                        <span className="opacity-60">{employee.maNV} · {employee.boPhan}</span>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 flex-wrap mt-0.5">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">{employee.maNV}</span>
+                          <span>·</span>
+                          <span>{employee.chucVu || employee.boPhan}</span>
+                        </div>
                       </td>
                       {days.map((day) => {
                         const ngay = toIsoDate(day);
@@ -852,7 +889,7 @@ export default function ChamCongPage() {
 }
 
 function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOut, onOvertime }: {
-  employee: { maNV: string; hoTen: string; boPhan: string };
+  employee: { maNV: string; hoTen: string; boPhan: string; chucVu?: string };
   record?: ChamCongRecord;
   submitting?: boolean;
   onCheckIn: () => void;
@@ -863,13 +900,19 @@ function SelfAttendanceCard({ employee, record, submitting, onCheckIn, onCheckOu
   const soGioTangCa = record?.soGioTangCa || 0;
   return (
     <section className="card overflow-hidden border border-teal-200/70 dark:border-teal-700/40">
-      <div className="flex flex-col gap-1 bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between md:px-5">
+      <div className="flex flex-col gap-1.5 bg-gradient-to-r from-teal-600 via-teal-700 to-cyan-700 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between md:px-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/75">Chấm công của tôi · Hôm nay</p>
-          <h2 className="mt-0.5 text-lg font-bold">{employee.hoTen}</h2>
-          <p className="text-xs text-white/80">{employee.maNV} · {employee.boPhan}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-teal-100">Chấm công của tôi · Hôm nay</p>
+          <h2 className="mt-0.5 text-lg sm:text-xl font-black tracking-wide text-white">{employee.hoTen}</h2>
+          <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-white/95">
+            <span className="font-black bg-white/20 px-2 py-0.5 rounded shadow-xs">Mã: {employee.maNV}</span>
+            <span className="font-black bg-amber-400/30 text-amber-100 px-2 py-0.5 rounded border border-amber-300/40 shadow-xs">
+              Chức vụ: {employee.chucVu || "Nhân viên"}
+            </span>
+            <span className="text-white/85 font-semibold">Bộ phận: {employee.boPhan}</span>
+          </div>
         </div>
-        <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white/95">
+        <span className="w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/95">
           Ca chuẩn: {GIO_VAO_CA_CHUAN.slice(0, 5)} – {GIO_KET_THUC_CA_CHUAN.slice(0, 5)} ({CHUAN_GIO_LAM_MOI_NGAY}h/ngày)
         </span>
       </div>

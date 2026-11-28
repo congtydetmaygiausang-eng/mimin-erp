@@ -41,6 +41,7 @@ const ROLE_DESCRIPTIONS: Record<Role, string> = {
   buttoning: "Tổ trưởng khuy nút - Quản lý tổ khuy nút",
   ironing: "Tổ trưởng ủi - Quản lý tổ ủi",
   packaging: "Tổ trưởng đóng gói - Quản lý tổ đóng gói",
+  attendance: "Nhân viên Chấm công - Chỉ vào trang chấm công Vào làm / Kết thúc",
 };
 
 export default function PhanQuenCuaToiPage() {

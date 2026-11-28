@@ -1,12 +1,39 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Calculator, Check, ChevronDown, Image as ImageIcon, ListChecks, Package, Plus, Printer, Save, Search, Send, ShoppingBag, Trash2, Truck, UserRound, List, Phone, X } from "lucide-react";
+import {
+  Building2,
+  Calculator,
+  Check,
+  ChevronDown,
+  Image as ImageIcon,
+  ListChecks,
+  Package,
+  Plus,
+  Printer,
+  Save,
+  Search,
+  Send,
+  ShoppingBag,
+  Trash2,
+  Truck,
+  UserRound,
+  List,
+  Phone,
+  X,
+  Layers,
+  Sparkles,
+  Scissors,
+  CircleDot,
+  Box,
+  Tag,
+  ArrowRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { ImageUploader, type UploadedFile } from "@/components/ui/ImageUploader";
 import { CrudModal, type FieldDef } from "@/components/ui/CrudModal";
 import { useSession } from "@/components/session-provider";
-import { formatVND, KHO_VAT_TU, type KhoVai } from "@/lib/data/real-data";
+import { formatVND, KHO_VAT_TU, KHO_VAI, type KhoVai, type KhoVatTu } from "@/lib/data/real-data";
 import { isSupabaseEnabled, supabase } from "@/lib/supabase/client";
 import { useNhaCungCap } from "@/lib/data/nha-cung-cap-store";
 import { useKhachHang, type KhachHangUI } from "@/lib/data/khach-hang-store";
@@ -21,24 +48,54 @@ import { useWorkspace } from "@/lib/workspace-context";
 
 const today = new Date().toISOString().slice(0, 10);
 const deliveryDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+
 const customFields: FieldDef[] = [
   { name: "maMau", label: "Mã mẫu", type: "text", required: true },
   { name: "tenMau", label: "Tên mẫu vật tư", type: "text", required: true },
-  { name: "loai", label: "Loại", type: "select", required: true, options: ["Bo cổ", "Bo tay", "Dây dệt", "Nhãn", "Khác"].map((value) => ({ value, label: value })) },
+  {
+    name: "loai",
+    label: "Phân loại",
+    type: "select",
+    required: true,
+    options: ["Bo cổ", "Nút", "Phụ liệu", "Kho vải", "Khác"].map((value) => ({ value, label: value })),
+  },
   { name: "mauSac", label: "Màu sắc", type: "text", required: true },
-  { name: "donVi", label: "Đơn vị", type: "select", required: true, options: ["bộ", "cái", "kg", "mét", "cuộn"].map((value) => ({ value, label: value })) },
+  {
+    name: "donVi",
+    label: "Đơn vị",
+    type: "select",
+    required: true,
+    options: ["bộ", "cái", "kg", "sp", "mét", "cuộn"].map((value) => ({ value, label: value })),
+  },
   { name: "giaMuaThamKhao", label: "Giá mua tham khảo", type: "number", min: 0 },
   { name: "giaBanDeXuat", label: "Giá bán đề xuất", type: "number", min: 0 },
   { name: "hinhAnh", label: "Hình vật tư", type: "image" },
 ];
 
-const num = (value: string) => Math.max(0, Number(value) || 0);
-const safe = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
+const num = (value: string | number) => Math.max(0, Number(value) || 0);
+const safe = (value: string) =>
+  value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
+
 type MucDichDatHang = "customer" | "internal";
-type SelectableMaterial = {
-  id: string; maMau: string; tenMau: string; loai: string; mauSac: string; quyCach: string; donVi: string;
-  maNccMacDinh: string; giaMuaThamKhao: number; giaBanDeXuat: number; soLuongToiThieu: number; hinhAnh: string; trangThai: "Đang dùng" | "Tạm ngưng";
-};
+export type MaterialCategory = "all" | "bo_co" | "nut" | "phu_lieu" | "kho_vai";
+
+export interface UnifiedMaterialItem {
+  id: string;
+  maMau: string;
+  tenMau: string;
+  loai: string;
+  category: "bo_co" | "nut" | "phu_lieu" | "kho_vai";
+  mauSac: string;
+  quyCach: string;
+  donVi: string;
+  maNccMacDinh: string;
+  giaMuaThamKhao: number;
+  giaBanDeXuat: number;
+  soLuongToiThieu: number;
+  hinhAnh: string;
+  trangThai: "Đang dùng" | "Tạm ngưng";
+  tonKho?: number;
+}
 
 type KhoPhuLieuRow = {
   sku: string;
@@ -97,27 +154,142 @@ const parseSharedGhiChu = (ghiChu: string | null | undefined): { note: string; i
 const readSharedImage = (ghiChu: string | null | undefined): string => parseSharedGhiChu(ghiChu).imageUrl;
 const readSharedNote = (ghiChu: string | null | undefined): string => parseSharedGhiChu(ghiChu).note;
 
+// Danh mục phụ liệu may mặc mở rộng
+const EXTRA_PHU_LIEU: UnifiedMaterialItem[] = [
+  {
+    id: "PL-NHAN-CO",
+    maMau: "NHAN-CO",
+    tenMau: "Nhãn dệt cổ áo MIMIN",
+    loai: "Nhãn mác",
+    category: "phu_lieu",
+    mauSac: "Trắng chữ đen",
+    quyCach: "Kích thước 3x5cm, dệt sợi satin mềm mại",
+    donVi: "cái",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 800,
+    giaBanDeXuat: 1200,
+    soLuongToiThieu: 1000,
+    hinhAnh: "/icons/icon-192.png",
+    trangThai: "Đang dùng",
+  },
+  {
+    id: "PL-NHAN-SIZE",
+    maMau: "NHAN-SIZE",
+    tenMau: "Bộ Nhãn size dệt (S, M, L, XL, 2XL)",
+    loai: "Nhãn mác",
+    category: "phu_lieu",
+    mauSac: "Trắng chữ đen",
+    quyCach: "Nhãn gập đôi 1.2x3cm",
+    donVi: "cái",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 400,
+    giaBanDeXuat: 600,
+    soLuongToiThieu: 1000,
+    hinhAnh: "/icons/icon-192.png",
+    trangThai: "Đang dùng",
+  },
+  {
+    id: "PL-DAY-DET-CO",
+    maMau: "DAY-DET-CO",
+    tenMau: "Dây dệt xương cá viền cổ áo",
+    loai: "Dây dệt",
+    category: "phu_lieu",
+    mauSac: "Các màu",
+    quyCach: "Bản rộng 1.2cm, dệt xương cá 100% cotton",
+    donVi: "cuộn",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 35000,
+    giaBanDeXuat: 45000,
+    soLuongToiThieu: 10,
+    hinhAnh: "/swatches/vai-01.jpg",
+    trangThai: "Đang dùng",
+  },
+  {
+    id: "PL-CHI-MAY",
+    maMau: "CHI-MAY",
+    tenMau: "Chỉ may công nghiệp chất lượng cao",
+    loai: "Chỉ may",
+    category: "phu_lieu",
+    mauSac: "Các màu theo vải",
+    quyCach: "Sợi 40/2, 5000m/cuộn, chống đứt sợi",
+    donVi: "cuộn",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 18000,
+    giaBanDeXuat: 24000,
+    soLuongToiThieu: 20,
+    hinhAnh: "/swatches/vai-13.jpg",
+    trangThai: "Đang dùng",
+  },
+  {
+    id: "PL-KEO-DUNG",
+    maMau: "KEO-DUNG",
+    tenMau: "Keo dựng ép cổ áo & trụ áo",
+    loai: "Keo ép",
+    category: "phu_lieu",
+    mauSac: "Trắng / Đen",
+    quyCach: "Khổ 1m, keo mịn bám dính chắc sau ép nhiệt",
+    donVi: "mét",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 12000,
+    giaBanDeXuat: 16000,
+    soLuongToiThieu: 50,
+    hinhAnh: "/swatches/vai-01.jpg",
+    trangThai: "Đang dùng",
+  },
+  {
+    id: "PL-TUI-OPP",
+    maMau: "TUI-OPP",
+    tenMau: "Túi dán OPP đóng gói sản phẩm",
+    loai: "Bao bì",
+    category: "phu_lieu",
+    mauSac: "Trong suốt",
+    quyCach: "Kích thước 26x35cm + 4cm băng keo dán",
+    donVi: "cái",
+    maNccMacDinh: "",
+    giaMuaThamKhao: 500,
+    giaBanDeXuat: 750,
+    soLuongToiThieu: 1000,
+    hinhAnh: "/icons/icon-192.png",
+    trangThai: "Đang dùng",
+  },
+];
+
 export default function PhieuDatNccPhuLieuPage() {
   const { user } = useSession();
   const { list: nccList } = useNhaCungCap();
   const { list: khachHangList } = useKhachHang();
   const { list: catalogMaterials, themMau } = useVatTuDatSanXuat();
-  const { saveOrder } = usePhieuDatNcc();
+  const { orders, saveOrder } = usePhieuDatNcc();
   const { activeWorkspace } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<"create" | "progress" | "list">("create");
+
+  const [activeTab, setActiveTab] = useState<"create" | "list" | "progress">("create");
   const [orderPurpose, setOrderPurpose] = useState<MucDichDatHang>("customer");
+  const [categoryFilter, setCategoryFilter] = useState<MaterialCategory>("all");
   const [search, setSearch] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [orderItems, setOrderItems] = useState<PhieuDatNccLineItem[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [warehouseMaterials, setWarehouseMaterials] = useState<KhoVai[]>(KHO_VAT_TU);
+
   const [form, setForm] = useState({
     maPhieu: `PO-${today.replaceAll("-", "")}-${String(Date.now()).slice(-4)}`,
-    ngayDat: today, ngayGiao: deliveryDate, maKhachHang: "", maNcc: "", soLuong: "1000",
-    donGiaMua: "0", donGiaBan: "0",
-    phiVanChuyen: "0", chiPhiKhac: "0", thueVat: "10", quyCach: "", diaChiGiao: "", ghiChu: "", giaoThangKhach: true,
+    ngayDat: today,
+    ngayGiao: deliveryDate,
+    maKhachHang: "",
+    maNcc: "",
+    soLuong: "1000",
+    donGiaMua: "0",
+    donGiaBan: "0",
+    phiVanChuyen: "0",
+    chiPhiKhac: "0",
+    thueVat: "10",
+    quyCach: "",
+    diaChiGiao: "",
+    ghiChu: "",
+    giaoThangKhach: true,
   });
+
   useEffect(() => {
     let mounted = true;
 
@@ -125,23 +297,24 @@ export default function PhieuDatNccPhuLieuPage() {
       try {
         const cachedRaw = localStorage.getItem(PL_INVENTORY_KEY);
         const imageRaw = localStorage.getItem(PL_IMAGES_KEY);
-        const cached = cachedRaw ? JSON.parse(cachedRaw) as unknown : null;
-        const images = imageRaw ? JSON.parse(imageRaw) as unknown : null;
-        const imageMap = images && typeof images === "object" ? images as Record<string, unknown> : {};
+        const cached = cachedRaw ? (JSON.parse(cachedRaw) as unknown) : null;
+        const images = imageRaw ? (JSON.parse(imageRaw) as unknown) : null;
+        const imageMap = images && typeof images === "object" ? (images as Record<string, unknown>) : {};
         if (Array.isArray(cached) && cached.length > 0) {
-          setWarehouseMaterials((cached as KhoVai[]).map((item) => ({
-            ...item,
-            hinhAnh: typeof imageMap[item.maVT] === "string" ? String(imageMap[item.maVT]) : item.hinhAnh,
-          })));
+          setWarehouseMaterials(
+            (cached as KhoVai[]).map((item) => ({
+              ...item,
+              hinhAnh: typeof imageMap[item.maVT] === "string" ? String(imageMap[item.maVT]) : item.hinhAnh,
+            }))
+          );
         }
-      } catch {
-        // Cache lỗi không chặn việc tải dữ liệu thật từ Supabase.
-      }
+      } catch {}
     };
 
     const loadRemoteMaterials = async () => {
       if (!isSupabaseEnabled || !supabase) return;
-      const baseFields = "sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu";
+      const baseFields =
+        "sku, ten_vt, loai_chi_tiet, mau_sac, dvt, don_gia, ton_kho, ton_toi_thieu, so_cay_nhap, ton_cay, ty_le_hao_hut, kho, ghi_chu";
       const imageResult = await supabase
         .from("kho")
         .select(`${baseFields}, hinh_anh`)
@@ -182,75 +355,313 @@ export default function PhieuDatNccPhuLieuPage() {
 
     loadCachedMaterials();
     void loadRemoteMaterials();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const materials = useMemo<SelectableMaterial[]>(() => orderPurpose === "customer" ? catalogMaterials : warehouseMaterials.map((item) => ({ id: `KHO-${item.maVT}`, maMau: item.maVT, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: readSharedNote(item.ghiChu) || "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: 0, soLuongToiThieu: 1, hinhAnh: item.hinhAnh || "", trangThai: "Đang dùng" })), [catalogMaterials, orderPurpose, warehouseMaterials]);
-  const selected = materials.find((item) => item.id === selectedId) || null;
+  // Tổng hợp toàn bộ danh sách vật tư đa dạng: Bo cổ, Nút, Phụ liệu, Kho vải, Mẫu catalog
+  const allMaterials = useMemo<UnifiedMaterialItem[]>(() => {
+    const list: UnifiedMaterialItem[] = [];
+    const seenCodes = new Set<string>();
+
+    // 1. Kho Bo Cổ & Nút & Phụ Liệu (KHO_VAT_TU)
+    warehouseMaterials.forEach((item) => {
+      const code = item.maVT.toUpperCase();
+      if (seenCodes.has(code)) return;
+      seenCodes.add(code);
+
+      let cat: UnifiedMaterialItem["category"] = "phu_lieu";
+      const loaiLower = (item.loai || "").toLowerCase();
+      if (loaiLower.includes("bo") || code.startsWith("BO-") || code.startsWith("BT-")) {
+        cat = "bo_co";
+      } else if (loaiLower.includes("nút") || loaiLower.includes("nut") || code.startsWith("NUT-") || code.startsWith("N-")) {
+        cat = "nut";
+      }
+
+      list.push({
+        id: `KHO-${item.maVT}`,
+        maMau: item.maVT,
+        tenMau: item.tenChuan || item.tenVT,
+        loai: item.loai || (cat === "bo_co" ? "Bo cổ" : cat === "nut" ? "Nút" : "Phụ liệu"),
+        category: cat,
+        mauSac: item.mauChuan || item.mauSac || "",
+        quyCach: readSharedNote(item.ghiChu) || (cat === "bo_co" ? "Bo cổ dệt theo vải chuẩn" : cat === "nut" ? "Nút áo đồng màu vải" : "Phụ liệu đóng gói / may"),
+        donVi: item.dvt || (cat === "bo_co" || cat === "nut" ? "bộ" : "sp"),
+        maNccMacDinh: "",
+        giaMuaThamKhao: item.donGia || (cat === "bo_co" ? 6000 : cat === "nut" ? 1500 : 700),
+        giaBanDeXuat: Math.ceil(((item.donGia || 6000) * 1.35) / 500) * 500,
+        soLuongToiThieu: 1,
+        hinhAnh: item.hinhAnh || (cat === "bo_co" ? "/swatches/vai-01.jpg" : cat === "nut" ? "/swatches/vai-02.jpg" : "/icons/icon-192.png"),
+        trangThai: "Đang dùng",
+        tonKho: item.tonKho || 0,
+      });
+    });
+
+    // 2. Danh mục Phụ liệu may mặc mở rộng
+    EXTRA_PHU_LIEU.forEach((item) => {
+      const code = item.maMau.toUpperCase();
+      if (!seenCodes.has(code)) {
+        seenCodes.add(code);
+        list.push(item);
+      }
+    });
+
+    // 3. Kho Vải (KHO_VAI)
+    KHO_VAI.forEach((item) => {
+      const code = (item.maMoi || item.maVT).toUpperCase();
+      if (seenCodes.has(code)) return;
+      seenCodes.add(code);
+
+      // Ảnh swatch vải
+      const swatchNum = (item.maMoi || "").replace("VAI", "").replace("VAI-", "").trim();
+      const localSwatch = swatchNum ? `/swatches/vai-${swatchNum.padStart(2, "0")}.jpg` : "";
+
+      list.push({
+        id: `VAI-${item.maVT}`,
+        maMau: item.maMoi || item.maVT,
+        tenMau: item.tenChuan || item.tenVT,
+        loai: item.loai || "Vải thành phẩm",
+        category: "kho_vai",
+        mauSac: item.mauChuan || item.mauSac || "",
+        quyCach: item.ghiChu || "Vải chính khổ 1m8, định lượng chuẩn",
+        donVi: item.dvt || "kg",
+        maNccMacDinh: "",
+        giaMuaThamKhao: item.donGia || 75000,
+        giaBanDeXuat: Math.ceil(((item.donGia || 75000) * 1.25) / 1000) * 1000,
+        soLuongToiThieu: 10,
+        hinhAnh: item.hinhAnh || localSwatch || "/swatches/vai-01.jpg",
+        trangThai: "Đang dùng",
+        tonKho: item.tonKho || 0,
+      });
+    });
+
+    // 4. Mẫu từ Catalog Vật Tư Đặt Sản Xuất
+    catalogMaterials.forEach((item) => {
+      const code = item.maMau.toUpperCase();
+      if (seenCodes.has(code)) return;
+      seenCodes.add(code);
+
+      const loaiLower = (item.loai || "").toLowerCase();
+      let cat: UnifiedMaterialItem["category"] = "phu_lieu";
+      if (loaiLower.includes("bo") || code.startsWith("BO-")) cat = "bo_co";
+      else if (loaiLower.includes("nút") || loaiLower.includes("nut")) cat = "nut";
+      else if (loaiLower.includes("vải") || loaiLower.includes("vai")) cat = "kho_vai";
+
+      list.push({
+        id: item.id,
+        maMau: item.maMau,
+        tenMau: item.tenMau,
+        loai: item.loai,
+        category: cat,
+        mauSac: item.mauSac,
+        quyCach: item.quyCach,
+        donVi: item.donVi,
+        maNccMacDinh: item.maNccMacDinh,
+        giaMuaThamKhao: item.giaMuaThamKhao,
+        giaBanDeXuat: item.giaBanDeXuat,
+        soLuongToiThieu: item.soLuongToiThieu,
+        hinhAnh: item.hinhAnh || "/icons/icon-192.png",
+        trangThai: item.trangThai,
+      });
+    });
+
+    return list;
+  }, [warehouseMaterials, catalogMaterials]);
+
+  // Bộ lọc theo Tab danh mục & Ô tìm kiếm
+  const filtered = useMemo(() => {
+    const keyword = search.trim().toLocaleLowerCase("vi");
+    return allMaterials
+      .filter((item) => {
+        if (item.trangThai !== "Đang dùng") return false;
+        if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+        if (keyword) {
+          const match = [item.maMau, item.tenMau, item.loai, item.mauSac, item.quyCach].some((v) =>
+            v?.toLocaleLowerCase("vi").includes(keyword)
+          );
+          if (!match) return false;
+        }
+        return true;
+      })
+      .slice(0, 36);
+  }, [allMaterials, categoryFilter, search]);
+
+  const selected = allMaterials.find((item) => item.id === selectedId) || null;
+
   const update = (name: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [name]: value }));
     if (typeof value === "string" && selected && (name === "soLuong" || name === "donGiaMua" || name === "donGiaBan")) {
-      setOrderItems((current) => current.map((item) => item.maVatTu === selected.maMau ? { ...item, [name]: num(value) } : item));
+      setOrderItems((current) =>
+        current.map((item) => (item.maVatTu === selected.maMau ? { ...item, [name]: num(value) } : item))
+      );
     }
   };
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLocaleLowerCase("vi");
-    return materials.filter((item) => item.trangThai === "Đang dùng" && (!keyword || [item.maMau, item.tenMau, item.loai, item.mauSac].some((v) => v.toLocaleLowerCase("vi").includes(keyword)))).slice(0, 24);
-  }, [materials, search]);
+
   const totals = useMemo(() => {
     const tienMua = orderItems.reduce((sum, item) => sum + item.soLuong * item.donGiaMua, 0);
     const doanhThu = orderItems.reduce((sum, item) => sum + item.soLuong * item.donGiaBan, 0);
     const giaVon = tienMua + num(form.phiVanChuyen) + num(form.chiPhiKhac);
     const loiNhuan = orderPurpose === "internal" ? 0 : doanhThu - giaVon;
-    const vatDauRa = orderPurpose === "internal" ? 0 : doanhThu * num(form.thueVat) / 100;
-    return { tienMua, doanhThu, giaVon, loiNhuan, vatDauRa, tongHoaDon: doanhThu + vatDauRa, bienLoiNhuan: doanhThu > 0 ? loiNhuan / doanhThu * 100 : 0 };
+    const vatDauRa = orderPurpose === "internal" ? 0 : (doanhThu * num(form.thueVat)) / 100;
+    return {
+      tienMua,
+      doanhThu,
+      giaVon,
+      loiNhuan,
+      vatDauRa,
+      tongHoaDon: doanhThu + vatDauRa,
+      bienLoiNhuan: doanhThu > 0 ? (loiNhuan / doanhThu) * 100 : 0,
+    };
   }, [form.chiPhiKhac, form.phiVanChuyen, form.thueVat, orderItems, orderPurpose]);
 
-  const selectMaterial = (item: typeof materials[number]) => {
+  const selectMaterial = (item: UnifiedMaterialItem) => {
     const existing = orderItems.find((line) => line.maVatTu === item.maMau);
     setSelectedId(item.id);
-    setOrderItems((current) => current.some((line) => line.maVatTu === item.maMau) ? current : [...current, { id: crypto.randomUUID(), maVatTu: item.maMau, tenVatTu: item.tenMau, mauSac: item.mauSac, quyCach: item.quyCach, donVi: item.donVi, soLuong: Math.max(1, item.soLuongToiThieu), donGiaMua: item.giaMuaThamKhao, donGiaBan: item.giaBanDeXuat, hinhAnh: item.hinhAnh }]);
-    setForm((current) => ({ ...current, soLuong: String(existing?.soLuong || Math.max(1, item.soLuongToiThieu)), donGiaMua: String(existing?.donGiaMua ?? item.giaMuaThamKhao), donGiaBan: String(existing?.donGiaBan ?? item.giaBanDeXuat), maNcc: item.maNccMacDinh || current.maNcc, quyCach: item.quyCach || current.quyCach }));
+
+    // Thêm vào danh sách mặt hàng nếu chưa có
+    if (!existing) {
+      setOrderItems((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          maVatTu: item.maMau,
+          tenVatTu: item.tenMau,
+          mauSac: item.mauSac,
+          quyCach: item.quyCach,
+          donVi: item.donVi,
+          soLuong: item.category === "kho_vai" ? 50 : Math.max(1, item.soLuongToiThieu || 100),
+          donGiaMua: item.giaMuaThamKhao,
+          donGiaBan: item.giaBanDeXuat,
+          hinhAnh: item.hinhAnh,
+        },
+      ]);
+    }
+
+    setForm((current) => ({
+      ...current,
+      soLuong: String(existing?.soLuong || (item.category === "kho_vai" ? 50 : Math.max(1, item.soLuongToiThieu || 100))),
+      donGiaMua: String(existing?.donGiaMua ?? item.giaMuaThamKhao),
+      donGiaBan: String(existing?.donGiaBan ?? item.giaBanDeXuat),
+      maNcc: item.maNccMacDinh || current.maNcc,
+      quyCach: item.quyCach || current.quyCach,
+    }));
   };
+
   const switchPurpose = (purpose: MucDichDatHang) => {
     setOrderPurpose(purpose);
     setSelectedId("");
     setOrderItems([]);
-    setForm((current) => ({ ...current, maKhachHang: purpose === "internal" ? "" : current.maKhachHang, donGiaMua: "0", donGiaBan: "0", giaoThangKhach: purpose === "customer", diaChiGiao: purpose === "internal" ? "Kho phụ liệu MIMIN" : current.diaChiGiao }));
+    setForm((current) => ({
+      ...current,
+      maKhachHang: purpose === "internal" ? "" : current.maKhachHang,
+      donGiaMua: "0",
+      donGiaBan: "0",
+      giaoThangKhach: purpose === "customer",
+      diaChiGiao: purpose === "internal" ? "Kho phụ liệu MIMIN" : current.diaChiGiao,
+    }));
   };
+
   const updateLine = (id: string, field: "soLuong" | "donGiaMua" | "donGiaBan", value: string) => {
-    setOrderItems((current) => current.map((item) => item.id === id ? { ...item, [field]: num(value) } : item));
+    setOrderItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: num(value) } : item)));
     const active = orderItems.find((item) => item.id === id);
     if (active?.maVatTu === selected?.maMau) setForm((current) => ({ ...current, [field]: value }));
   };
+
   const removeLine = (id: string) => setOrderItems((current) => current.filter((item) => item.id !== id));
+
   const addCustom = async (values: Record<string, string>) => {
-    const item = await themMau({ maMau: values.maMau, tenMau: values.tenMau, loai: values.loai, mauSac: values.mauSac, quyCach: "", donVi: values.donVi, maNccMacDinh: form.maNcc, giaMuaThamKhao: num(values.giaMuaThamKhao), giaBanDeXuat: num(values.giaBanDeXuat), soLuongToiThieu: 0, thoiGianSanXuat: 0, maKhachHangSoHuu: "", hinhAnh: values.hinhAnh || "", dungChung: true, trangThai: "Đang dùng" });
-    selectMaterial(item);
+    const item = await themMau({
+      maMau: values.maMau,
+      tenMau: values.tenMau,
+      loai: values.loai,
+      mauSac: values.mauSac,
+      quyCach: "",
+      donVi: values.donVi,
+      maNccMacDinh: form.maNcc,
+      giaMuaThamKhao: num(values.giaMuaThamKhao),
+      giaBanDeXuat: num(values.giaBanDeXuat),
+      soLuongToiThieu: 0,
+      thoiGianSanXuat: 0,
+      maKhachHangSoHuu: "",
+      hinhAnh: values.hinhAnh || "",
+      dungChung: true,
+      trangThai: "Đang dùng",
+    });
+    selectMaterial({
+      id: item.id,
+      maMau: item.maMau,
+      tenMau: item.tenMau,
+      loai: item.loai,
+      category: "phu_lieu",
+      mauSac: item.mauSac,
+      quyCach: item.quyCach,
+      donVi: item.donVi,
+      maNccMacDinh: item.maNccMacDinh,
+      giaMuaThamKhao: item.giaMuaThamKhao,
+      giaBanDeXuat: item.giaBanDeXuat,
+      soLuongToiThieu: item.soLuongToiThieu,
+      hinhAnh: item.hinhAnh,
+      trangThai: item.trangThai,
+    });
   };
-  const importWarehouseTemplates = async () => {
-    const existingCodes = new Set(materials.map((item) => item.maMau));
-    const source = KHO_VAT_TU.filter((item) => !existingCodes.has(`VTSX-${item.maMoi || item.maVT}`));
-    if (source.length === 0) { toast.info("Các mẫu Kho phụ liệu đã có trong danh mục sản xuất"); return; }
-    for (const item of source) {
-      await themMau({ maMau: `VTSX-${item.maMoi || item.maVT}`, tenMau: item.tenChuan || item.tenVT, loai: item.loai, mauSac: item.mauChuan || item.mauSac, quyCach: "", donVi: item.dvt, maNccMacDinh: "", giaMuaThamKhao: item.donGia, giaBanDeXuat: Math.ceil(item.donGia * 1.3 / 100) * 100, soLuongToiThieu: 1, thoiGianSanXuat: 7, maKhachHangSoHuu: "", hinhAnh: item.hinhAnh || "", dungChung: true, trangThai: "Đang dùng" });
-    }
-    toast.success(`Đã sao chép ${source.length} mẫu sang Danh mục vật tư đặt sản xuất`);
-  };
+
   const buildOrder = (trangThai: TrangThaiPhieuDatNcc): PhieuDatNccPhuLieu | null => {
-    if (orderPurpose === "customer" && !form.maKhachHang) { toast.error("Vui lòng chọn khách hàng/xưởng may"); return null; }
-    if (!form.maNcc) { toast.error("Vui lòng chọn nhà cung cấp dệt"); return null; }
-    if (orderItems.length === 0) { toast.error("Vui lòng chọn ít nhất một mẫu vật tư sản xuất"); return null; }
-    if (orderItems.some((item) => item.soLuong <= 0)) { toast.error("Số lượng mỗi vật tư phải lớn hơn 0"); return null; }
+    if (orderPurpose === "customer" && !form.maKhachHang) {
+      toast.error("Vui lòng chọn khách hàng/xưởng may");
+      return null;
+    }
+    if (!form.maNcc) {
+      toast.error("Vui lòng chọn nhà cung cấp");
+      return null;
+    }
+    if (orderItems.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một mẫu vật tư từ danh sách bên trái");
+      return null;
+    }
+    if (orderItems.some((item) => item.soLuong <= 0)) {
+      toast.error("Số lượng mỗi vật tư phải lớn hơn 0");
+      return null;
+    }
     const first = orderItems[0];
-    return { id: crypto.randomUUID(), maPhieu: form.maPhieu, ngayDat: form.ngayDat, ngayGiao: form.ngayGiao, nguoiTao: user?.name || user?.email || "Nhân viên MIMIN", maKhachHang: form.maKhachHang, maNcc: form.maNcc, ownerOrganizationId: activeWorkspace?.id || "mimin", supplierOrganizationId: `ncc:${form.maNcc}`, customerOrganizationId: form.maKhachHang ? `kh:${form.maKhachHang}` : undefined, maVatTu: first.maVatTu, tenVatTu: first.tenVatTu, mauSac: first.mauSac, quyCach: first.quyCach, donVi: first.donVi, soLuong: orderItems.reduce((sum, item) => sum + item.soLuong, 0), donGiaMua: first.donGiaMua, donGiaBan: orderPurpose === "internal" ? 0 : first.donGiaBan, phiVanChuyen: num(form.phiVanChuyen), chiPhiKhac: num(form.chiPhiKhac), thueVat: orderPurpose === "internal" ? 0 : num(form.thueVat), giaoThangKhach: orderPurpose === "customer" && form.giaoThangKhach, diaChiGiao: form.diaChiGiao, ghiChu: `${orderPurpose === "internal" ? "[Đặt cho MIMIN] " : "[Đặt theo đơn khách] "}${form.ghiChu}`, hinhAnh: files, items: orderItems.map((item) => orderPurpose === "internal" ? { ...item, donGiaBan: 0 } : item), trangThai, createdAt: new Date().toISOString() };
+    return {
+      id: crypto.randomUUID(),
+      maPhieu: form.maPhieu,
+      ngayDat: form.ngayDat,
+      ngayGiao: form.ngayGiao,
+      nguoiTao: user?.name || user?.email || "Hồ Minh Sang",
+      maKhachHang: form.maKhachHang,
+      maNcc: form.maNcc,
+      ownerOrganizationId: activeWorkspace?.id || "mimin",
+      supplierOrganizationId: `ncc:${form.maNcc}`,
+      customerOrganizationId: form.maKhachHang ? `kh:${form.maKhachHang}` : undefined,
+      maVatTu: first.maVatTu,
+      tenVatTu: first.tenVatTu,
+      mauSac: first.mauSac,
+      quyCach: first.quyCach,
+      donVi: first.donVi,
+      soLuong: orderItems.reduce((sum, item) => sum + item.soLuong, 0),
+      donGiaMua: first.donGiaMua,
+      donGiaBan: orderPurpose === "internal" ? 0 : first.donGiaBan,
+      phiVanChuyen: num(form.phiVanChuyen),
+      chiPhiKhac: num(form.chiPhiKhac),
+      thueVat: orderPurpose === "internal" ? 0 : num(form.thueVat),
+      giaoThangKhach: orderPurpose === "customer" && form.giaoThangKhach,
+      diaChiGiao: form.diaChiGiao,
+      ghiChu: `${orderPurpose === "internal" ? "[Đặt cho MIMIN] " : "[Đặt theo đơn khách] "}${form.ghiChu}`,
+      hinhAnh: files,
+      items: orderItems.map((item) => (orderPurpose === "internal" ? { ...item, donGiaBan: 0 } : item)),
+      trangThai,
+      createdAt: new Date().toISOString(),
+    };
   };
+
   const saveDraft = async () => {
     const order = buildOrder("Nháp");
     if (!order) return;
     await saveOrder(order);
-    toast.success(`Đã lưu nháp ${order.maPhieu}`);
-    setActiveTab("progress");
+    toast.success(`Đã lưu thành công phiếu ${order.maPhieu}`);
+    setActiveTab("list");
   };
 
   const printOrder = async (target: "ncc" | "customer") => {
@@ -261,13 +672,19 @@ export default function PhieuDatNccPhuLieuPage() {
     const supplier = nccList.find((item) => item.ma_ncc === order.maNcc);
     const isSupplier = target === "ncc";
     const printItems = order.items || [];
-    const subtotal = printItems.reduce((sum, item) => sum + item.soLuong * (isSupplier ? item.donGiaMua : item.donGiaBan), 0);
-    const itemRows = printItems.map((item) => {
-      const unitPrice = isSupplier ? item.donGiaMua : item.donGiaBan;
-      return `<tr><td><b>${safe(item.maVatTu)}</b><br>${safe(item.tenVatTu)}</td><td>${safe(item.mauSac)}<br><span class="muted">${safe(item.quyCach || "Theo mẫu đính kèm")}</span></td><td class="right">${item.soLuong.toLocaleString("vi-VN")} ${safe(item.donVi)}</td><td class="right">${formatVND(unitPrice)}</td><td class="right"><b>${formatVND(item.soLuong * unitPrice)}</b></td></tr>`;
-    }).join("");
+    const subtotal = printItems.reduce(
+      (sum, item) => sum + item.soLuong * (isSupplier ? item.donGiaMua : item.donGiaBan),
+      0
+    );
+    const itemRows = printItems
+      .map((item) => {
+        const unitPrice = isSupplier ? item.donGiaMua : item.donGiaBan;
+        return `<tr><td><b>${safe(item.maVatTu)}</b><br>${safe(item.tenVatTu)}</td><td>${safe(item.mauSac)}<br><span class="muted">${safe(item.quyCach || "Theo mẫu đính kèm")}</span></td><td class="right">${item.soLuong.toLocaleString("vi-VN")} ${safe(item.donVi)}</td><td class="right">${formatVND(unitPrice)}</td><td class="right"><b>${formatVND(item.soLuong * unitPrice)}</b></td></tr>`;
+      })
+      .join("");
     const vat = isSupplier ? 0 : totals.vatDauRa;
     const imageUrl = order.hinhAnh.find((file) => file.type.startsWith("image/"))?.dataUrl || selected?.hinhAnh || "";
+
     const frame = document.createElement("iframe");
     frame.setAttribute("aria-hidden", "true");
     frame.style.position = "fixed";
@@ -278,32 +695,18 @@ export default function PhieuDatNccPhuLieuPage() {
     frame.style.border = "0";
     document.body.appendChild(frame);
     const popup = frame.contentWindow;
-    if (!popup) { frame.remove(); toast.error("Không khởi tạo được vùng in"); return; }
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(order.maPhieu)}</title><style>body{font-family:Arial,sans-serif;color:#17202a;margin:36px}header{display:flex;justify-content:space-between;border-bottom:3px solid #047857;padding-bottom:18px}h1{font-size:24px;margin:0;color:#065f46}.muted{color:#64748b;font-size:12px}.box{border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin-top:18px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#ecfdf5}.right{text-align:right}.total{font-size:18px;font-weight:bold;color:#065f46}.photo{max-width:220px;max-height:160px;border-radius:8px;margin-top:12px}.signatures{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:50px;gap:80px}.note{white-space:pre-wrap}@media print{button{display:none}body{margin:15mm}}</style></head><body><header><div><div class="muted">MIMIN ERP</div><h1>${isSupplier ? "LỆNH ĐẶT SẢN XUẤT" : "PHIẾU XÁC NHẬN ĐẶT HÀNG"}</h1><div class="muted">Mã phiếu: ${safe(order.maPhieu)}</div></div><div class="right"><b>Ngày đặt: ${safe(order.ngayDat)}</b><div>Hạn giao: ${safe(order.ngayGiao)}</div></div></header><div class="box"><b>${isSupplier ? "NHÀ CUNG CẤP" : "KHÁCH HÀNG / XƯỞNG MAY"}</b><div>${safe(isSupplier ? supplier?.ten_ncc || order.maNcc : customer?.ten || order.maKhachHang)}</div><div class="muted">${safe(isSupplier ? supplier?.sdt || "" : customer?.sdt || "")}</div>${isSupplier ? `<div class="muted">Nơi giao: ${safe(order.diaChiGiao || "Theo thỏa thuận")}</div>` : ""}</div><table><thead><tr><th>Mẫu vật tư</th><th>Màu / quy cách</th><th class="right">Số lượng</th><th class="right">Đơn giá</th><th class="right">Thành tiền</th></tr></thead><tbody>${itemRows}</tbody></table>${imageUrl ? `<div class="box"><b>Hình mẫu</b><br><img class="photo" src="${safe(imageUrl)}" alt="Hình mẫu"></div>` : ""}<div class="box right"><div>Tạm tính: <b>${formatVND(subtotal)}</b></div>${!isSupplier ? `<div>VAT ${order.thueVat}%: <b>${formatVND(vat)}</b></div><div class="total">Tổng thanh toán: ${formatVND(subtotal + vat)}</div>` : `<div class="total">Giá trị đặt NCC: ${formatVND(subtotal)}</div>`}</div><div class="box note"><b>Ghi chú:</b> ${safe(order.ghiChu || "Không có")}</div><div class="signatures"><div><b>${isSupplier ? "MIMIN ĐẶT HÀNG" : "ĐẠI DIỆN MIMIN"}</b><p class="muted">Ký và ghi rõ họ tên</p></div><div><b>${isSupplier ? "NHÀ CUNG CẤP XÁC NHẬN" : "KHÁCH HÀNG XÁC NHẬN"}</b><p class="muted">Ký và ghi rõ họ tên</p></div></div><script>window.onload=()=>window.print()</script></body></html>`);
+    if (!popup) {
+      frame.remove();
+      toast.error("Không khởi tạo được vùng in");
+      return;
+    }
+
+    popup.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>${safe(order.maPhieu)}</title><style>body{font-family:Arial,sans-serif;color:#17202a;margin:36px}header{display:flex;justify-content:space-between;border-bottom:3px solid #059669;padding-bottom:18px}h1{font-size:24px;margin:0;color:#047857}.muted{color:#64748b;font-size:12px}.box{border:1px solid #cbd5e1;border-radius:10px;padding:14px;margin-top:18px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#ecfdf5}.right{text-align:right}.total{font-size:18px;font-weight:bold;color:#047857}.photo{max-width:220px;max-height:160px;border-radius:8px;margin-top:12px}.signatures{display:grid;grid-template-columns:1fr 1fr;text-align:center;margin-top:50px;gap:80px}.note{white-space:pre-wrap}@media print{button{display:none}body{margin:15mm}}</style></head><body><header><div><div class="muted">MIMIN ERP · QUẢN LÝ SẢN XUẤT</div><h1>${isSupplier ? "LỆNH ĐẶT NHÀ CUNG CẤP & SẢN XUẤT VẬT TƯ" : "PHIẾU XÁC NHẬN ĐẶT HÀNG"}</h1><div class="muted">Mã phiếu: <b>${safe(order.maPhieu)}</b></div></div><div class="right"><b>Ngày đặt: ${safe(order.ngayDat)}</b><div>Hạn giao: ${safe(order.ngayGiao)}</div></div></header><div class="box"><b>${isSupplier ? "NHÀ CUNG CẤP / XƯỞNG DỆT" : "KHÁCH HÀNG / XƯỞNG MAY"}</b><div>${safe(isSupplier ? supplier?.ten_ncc || order.maNcc : customer?.ten || order.maKhachHang)}</div><div class="muted">SĐT: ${safe(isSupplier ? supplier?.sdt || "Chưa có" : customer?.sdt || "Chưa có")}</div><div class="muted">Địa chỉ: ${safe(isSupplier ? supplier?.dia_chi || "Theo thỏa thuận" : customer?.diaChi || order.diaChiGiao)}</div>${isSupplier ? `<div class="muted">Nơi giao hàng: ${safe(order.diaChiGiao || "Kho phụ liệu MIMIN")}</div>` : ""}</div><table><thead><tr><th>Mẫu vật tư</th><th>Màu / Quy cách</th><th class="right">Số lượng</th><th class="right">Đơn giá</th><th class="right">Thành tiền</th></tr></thead><tbody>${itemRows}</tbody></table>${imageUrl ? `<div class="box"><b>Hình mẫu vật tư:</b><br><img class="photo" src="${safe(imageUrl)}" alt="Hình mẫu"></div>` : ""}<div class="box right"><div>Tạm tính: <b>${formatVND(subtotal)}</b></div>${!isSupplier ? `<div>VAT ${order.thueVat}%: <b>${formatVND(vat)}</b></div><div class="total">Tổng thanh toán: ${formatVND(subtotal + vat)}</div>` : `<div class="total">Tổng giá trị đặt hàng: ${formatVND(subtotal)}</div>`}</div><div class="box note"><b>Ghi chú:</b> ${safe(order.ghiChu || "Không có ghi chú thêm.")}</div><div class="signatures"><div><b>${isSupplier ? "ĐẠI DIỆN MIMIN ĐẶT HÀNG" : "ĐẠI DIỆN MIMIN"}</b><p class="muted">Ký và ghi rõ họ tên</p></div><div><b>${isSupplier ? "XÁC NHẬN CỦA NHÀ CUNG CẤP" : "XÁC NHẬN CỦA KHÁCH HÀNG"}</b><p class="muted">Ký và ghi rõ họ tên</p></div></div><script>window.onload=()=>window.print()</script></body></html>`
+    );
     popup.document.close();
-    const headerMeta = popup.document.querySelector<HTMLElement>("header .right");
-    if (headerMeta) {
-      headerMeta.innerHTML = `<div><b>Người tạo:</b> ${safe(order.nguoiTao || "Nhân viên MIMIN")}</div><div><b>Ngày bắt đầu:</b> ${safe(order.ngayDat)}</div><div><b>Ngày kết thúc:</b> ${safe(order.ngayGiao)}</div>`;
-    }
-    const contactBox = popup.document.querySelector<HTMLElement>(".box");
-    if (contactBox) {
-      const contactCode = isSupplier ? order.maNcc : order.maKhachHang;
-      const contactAddress = isSupplier ? supplier?.dia_chi || "" : customer?.diaChi || order.diaChiGiao;
-      contactBox.insertAdjacentHTML("beforeend", `<div class="muted">Mã: ${safe(contactCode)}</div>${contactAddress ? `<div class="muted">Địa chỉ: ${safe(contactAddress)}</div>` : ""}`);
-    }
-    const printedRows = popup.document.querySelectorAll<HTMLTableRowElement>("tbody tr");
-    printItems.forEach((item, index) => {
-      if (!item.hinhAnh) return;
-      const firstCell = printedRows[index]?.querySelector<HTMLTableCellElement>("td");
-      if (!firstCell) return;
-      const image = popup.document.createElement("img");
-      image.src = item.hinhAnh;
-      image.alt = `Mẫu ${item.tenVatTu}`;
-      image.style.cssText = "display:block;width:150px;height:100px;object-fit:cover;border-radius:8px;margin-top:8px;border:1px solid #cbd5e1";
-      firstCell.appendChild(image);
-    });
     window.setTimeout(() => frame.remove(), 60_000);
-    if (isSupplier) toast.success(`Đã chuyển ${order.maPhieu} sang trạng thái Đã gửi NCC`);
+    if (isSupplier) toast.success(`Đã chuyển phiếu ${order.maPhieu} sang trạng thái Đã gửi NCC`);
   };
 
   const handleEdit = (order: PhieuDatNccPhuLieu) => {
@@ -326,127 +729,745 @@ export default function PhieuDatNccPhuLieuPage() {
       ghiChu: order.ghiChu?.replace(/\[(Đặt cho MIMIN|Đặt theo đơn khách)\] /, "") || "",
       giaoThangKhach: order.giaoThangKhach || false,
     });
-    setOrderItems(order.items || [{
-      id: crypto.randomUUID(),
-      maVatTu: order.maVatTu,
-      tenVatTu: order.tenVatTu,
-      mauSac: order.mauSac,
-      quyCach: order.quyCach,
-      donVi: order.donVi,
-      soLuong: order.soLuong,
-      donGiaMua: order.donGiaMua,
-      donGiaBan: order.donGiaBan,
-      hinhAnh: order.hinhAnh?.[0]?.dataUrl || "",
-    }]);
+    setOrderItems(
+      order.items || [
+        {
+          id: crypto.randomUUID(),
+          maVatTu: order.maVatTu,
+          tenVatTu: order.tenVatTu,
+          mauSac: order.mauSac,
+          quyCach: order.quyCach,
+          donVi: order.donVi,
+          soLuong: order.soLuong,
+          donGiaMua: order.donGiaMua,
+          donGiaBan: order.donGiaBan,
+          hinhAnh: order.hinhAnh?.[0]?.dataUrl || "",
+        },
+      ]
+    );
     setFiles(order.hinhAnh || []);
   };
 
-  return <div data-order-purpose={orderPurpose} className="min-h-[calc(100vh-7rem)] space-y-4 animate-fade-in">
-    <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-slate-900">
-      <button type="button" onClick={() => setActiveTab("create")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "create" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><Plus className="h-4 w-4" /> Tạo đơn đặt</button>
-      <button type="button" onClick={() => setActiveTab("list")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "list" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><List className="h-4 w-4" /> Danh sách đơn hàng</button>
-      <button type="button" onClick={() => setActiveTab("progress")} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${activeTab === "progress" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}><ListChecks className="h-4 w-4" /> Theo dõi tiến độ</button>
-    </div>
-    {activeTab === "list" ? <DanhSachDonHang user={user} onEdit={handleEdit} /> : activeTab === "progress" ? <TheoDoiTienDo user={user} /> : <>
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-slate-900">
-      <header className="bg-gradient-to-r from-cyan-600 via-cyan-700 to-cyan-800 px-4 py-5 text-white md:px-7 md:py-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="flex gap-3"><div className="h-fit rounded-2xl bg-white/10 p-3"><ShoppingBag className="h-7 w-7 text-cyan-200" /></div><div><div className="text-xs font-bold text-cyan-200">PHIẾU ĐẶT NHÀ CUNG CẤP · NHÁP</div><h1 className="text-2xl font-bold md:text-3xl">Đặt dệt phụ liệu & vật tư</h1><p className="mt-1 text-sm text-cyan-50">Chọn hình mẫu, đặt nhà dệt và tính lợi nhuận trên cùng một phiếu.</p></div></div><div className="flex gap-2"><button onClick={() => setShowCustom(true)} className="btn-secondary border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="h-4 w-4" /> Vật tư khác</button><button onClick={saveDraft} className="btn-primary bg-white text-cyan-700 hover:bg-cyan-50"><Save className="h-4 w-4" /> Lưu phiếu</button></div></div>
-      </header>
-      <div className="border-b border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900 md:px-7">
-        <div className="grid max-w-3xl gap-2 rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800 sm:grid-cols-2">
-          <button type="button" onClick={() => switchPurpose("customer")} className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "customer" ? "border-blue-600 bg-blue-600 text-white shadow-md" : "border-transparent bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}><b className="block text-sm">Đặt theo đơn khách/xưởng</b><span className={`text-xs ${orderPurpose === "customer" ? "text-blue-100" : "text-slate-500"}`}>Có giá mua, giá bán và lợi nhuận</span></button>
-          <button type="button" onClick={() => switchPurpose("internal")} className={`rounded-xl border px-4 py-3 text-left transition ${orderPurpose === "internal" ? "border-emerald-600 bg-emerald-600 text-white shadow-md" : "border-transparent bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300"}`}><b className="block text-sm">Đặt cho công ty MIMIN</b><span className={`text-xs ${orderPurpose === "internal" ? "text-emerald-100" : "text-slate-500"}`}>Chỉ giá mua, nhận hàng vào Kho phụ liệu</span></button>
+  return (
+    <div data-order-purpose={orderPurpose} className="min-h-[calc(100vh-7rem)] space-y-4 animate-fade-in">
+      {/* ============================================================== */}
+      {/* 1. TOP TABS NAVIGATION CHUYÊN NGHIỆP                           */}
+      {/* ============================================================== */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 dark:border-slate-800 dark:bg-slate-900 shadow-xs w-full sm:w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab("create")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${
+              activeTab === "create"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+            }`}
+          >
+            <Plus className="h-4 w-4" /> Tạo Đơn Đặt NCC
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("list")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${
+              activeTab === "list"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+            }`}
+          >
+            <List className="h-4 w-4" /> Danh Sách Đơn Hàng
+            <span
+              className={`ml-1 text-[11px] font-bold px-1.5 py-0.2 rounded-full ${
+                activeTab === "list" ? "bg-white/25 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+              }`}
+            >
+              {orders.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("progress")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs md:text-sm font-semibold transition ${
+              activeTab === "progress"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/60"
+            }`}
+          >
+            <ListChecks className="h-4 w-4" /> Theo Dõi Tiến Độ
+          </button>
         </div>
-      </div>
-      <div className={`grid border-b border-slate-200 dark:border-white/10 ${orderPurpose === "internal" ? "xl:grid-cols-[1fr_2fr]" : "xl:grid-cols-[1.2fr_1.35fr_0.9fr]"}`}>
-        <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0 xl:border-r">
-          <Title icon={Package} text={orderPurpose === "customer" ? "1. Chọn mẫu sản xuất" : "1. Chọn vật tư Kho phụ liệu"} sub={orderPurpose === "customer" ? "Danh mục mẫu đặt theo đơn khách" : "Danh mục Kho phụ liệu hiện tại của MIMIN"} />
-          <div className="relative mt-4"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="input pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm mã mẫu, tên hoặc màu..." /></div>
-          {filtered.length === 0 ? <div className="mt-3 rounded-2xl border border-dashed p-6 text-center"><Package className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-sm font-semibold">Chưa có mẫu vật tư sản xuất</p><div className="mt-3 flex flex-col justify-center gap-2 sm:flex-row"><button onClick={importWarehouseTemplates} className="btn-primary"><Package className="h-4 w-4" /> Sao chép mẫu từ Kho phụ liệu</button><button onClick={() => setShowCustom(true)} className="btn-secondary"><Plus className="h-4 w-4" /> Tạo mẫu mới</button></div><p className="mt-2 text-[11px] text-slate-500">Chỉ sao chép thông tin mẫu và giá tham khảo, không cộng tồn kho.</p></div> : <div className="mt-3 grid max-h-[560px] overflow-y-auto pr-1 grid-cols-1 gap-2">{filtered.map((item) => <button key={item.id} onClick={() => selectMaterial(item)} className={`relative flex items-center gap-3 overflow-hidden rounded-xl border bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${item.id === selected?.id ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-white/10"}`}><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenMau} className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-slate-400" />}</div><div className="min-w-0 flex-1"><div className="text-xs font-bold text-emerald-700">{item.maMau}</div><div className="line-clamp-2 min-h-0 text-sm font-semibold">{item.tenMau}</div><div className="mt-1 text-xs text-slate-500">{item.mauSac} · {item.donVi}</div></div>{item.id === selected?.id && <span className="absolute right-2 top-2 rounded-full bg-emerald-500 p-1 text-white shadow"><Check className="h-3.5 w-3.5" /></span>}</button>)}</div>}
-          <div className="mt-4 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-950 p-4 text-white shadow-lg border border-emerald-900/50"><div className="text-xs text-emerald-300">ĐÃ CHỌN</div>{selected ? <><div className="font-bold">{selected.tenMau}</div><div className="mt-1 text-xs text-emerald-100/70">{selected.maMau} · {selected.mauSac}</div></> : <div className="mt-1 text-sm text-emerald-100/50">Chưa chọn mẫu</div>}</div>
-        </section>
 
-        {orderPurpose === "internal" ? (
-          <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0">
-            <Title icon={UserRound} text="2. Thông tin & Chi phí đặt hàng" sub="MIMIN → nhà cung cấp → nhập kho" />
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Mã phiếu"><input className="input" value={form.maPhieu} onChange={(e) => update("maPhieu", e.target.value)} /></Field>
-              <Field label="Nhà cung cấp dệt" required><select className="input" value={form.maNcc} onChange={(e) => update("maNcc", e.target.value)}><option value="">-- Chọn nhà cung cấp --</option>{nccList.map((ncc) => <option key={ncc.ma_ncc} value={ncc.ma_ncc}>{ncc.ma_ncc} · {ncc.ten_ncc}</option>)}</select></Field>
-              <Field label={`Số lượng (${selected?.donVi || "đơn vị"})`} required><input type="number" min="1" className="input" value={form.soLuong} onChange={(e) => update("soLuong", e.target.value)} /></Field>
-              <Field label="Ngày đặt"><input type="date" className="input" value={form.ngayDat} onChange={(e) => update("ngayDat", e.target.value)} /></Field>
-              <Field label="Hạn giao"><input type="date" className="input" value={form.ngayGiao} onChange={(e) => update("ngayGiao", e.target.value)} /></Field>
-              <Money label="Đơn giá mua NCC" value={form.donGiaMua} onChange={(v) => update("donGiaMua", v)} />
-              <Money label="Phí vận chuyển mình chịu" value={form.phiVanChuyen} onChange={(v) => update("phiVanChuyen", v)} />
-              <Money label="Chi phí khác" value={form.chiPhiKhac} onChange={(v) => update("chiPhiKhac", v)} />
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Quy cách dệt"><textarea className="input min-h-20" value={form.quyCach} onChange={(e) => update("quyCach", e.target.value)} placeholder="Chiều cao bo, số sọc, độ co giãn, thành phần sợi..." /></Field>
-              <Field label="Ghi chú nội bộ"><textarea className="input min-h-20" value={form.ghiChu} onChange={(e) => update("ghiChu", e.target.value)} /></Field>
-            </div>
-            <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 dark:bg-emerald-950/10"><ImageUploader files={files} onChange={setFiles} category="Ảnh mẫu vật tư" accept="image/*" label="Hình mẫu gửi nhà dệt" hint="Ảnh bo cổ, phối màu hoặc thông số kỹ thuật." /></div>
-            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl bg-gradient-to-br from-emerald-800 to-teal-950 p-4 text-white shadow-xl border border-emerald-900/50">
-              <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-                <div><div className="text-slate-400">Tiền mua NCC</div><div className="text-xl font-bold">{formatVND(totals.tienMua)}</div></div>
-                <div><div className="text-slate-400">Tổng giá vốn</div><div className="text-xl font-bold text-emerald-400">{formatVND(totals.giaVon)}</div></div>
-              </div>
-              <button onClick={saveDraft} className="btn-primary min-w-[200px] justify-center py-3 text-center"><Save className="mr-2 h-4 w-4 inline" /> Lưu phiếu đặt NCC</button>
-            </div>
-          </section>
-        ) : (
-          <>
-            <section className="border-b p-4 dark:border-white/10 md:p-6 xl:border-b-0 xl:border-r"><Title icon={UserRound} text="2. Thông tin đặt hàng" sub="Khách đặt → MIMIN → nhà dệt" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Mã phiếu"><input className="input" value={form.maPhieu} onChange={(e) => update("maPhieu", e.target.value)} /></Field><Field label="Khách hàng / xưởng may" required><SearchableCustomerSelect value={form.maKhachHang} onChange={(val, kh) => { update("maKhachHang", val); if (kh?.diaChi) update("diaChiGiao", kh.diaChi); }} customers={khachHangList} placeholder="-- Tìm tên khách hàng, số điện thoại hoặc mã KH --" /></Field><Field label="Nhà cung cấp dệt" required><select className="input" value={form.maNcc} onChange={(e) => update("maNcc", e.target.value)}><option value="">-- Chọn nhà cung cấp --</option>{nccList.map((ncc) => <option key={ncc.ma_ncc} value={ncc.ma_ncc}>{ncc.ma_ncc} · {ncc.ten_ncc}</option>)}</select></Field><Field label={`Số lượng (${selected?.donVi || "đơn vị"})`} required><input type="number" min="1" className="input" value={form.soLuong} onChange={(e) => update("soLuong", e.target.value)} /></Field><Field label="Ngày đặt"><input type="date" className="input" value={form.ngayDat} onChange={(e) => update("ngayDat", e.target.value)} /></Field><Field label="Hạn giao"><input type="date" className="input" value={form.ngayGiao} onChange={(e) => update("ngayGiao", e.target.value)} /></Field></div><div className="mt-4"><Field label="Quy cách dệt"><textarea className="input min-h-20" value={form.quyCach} onChange={(e) => update("quyCach", e.target.value)} placeholder="Chiều cao bo, số sọc, độ co giãn, thành phần sợi..." /></Field></div><div className="mt-4 rounded-2xl border p-4 dark:border-white/10"><label className="flex gap-3"><input type="checkbox" checked={form.giaoThangKhach} onChange={(e) => update("giaoThangKhach", e.target.checked)} className="mt-0.5 h-5 w-5" /><span><b className="flex items-center gap-1 text-sm"><Truck className="h-4 w-4 text-emerald-600" /> NCC giao thẳng cho khách</b><small className="text-slate-500">Không nhập tồn kho MIMIN, vẫn ghi mua bán và công nợ.</small></span></label><div className="mt-3"><Field label="Địa chỉ giao"><input className="input" value={form.diaChiGiao} onChange={(e) => update("diaChiGiao", e.target.value)} placeholder="Địa chỉ xưởng nhận hàng" /></Field></div></div><div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 dark:bg-emerald-950/10"><ImageUploader files={files} onChange={setFiles} category="Ảnh mẫu vật tư" accept="image/*" label="Hình mẫu gửi nhà dệt" hint="Ảnh bo cổ, phối màu hoặc thông số kỹ thuật." /></div></section>
-            <aside className="bg-slate-50/80 p-4 dark:bg-slate-950/40 md:p-6"><Title icon={Calculator} text="3. Giá & lợi nhuận" sub="Tự động tính theo số lượng" /><div className="mt-4 space-y-3"><Money label="Đơn giá mua NCC" value={form.donGiaMua} onChange={(v) => update("donGiaMua", v)} /><Money label="Đơn giá bán khách" value={form.donGiaBan} onChange={(v) => update("donGiaBan", v)} accent /><Money label="Phí vận chuyển mình chịu" value={form.phiVanChuyen} onChange={(v) => update("phiVanChuyen", v)} /><Money label="Chi phí khác" value={form.chiPhiKhac} onChange={(v) => update("chiPhiKhac", v)} /><Field label="VAT đầu ra"><select className="input" value={form.thueVat} onChange={(e) => update("thueVat", e.target.value)}>{[0, 5, 8, 10].map((v) => <option key={v} value={v}>{v}%</option>)}</select></Field></div><div className="mt-5 overflow-hidden rounded-3xl bg-gradient-to-b from-emerald-900 to-teal-950 text-white shadow-xl border border-emerald-900/50"><div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4"><div className="text-xs font-bold">LỢI NHUẬN DỰ KIẾN</div><div className="mt-1 text-3xl font-black">{formatVND(totals.loiNhuan)}</div><div className="text-sm text-emerald-100">Biên lợi nhuận {totals.bienLoiNhuan.toFixed(1)}%</div></div><div className="space-y-2.5 p-4 text-sm"><Row label="Tiền mua NCC" value={totals.tienMua} /><Row label="Tổng giá vốn" value={totals.giaVon} /><Row label="Doanh thu trước VAT" value={totals.doanhThu} /><Row label="VAT đầu ra" value={totals.vatDauRa} /><div className="border-t border-white/10" /><Row label="Tổng hóa đơn khách" value={totals.tongHoaDon} strong /></div></div><div className="mt-4"><Field label="Ghi chú nội bộ"><textarea className="input min-h-20" value={form.ghiChu} onChange={(e) => update("ghiChu", e.target.value)} /></Field></div><button onClick={saveDraft} className="btn-primary mt-5 flex w-full justify-center py-3"><Save className="h-4 w-4" /> Lưu phiếu đặt NCC</button></aside>
-          </>
+        {activeTab === "create" && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCustom(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition"
+            >
+              <Plus className="h-4 w-4 text-emerald-600" /> Thêm Mẫu Mới
+            </button>
+            <button
+              onClick={saveDraft}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition"
+            >
+              <Save className="h-4 w-4" /> Lưu Phiếu Đặt
+            </button>
+          </div>
         )}
       </div>
 
-      <section className="order-items-table p-4 md:px-7 md:py-5">
-        <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="font-bold">Danh sách vật tư trong đơn</h2><p className="text-xs text-slate-500">{orderPurpose === "customer" ? "Bấm mẫu bên dưới để thêm nhiều vật tư; mỗi dòng có giá mua và giá bán riêng." : "Bấm vật tư Kho phụ liệu bên dưới để thêm vào phiếu; mỗi dòng chỉ có giá mua NCC."}</p></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{orderItems.length} vật tư</span></div>
-        {orderItems.length === 0 ? <div className="rounded-xl border border-dashed p-5 text-center text-sm text-slate-500">Chưa chọn vật tư nào.</div> : <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10"><table className="w-full min-w-[880px] text-sm"><thead className="bg-slate-50 text-left text-xs text-slate-500 dark:bg-white/5"><tr><th className="p-3">Vật tư/phụ liệu</th><th className="p-3">Số lượng</th><th className="p-3">Đơn giá mua NCC</th>{orderPurpose === "customer" && <th className="p-3">Đơn giá bán khách</th>}{orderPurpose === "customer" && <th className="p-3 text-right">Lợi nhuận</th>}<th className="w-12 p-3" /></tr></thead><tbody>{orderItems.map((item) => <tr key={item.id} className="border-t border-slate-100 dark:border-white/10"><td className="p-3"><button type="button" onClick={() => { const material = materials.find((entry) => entry.maMau === item.maVatTu); if (material) selectMaterial(material); }} className="flex items-center gap-2 text-left">{item.hinhAnh ? <img src={item.hinhAnh} alt={item.tenVatTu} className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 object-cover dark:border-white/10" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800"><ImageIcon className="h-5 w-5 text-slate-400" /></span>}<span><b className="block text-emerald-700">{item.maVatTu}</b><span className="font-semibold">{item.tenVatTu}</span><small className="block text-slate-500">{item.mauSac} · {item.donVi}</small></span></button></td><td className="p-3"><input type="number" min="1" className="input w-28" value={item.soLuong} onChange={(e) => updateLine(item.id, "soLuong", e.target.value)} /></td><td className="p-3"><input type="number" min="0" className="input w-36 font-semibold" value={item.donGiaMua} onChange={(e) => updateLine(item.id, "donGiaMua", e.target.value)} /></td>{orderPurpose === "customer" && <td className="p-3"><input type="number" min="0" className="input w-36 border-emerald-300 bg-emerald-50 font-semibold dark:bg-emerald-950/20" value={item.donGiaBan} onChange={(e) => updateLine(item.id, "donGiaBan", e.target.value)} /></td>}{orderPurpose === "customer" && <td className={`p-3 text-right font-bold ${item.soLuong * (item.donGiaBan - item.donGiaMua) >= 0 ? "text-emerald-700" : "text-rose-600"}`}>{formatVND(item.soLuong * (item.donGiaBan - item.donGiaMua))}</td>}<td className="p-3"><button type="button" onClick={() => removeLine(item.id)} className="rounded-lg p-2 text-rose-600 hover:bg-rose-50" title="Xóa vật tư"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>}
-      </section>
+      {activeTab === "list" ? (
+        <DanhSachDonHang user={user} onEdit={handleEdit} />
+      ) : activeTab === "progress" ? (
+        <TheoDoiTienDo user={user} />
+      ) : (
+        <>
+          {/* ============================================================== */}
+          {/* 2. CARD HEADER MÀU XANH LÁ SÁNG HƠN (THEO YÊU CẦU ANH SANG)     */}
+          {/* ============================================================== */}
+          <section className="overflow-hidden rounded-3xl border border-emerald-500/40 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <header className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 border-b border-emerald-500/40 px-5 py-5 text-white md:px-7 md:py-6 shadow-md">
+              <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-fit rounded-2xl bg-white/20 border border-white/30 p-3 text-white shadow-inner">
+                    <ShoppingBag className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-0.5 rounded-full bg-white/20 text-white border border-white/30 uppercase tracking-wider mb-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-200 animate-pulse" />
+                      PHIẾU ĐẶT NHÀ CUNG CẤP · SẢN XUẤT VẬT TƯ & DỆT
+                    </div>
+                    <h1 className="text-2xl font-black md:text-3xl tracking-tight text-white drop-shadow-xs">
+                      Đặt Dệt Phụ Liệu & Cung Ứng Vật Tư
+                    </h1>
+                    <p className="mt-1 text-xs md:text-sm text-emerald-50/90 max-w-2xl">
+                      Cập nhật toàn bộ danh mục từ Kho phụ liệu, Bo cổ, Nút, Phụ liệu và Kho vải thành phẩm. Đối soát
+                      chính xác giá mua NCC, giá bán khách và lợi nhuận trên từng phiếu.
+                    </p>
+                  </div>
+                </div>
 
-      <div className="grid gap-3 border-t border-slate-200 bg-emerald-50/60 p-4 dark:border-white/10 dark:bg-emerald-950/20 md:grid-cols-2 md:px-7">
-        <button type="button" onClick={() => printOrder("ncc")} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"><Send className="h-5 w-5" /> In phiếu đặt sản xuất gửi NCC</button>
-        {orderPurpose === "customer" ? <button type="button" onClick={() => printOrder("customer")} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><Printer className="h-5 w-5" /> In phiếu bán hàng gửi khách/xưởng</button> : <div className="flex min-h-12 items-center justify-center rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 dark:bg-slate-900">Hàng hoàn thành sẽ nhập Kho phụ liệu MIMIN</div>}
-      </div>
-    </section>
-    {orderPurpose === "customer" ? <div className="grid gap-3 md:grid-cols-3"><Flow icon={UserRound} title="Khách hàng đặt" detail="Chốt mẫu, số lượng và giá bán" /><Flow icon={Building2} title="Nhà dệt sản xuất" detail="Nhận mẫu và giá mua từ phiếu" /><Flow icon={Truck} title="Giao hàng & hóa đơn" detail="Chốt số đạt và công nợ" /></div> : <div className="grid gap-3 md:grid-cols-3"><Flow icon={Package} title="Chọn hàng trong kho" detail="Dùng danh mục Kho phụ liệu hiện tại" /><Flow icon={Building2} title="Đặt nhà cung cấp" detail="Phiếu chỉ hiển thị giá mua NCC" /><Flow icon={Truck} title="Nhập kho MIMIN" detail="Nhận hàng về Kho phụ liệu công ty" /></div>}
-    </>}
-    <CrudModal open={showCustom} onClose={() => setShowCustom(false)} title="Tạo nhanh mẫu vật tư sản xuất" fields={customFields} onSubmit={addCustom} submitLabel="Lưu vào danh mục và chọn" onImageUpload={(file) => uploadProductFile(file, "vat-tu-dat-san-xuat")} />
-  </div>;
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => printOrder(orderPurpose === "internal" ? "ncc" : "customer")}
+                    className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-semibold shadow-xs transition backdrop-blur-md"
+                  >
+                    <Printer className="h-4 w-4" /> In Phiếu
+                  </button>
+                  <button
+                    onClick={saveDraft}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-bold shadow-md transition active:scale-95"
+                  >
+                    <Save className="h-4 w-4 text-emerald-700" /> Lưu Phiếu Nháp
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Chọn mục đích đặt hàng: Khách hàng / Nội bộ */}
+            <div className="border-b border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/60 md:px-7">
+              <div className="grid max-w-2xl gap-2 rounded-2xl bg-slate-200/70 p-1.5 dark:bg-slate-800 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => switchPurpose("customer")}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    orderPurpose === "customer"
+                      ? "border-emerald-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-emerald-500/20"
+                      : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  }`}
+                >
+                  <b className="block text-xs md:text-sm text-emerald-700 dark:text-emerald-400">
+                    Đặt theo đơn khách / xưởng may
+                  </b>
+                  <span className="text-[11px] text-slate-500 font-normal mt-0.5 block">
+                    Đầy đủ giá mua NCC, giá bán khách, tính lợi nhuận & xuất hóa đơn.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchPurpose("internal")}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    orderPurpose === "internal"
+                      ? "border-emerald-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold ring-2 ring-emerald-500/20"
+                      : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  }`}
+                >
+                  <b className="block text-xs md:text-sm text-emerald-700 dark:text-emerald-400">
+                    Đặt cho công ty MIMIN (Nội bộ)
+                  </b>
+                  <span className="text-[11px] text-slate-500 font-normal mt-0.5 block">
+                    Chỉ tính giá vốn mua từ NCC, tự động nhập tồn kho MIMIN sau khi giao.
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Khối chính 2 cột: Cột 1 chọn vật tư (Full Bo cổ, Nút, Phụ liệu, Kho vải) | Cột 2 thông tin đơn & chi phí */}
+            <div
+              className={`grid border-b border-slate-200/80 dark:border-slate-800 ${
+                orderPurpose === "internal" ? "xl:grid-cols-[1.1fr_1.9fr]" : "xl:grid-cols-[1.1fr_1.9fr]"
+              }`}
+            >
+              {/* ============================================================== */}
+              {/* CỘT 1: CHỌN VẬT TƯ ĐA DẠNG: KHO PHỤ LIỆU, NÚT, BO CỔ, KHO VẢI    */}
+              {/* ============================================================== */}
+              <section className="border-b p-4 dark:border-slate-800 md:p-6 xl:border-b-0 xl:border-r bg-slate-50/30 dark:bg-slate-900/30">
+                <div className="flex items-center justify-between mb-2">
+                  <Title
+                    icon={Package}
+                    text="1. Chọn Vật Tư / Kho Vải"
+                    sub="Toàn bộ danh mục Bo cổ, Nút, Phụ liệu & Kho vải"
+                  />
+                  <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {filtered.length} mẫu
+                  </span>
+                </div>
+
+                {/* Thanh Tabs phân loại danh mục nhanh theo yêu cầu anh Sang */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
+                  {[
+                    { id: "all", label: "Tất cả", icon: Layers },
+                    { id: "bo_co", label: "Bo cổ", icon: Sparkles },
+                    { id: "nut", label: "Nút", icon: CircleDot },
+                    { id: "phu_lieu", label: "Phụ liệu", icon: Box },
+                    { id: "kho_vai", label: "Kho vải", icon: Scissors },
+                  ].map((tab) => {
+                    const active = categoryFilter === tab.id;
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setCategoryFilter(tab.id as MaterialCategory)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                          active
+                            ? "bg-emerald-600 text-white shadow-xs"
+                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-750"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Ô tìm kiếm thông minh */}
+                <div className="relative mt-2.5">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <input
+                    className="input pl-9 text-xs sm:text-sm bg-white dark:bg-slate-800"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Tìm theo mã (BO-..., NUT-..., VAI-...), tên hoặc màu sắc..."
+                  />
+                </div>
+
+                {/* Danh sách vật tư dạng card cuộn */}
+                <div className="mt-3 grid max-h-[520px] overflow-y-auto pr-1 grid-cols-1 gap-2 no-scrollbar">
+                  {filtered.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700 bg-white dark:bg-slate-800">
+                      <Package className="mx-auto h-8 w-8 text-slate-300" />
+                      <p className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Không tìm thấy vật tư phù hợp với từ khóa
+                      </p>
+                    </div>
+                  ) : (
+                    filtered.map((item) => {
+                      const isSelected = item.id === selected?.id;
+                      const inOrder = orderItems.some((line) => line.maVatTu === item.maMau);
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => selectMaterial(item)}
+                          className={`relative flex items-center gap-3 overflow-hidden rounded-xl border p-2.5 text-left transition cursor-pointer ${
+                            isSelected
+                              ? "border-emerald-600 bg-emerald-50/40 dark:bg-emerald-950/20 ring-2 ring-emerald-500/20"
+                              : inOrder
+                              ? "border-teal-500/80 bg-white dark:bg-slate-900 shadow-2xs"
+                              : "border-slate-200/90 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 shadow-2xs"
+                          }`}
+                        >
+                          {/* Thumbnail hình ảnh swatch */}
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            {item.hinhAnh ? (
+                              <img
+                                src={item.hinhAnh}
+                                alt={item.tenMau}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  // Fallback nếu ảnh hỏng
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <ImageIcon className="h-6 w-6 text-slate-400" />
+                            )}
+                          </div>
+
+                          {/* Thông tin vật tư */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                {item.maMau}
+                              </span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                {item.category === "bo_co"
+                                  ? "Bo cổ"
+                                  : item.category === "nut"
+                                  ? "Nút"
+                                  : item.category === "kho_vai"
+                                  ? "Vải"
+                                  : "Phụ liệu"}
+                              </span>
+                            </div>
+                            <div className="line-clamp-1 text-xs font-semibold text-slate-900 dark:text-white mt-0.5">
+                              {item.tenMau}
+                            </div>
+                            <div className="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+                              <span>
+                                {item.mauSac ? `Màu: ${item.mauSac} · ` : ""}
+                                {item.donVi}
+                              </span>
+                              <span className="font-bold font-mono text-slate-700 dark:text-slate-300">
+                                {formatVND(item.giaMuaThamKhao)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Dấu check đang chọn */}
+                          {isSelected && (
+                            <span className="absolute right-2 top-2 rounded-full bg-emerald-600 p-1 text-white shadow-xs">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Thẻ Mẫu Đang Chọn - Thiết kế chuẩn ERP xanh lá sáng */}
+                <div className="mt-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300/80 dark:border-emerald-800/60 p-3.5 text-slate-900 dark:text-white shadow-2xs">
+                  <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Mẫu đang thao tác</span>
+                    {selected && (
+                      <span className="text-[10px] font-mono font-semibold bg-emerald-600 text-white px-2 py-0.2 rounded-full">
+                        {selected.donVi}
+                      </span>
+                    )}
+                  </div>
+                  {selected ? (
+                    <div>
+                      <div className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
+                        {selected.tenMau}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400 font-mono flex items-center gap-2">
+                        <span>Mã: <b>{selected.maMau}</b></span>
+                        {selected.mauSac && <span>· Màu: <b>{selected.mauSac}</b></span>}
+                        <span>· Giá tham khảo: <b>{formatVND(selected.giaMuaThamKhao)}</b></span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      Bấm vào một vật tư phía trên để nạp thông tin vào đơn đặt
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* ============================================================== */}
+              {/* CỘT 2: THÔNG TIN ĐƠN ĐẶT HÀNG & BẢNG KÊ CHI PHÍ                */}
+              {/* ============================================================== */}
+              <section className="p-4 md:p-6 space-y-4">
+                <Title
+                  icon={UserRound}
+                  text="2. Thông Tin & Chi Phí Đặt Hàng"
+                  sub={
+                    orderPurpose === "internal"
+                      ? "MIMIN → Nhà cung cấp → Nhập kho phụ liệu nội bộ"
+                      : "Khách hàng đặt → MIMIN điều phối → Nhà cung cấp dệt/sản xuất"
+                  }
+                />
+
+                {/* Form nhập thông tin đơn */}
+                <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Mã phiếu đặt (PO)">
+                    <input
+                      className="input font-mono font-bold text-emerald-700 dark:text-emerald-400"
+                      value={form.maPhieu}
+                      onChange={(e) => update("maPhieu", e.target.value)}
+                    />
+                  </Field>
+
+                  {orderPurpose === "customer" && (
+                    <Field label="Khách hàng / Xưởng may" required>
+                      <SearchableCustomerSelect
+                        value={form.maKhachHang}
+                        onChange={(val, kh) => {
+                          update("maKhachHang", val);
+                          if (kh?.diaChi) update("diaChiGiao", kh.diaChi);
+                        }}
+                        customers={khachHangList}
+                        placeholder="-- Tìm khách hàng, SĐT hoặc mã KH --"
+                      />
+                    </Field>
+                  )}
+
+                  <Field label="Nhà cung cấp dệt / vật tư" required>
+                    <select
+                      className="input font-semibold"
+                      value={form.maNcc}
+                      onChange={(e) => update("maNcc", e.target.value)}
+                    >
+                      <option value="">-- Chọn nhà cung cấp --</option>
+                      {nccList.map((ncc) => (
+                        <option key={ncc.ma_ncc} value={ncc.ma_ncc}>
+                          {ncc.ma_ncc} · {ncc.ten_ncc} {ncc.sdt ? `(${ncc.sdt})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label={`Số lượng đặt (${selected?.donVi || "đơn vị"})`} required>
+                    <input
+                      type="number"
+                      min="1"
+                      className="input font-bold"
+                      value={form.soLuong}
+                      onChange={(e) => update("soLuong", e.target.value)}
+                    />
+                  </Field>
+
+                  <Field label="Ngày đặt hàng">
+                    <input
+                      type="date"
+                      className="input"
+                      value={form.ngayDat}
+                      onChange={(e) => update("ngayDat", e.target.value)}
+                    />
+                  </Field>
+
+                  <Field label="Hạn giao hàng">
+                    <input
+                      type="date"
+                      className="input"
+                      value={form.ngayGiao}
+                      onChange={(e) => update("ngayGiao", e.target.value)}
+                    />
+                  </Field>
+
+                  <Money
+                    label="Đơn giá mua từ NCC"
+                    value={form.donGiaMua}
+                    onChange={(v) => update("donGiaMua", v)}
+                  />
+
+                  {orderPurpose === "customer" && (
+                    <Money
+                      label="Đơn giá bán cho khách"
+                      value={form.donGiaBan}
+                      onChange={(v) => update("donGiaBan", v)}
+                      accent
+                    />
+                  )}
+
+                  <Money
+                    label="Phí vận chuyển mình chịu"
+                    value={form.phiVanChuyen}
+                    onChange={(v) => update("phiVanChuyen", v)}
+                  />
+
+                  <Money
+                    label="Chi phí khác (nếu có)"
+                    value={form.chiPhiKhac}
+                    onChange={(v) => update("chiPhiKhac", v)}
+                  />
+
+                  {orderPurpose === "customer" && (
+                    <Field label="Thuế VAT (%)">
+                      <select
+                        className="input"
+                        value={form.thueVat}
+                        onChange={(e) => update("thueVat", e.target.value)}
+                      >
+                        <option value="0">0% (Không xuất hóa đơn)</option>
+                        <option value="8">8% (Thuế suất ưu đãi)</option>
+                        <option value="10">10% (Thuế suất tiêu chuẩn)</option>
+                      </select>
+                    </Field>
+                  )}
+                </div>
+
+                {/* Bảng danh sách vật tư đã đưa vào đơn hàng này */}
+                {orderItems.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Package className="h-4 w-4 text-emerald-600" />
+                        Danh sách các mặt hàng trong đơn ({orderItems.length})
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Chạm vào danh sách bên trái để thêm mặt hàng khác
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-50/50 dark:bg-slate-800/40 text-slate-500 text-left border-b border-slate-100 dark:border-slate-800">
+                          <tr>
+                            <th className="p-2.5">Vật tư / Mẫu</th>
+                            <th className="p-2.5">Màu / Quy cách</th>
+                            <th className="p-2.5 text-center w-24">Số lượng</th>
+                            <th className="p-2.5 text-right w-28">Giá mua NCC</th>
+                            {orderPurpose === "customer" && (
+                              <th className="p-2.5 text-right w-28">Giá bán khách</th>
+                            )}
+                            <th className="p-2.5 text-right w-32">Thành tiền mua</th>
+                            <th className="p-2.5 text-center w-12">Xóa</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {orderItems.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                              <td className="p-2.5">
+                                <div className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                                  {item.maVatTu}
+                                </div>
+                                <div className="font-medium text-slate-800 dark:text-slate-200">
+                                  {item.tenVatTu}
+                                </div>
+                              </td>
+                              <td className="p-2.5 text-slate-600 dark:text-slate-400">
+                                <div>{item.mauSac || "—"}</div>
+                                <div className="text-[11px] opacity-75">{item.donVi}</div>
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  className="w-20 text-center font-bold p-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                                  value={item.soLuong}
+                                  onChange={(e) => updateLine(item.id, "soLuong", e.target.value)}
+                                />
+                              </td>
+                              <td className="p-2.5 text-right font-mono font-semibold">
+                                {formatVND(item.donGiaMua)}
+                              </td>
+                              {orderPurpose === "customer" && (
+                                <td className="p-2.5 text-right font-mono font-bold text-emerald-600">
+                                  {formatVND(item.donGiaBan)}
+                                </td>
+                              )}
+                              <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                {formatVND(item.soLuong * item.donGiaMua)}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeLine(item.id)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                  title="Xóa mặt hàng này khỏi đơn"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quy cách kỹ thuật & Địa chỉ nhận hàng */}
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <Field label="Quy cách dệt / Thông số kỹ thuật">
+                    <textarea
+                      className="input min-h-20 text-xs"
+                      value={form.quyCach}
+                      onChange={(e) => update("quyCach", e.target.value)}
+                      placeholder="Chiều cao bo, số sọc, độ co giãn, thành phần sợi hoặc khổ vải..."
+                    />
+                  </Field>
+                  <Field label="Ghi chú nội bộ">
+                    <textarea
+                      className="input min-h-20 text-xs"
+                      value={form.ghiChu}
+                      onChange={(e) => update("ghiChu", e.target.value)}
+                      placeholder="Ghi chú về thanh toán, đóng gói, tiến độ..."
+                    />
+                  </Field>
+                </div>
+
+                {/* Tùy chọn giao hàng */}
+                <div className="rounded-xl border border-slate-200/80 p-3.5 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.giaoThangKhach}
+                        onChange={(e) => update("giaoThangKhach", e.target.checked)}
+                        className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Truck className="h-4 w-4 text-emerald-600" />
+                        {orderPurpose === "customer" ? "NCC giao thẳng xưởng khách" : "Giao trực tiếp về kho MIMIN"}
+                      </span>
+                    </label>
+                  </div>
+                  <div className="mt-2.5">
+                    <input
+                      className="input text-xs"
+                      value={form.diaChiGiao}
+                      onChange={(e) => update("diaChiGiao", e.target.value)}
+                      placeholder="Địa chỉ chi tiết nơi nhận hàng..."
+                    />
+                  </div>
+                </div>
+
+                {/* Đính kèm hình ảnh mẫu gửi NCC */}
+                <div className="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/30 p-4 dark:bg-emerald-950/10">
+                  <ImageUploader
+                    files={files}
+                    onChange={setFiles}
+                    category="Ảnh mẫu vật tư"
+                    accept="image/*"
+                    label="Hình mẫu gửi nhà dệt / NCC"
+                    hint="Ảnh mẫu bo cổ, màu sắc thực tế hoặc tài liệu kỹ thuật."
+                  />
+                </div>
+
+                {/* ============================================================== */}
+                {/* 3. THẺ TỔNG KẾT TÀI CHÍNH - MÀU XANH LÁ SÁNG HƠN RỰC RỠ        */}
+                {/* ============================================================== */}
+                <div className="rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 text-white p-5 shadow-lg shadow-emerald-600/15">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <div className="text-emerald-100 font-medium">Tiền mua NCC</div>
+                        <div className="text-lg sm:text-xl font-black font-mono mt-0.5">
+                          {formatVND(totals.tienMua)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-emerald-100 font-medium">Tổng giá vốn</div>
+                        <div className="text-lg sm:text-xl font-black font-mono mt-0.5">
+                          {formatVND(totals.giaVon)}
+                        </div>
+                      </div>
+
+                      {orderPurpose === "customer" && (
+                        <>
+                          <div>
+                            <div className="text-emerald-100 font-medium">Doanh thu bán</div>
+                            <div className="text-lg sm:text-xl font-black font-mono mt-0.5">
+                              {formatVND(totals.doanhThu)}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-emerald-100 font-medium">Lợi nhuận dự kiến</div>
+                            <div className="text-lg sm:text-xl font-black font-mono mt-0.5 text-amber-200">
+                              {formatVND(totals.loiNhuan)}
+                              <span className="text-xs font-normal text-emerald-100 ml-1">
+                                ({totals.bienLoiNhuan.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => printOrder(orderPurpose === "internal" ? "ncc" : "customer")}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold shadow-xs transition cursor-pointer backdrop-blur-xs"
+                      >
+                        <Printer className="h-4 w-4" /> In Phiếu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={saveDraft}
+                        className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-black shadow-md transition active:scale-95 cursor-pointer"
+                      >
+                        <Save className="h-4 w-4 text-emerald-700" /> Lưu Đơn Đặt Hàng
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* Modal Thêm Mẫu Mới Nhanh */}
+      <CrudModal
+        open={showCustom}
+        onClose={() => setShowCustom(false)}
+        onSave={addCustom}
+        title="Thêm Mẫu Vật Tư / Dệt Mới"
+        fields={customFields}
+      />
+    </div>
+  );
 }
 
-function Title({ icon: Icon, text, sub }: { icon: typeof Package; text: string; sub: string }) { return <div className="flex items-center gap-3"><div className="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950"><Icon className="h-5 w-5" /></div><div><h2 className="font-bold">{text}</h2><p className="text-xs text-slate-500">{sub}</p></div></div>; }
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) { const customerOnly = label.includes("Khách hàng") || label.includes("Địa chỉ giao") || label.includes("VAT đầu ra"); return <label className={`block ${customerOnly ? "customer-only" : ""}`}><span className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-300">{label}{required && <b className="text-rose-500"> *</b>}</span>{children}</label>; }
-function Money({ label, value, onChange, accent }: { label: string; value: string; onChange: (value: string) => void; accent?: boolean }) { return <div className={label.includes("bán khách") ? "customer-only" : ""}><Field label={label}><div className="relative"><input type="number" min="0" className={`input pr-8 font-semibold ${accent ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20" : ""}`} value={value} onChange={(e) => onChange(e.target.value)} /><span className="absolute right-3 top-3 text-xs text-slate-500">đ</span></div></Field></div>; }
-function Row({ label, value, strong }: { label: string; value: number; strong?: boolean }) { const customerOnly = label.includes("Doanh thu") || label.includes("VAT") || label.includes("hóa đơn"); return <div className={`flex justify-between gap-2 ${strong ? "font-bold" : "text-slate-300"} ${customerOnly ? "customer-only" : ""}`}><span>{label}</span><span className="text-white">{formatVND(value)}</span></div>; }
-function Flow({ icon: Icon, title, detail }: { icon: typeof Package; title: string; detail: string }) { return <div className="card flex items-center gap-3 p-4"><div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700 dark:bg-emerald-950"><Icon className="h-5 w-5" /></div><div><b className="text-sm">{title}</b><div className="text-xs text-slate-500">{detail}</div></div></div>; }
-
-
-function SearchableSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: {value: string; label: string}[]; placeholder: string }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const filtered = options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()));
-  const selected = options.find((o) => o.value === value);
+function Title({ icon: Icon, text, sub }: { icon: typeof Package; text: string; sub: string }) {
   return (
-    <div className="relative z-20">
-      <div className="input flex w-full cursor-pointer items-center justify-between" onClick={() => setOpen(!open)}>
-        <span className={selected ? "text-slate-900 dark:text-white" : "text-slate-500"}>{selected?.label || placeholder}</span>
-        <ChevronDown className="h-4 w-4 text-slate-400" />
+    <div className="flex items-center gap-2.5">
+      <div className="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+        <Icon className="h-4 w-4" />
       </div>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-slate-900">
-          <input type="text" className="input mb-2 h-9 w-full text-sm" placeholder="Tìm kiếm..." value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
-          <div className="max-h-60 overflow-y-auto">
-            {filtered.length === 0 ? <div className="p-3 text-center text-sm text-slate-500">Không tìm thấy</div> : filtered.map((o) => (
-              <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); setSearch(""); }} className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800 ${o.value === value ? "bg-emerald-50 font-bold text-emerald-700 dark:bg-emerald-950" : ""}`}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <div>
+        <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{text}</h2>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.2">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Money({
+  label,
+  value,
+  onChange,
+  accent,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          min="0"
+          className={`input font-mono font-bold pr-7 ${
+            accent ? "text-emerald-600 dark:text-emerald-400" : ""
+          }`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <span className="absolute right-2.5 top-2.5 text-xs text-slate-400 font-mono">đ</span>
+      </div>
     </div>
   );
 }

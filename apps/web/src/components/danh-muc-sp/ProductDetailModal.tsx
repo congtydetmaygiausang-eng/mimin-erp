@@ -30,9 +30,16 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
   useEffect(() => setMounted(true), []);
 
   const tongTonKho = useMemo(() => {
-    if (!tonKhoTheoMau) return 0;
-    return Object.values(tonKhoTheoMau).reduce((sum, tonMau) => sum + tonMau.reduce((s, row) => s + (row.sl || 0), 0), 0);
-  }, [tonKhoTheoMau]);
+    let slFromMauMap = 0;
+    if (tonKhoTheoMau && Object.keys(tonKhoTheoMau).length > 0) {
+      slFromMauMap = Object.values(tonKhoTheoMau).reduce(
+        (sum, tonMau) => sum + (tonMau || []).reduce((s, row) => s + (row.sl || 0), 0),
+        0
+      );
+    }
+    if (slFromMauMap > 0) return slFromMauMap;
+    return (sp?.dsMau || []).reduce((sum, m) => sum + (Number(m.soLuongKho) || 0), 0);
+  }, [tonKhoTheoMau, sp]);
 
   const trangThai = useMemo(() => {
     if (!sp) return "con-hang";
@@ -325,6 +332,16 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {sp.dsMau?.map((m, idx) => {
                   const isSelected = selectedColorIndex === idx;
+                  const mauNorm = (m.ten || "").trim().toLowerCase();
+                  let tonMau = tonKhoTheoMau?.[m.ten];
+                  if (!tonMau && tonKhoTheoMau) {
+                    const entry = Object.entries(tonKhoTheoMau).find(([k]) => k.trim().toLowerCase() === mauNorm);
+                    if (entry) tonMau = entry[1];
+                  }
+                  let tongMau = (tonMau || []).reduce((s, x) => s + (x.sl || 0), 0);
+                  if (tongMau === 0 && m.soLuongKho !== undefined && Number(m.soLuongKho) > 0) {
+                    tongMau = Number(m.soLuongKho);
+                  }
                   return (
                     <div 
                       key={idx} 
@@ -354,8 +371,12 @@ export default function ProductDetailModal({ sp, tonKhoTheoMau, onClose, onAddTo
                       <div className="flex-1 min-w-0 pr-2">
                         <div className={`font-extrabold text-lg truncate ${isSelected ? 'text-cyan-900' : 'text-slate-700'}`}>{m.ten}</div>
                         <div className="text-xs font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded inline-block mt-1">{m.maSKU || "SKU-???"}</div>
-                        <div className="text-sm font-semibold text-slate-500 mt-2 flex items-center gap-1.5">
-                          Định mức: <span className={isSelected ? 'text-cyan-700 font-bold' : 'text-slate-700'}>{m.dinhMuc || 0} kg</span>
+                        <div className="text-xs font-bold text-slate-500 mt-2 flex items-center gap-2 flex-wrap">
+                          <span>Định mức: <strong className={isSelected ? 'text-cyan-700 font-bold' : 'text-slate-700'}>{m.dinhMuc || 0} kg</strong></span>
+                          <span>•</span>
+                          <span className={tongMau > 0 ? "text-emerald-600 font-extrabold" : "text-rose-500 font-semibold"}>
+                            Tồn: {tongMau > 0 ? `${tongMau} SP` : "Hết hàng"}
+                          </span>
                         </div>
                       </div>
                       <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isSelected ? 'bg-cyan-100 text-cyan-600' : 'bg-slate-50 text-slate-300 group-hover:bg-slate-100'}`}>

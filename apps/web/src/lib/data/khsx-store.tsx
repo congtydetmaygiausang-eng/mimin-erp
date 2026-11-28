@@ -96,7 +96,16 @@ function loadData(): KHSX[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as KHSX[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingIds = new Set(parsed.map((x) => x.id));
+        const missing = DEFAULT_KHSX.filter((d) => !existingIds.has(d.id));
+        if (missing.length > 0) {
+          const combined = [...missing, ...parsed];
+          saveData(combined);
+          return combined;
+        }
+        return parsed;
+      }
     }
     return DEFAULT_KHSX;
   } catch { return DEFAULT_KHSX; }

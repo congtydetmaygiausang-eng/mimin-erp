@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phiếu Kiểm Đếm & Theo Dõi - [M305] LC-2026-0305</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 3mm 4.5mm 2.5mm 4.5mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 0;
+      line-height: 1.25;
+      font-size: 11px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page-container {
+      max-width: 210mm;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 2mm 3.5mm;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      border-radius: 4px;
+      position: relative;
+    }
+    .order-banner-card {
+      border: 1.5px solid #0f172a;
+      border-radius: 5px;
+      padding: 3.5px 7px;
+      margin-bottom: 3.5px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .order-left-info { flex: 1; min-width: 0; }
+    .order-title-line {
+      font-size: 15px;
+      font-weight: 900;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+    .badge-lenh-cat {
+      background: #0f172a;
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .sp-highlight {
+      font-size: 17px;
+      font-weight: 900;
+      color: #b91c1c;
+      letter-spacing: 0.3px;
+    }
+    .order-sub-meta {
+      font-size: 10.5px;
+      color: #334155;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+    .gia-cong-box-outer {
+      border: 1.5px solid #2563eb;
+      background: #eff6ff;
+      border-radius: 5px;
+      padding: 3px 6px;
+      min-width: 245px;
+    }
+    .gc-header-tag {
+      font-size: 9.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #1e40af;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .gc-list-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5px;
+    }
+    .gc-item-line {
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      background: #ffffff;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid #bfdbfe;
+    }
+    .summary-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 3.5px;
+      margin-bottom: 3.5px;
+    }
+    .summary-card-box {
+      border: 1.2px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 2px 3px;
+      background: #f8fafc;
+      text-align: center;
+    }
+    .card-label {
+      font-size: 9px;
+      color: #64748b;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .card-value {
+      font-size: 13px;
+      font-weight: 900;
+      color: #0f172a;
+      font-family: monospace;
+      margin-top: 1px;
+    }
+    .section-header {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin: 3px 0 1.5px 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .section-header.blue { color: #1e40af; }
+    .section-header.purple { color: #6b21a8; }
+    .section-header.dark { color: #0f172a; }
+
+    .table-custom {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+      margin-bottom: 3px;
+    }
+    .table-custom th, .table-custom td {
+      border: 1px solid #94a3b8;
+      padding: 2px 3px;
+    }
+    .table-custom th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 800;
+      text-align: center;
+      font-size: 10px;
+    }
+    .table-custom.table-quan th {
+      background: #faf5ff;
+      color: #581c87;
+      border-color: #c084fc;
+    }
+    .table-custom td.text-center { text-align: center; }
+    .table-custom td.text-right { text-align: right; padding-right: 4px; }
+    .table-custom td.text-left { text-align: left; padding-left: 4px; }
+
+    .color-flex-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 1px 0;
+    }
+    .img-preview-large {
+      width: 46px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1.2px solid #cbd5e1;
+    }
+    .color-badge-large {
+      width: 46px;
+      height: 50px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 900;
+      border: 1.2px solid #94a3b8;
+    }
+    .color-info-box {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+    }
+    .color-name-main {
+      font-weight: 900;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .color-sku-tag {
+      font-size: 9px;
+      color: #64748b;
+      font-family: monospace;
+      margin-top: 1px;
+    }
+
+    .row-quan-compact td { padding: 2px 3px; }
+    .quan-color-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .color-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 1.2px solid #94a3b8;
+    }
+    .quan-color-title {
+      font-weight: 900;
+      font-size: 12px;
+      color: #4c1d95;
+    }
+    .quan-fabric-tag {
+      font-size: 8.5px;
+      color: #6b21a8;
+      font-family: monospace;
+    }
+
+    .blank-write-cell {
+      min-height: 14px;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 2px;
+    }
+    .blank-write-note {
+      min-height: 14px;
+      width: 100%;
+      background: #ffffff;
+    }
+
+    .row-error { background: #fff1f2; color: #be123c; }
+    .row-final { background: #f0fdf4; color: #166534; }
+    .row-icon { font-size: 11px; display: inline-block; width: 14px; text-align: center; }
+
+    .signatures-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2px;
+      text-align: center;
+    }
+    .signatures-table td {
+      border: none;
+      vertical-align: top;
+      width: 33.33%;
+      padding: 0 4px;
+    }
+    .sig-title {
+      font-weight: 800;
+      font-size: 11px;
+      color: #0f172a;
+      text-transform: uppercase;
+    }
+    .sig-sub {
+      font-size: 9px;
+      font-style: italic;
+      color: #64748b;
+      margin-bottom: 1px;
+    }
+    .sig-space {
+      height: 8px;
+    }
+    .sig-name {
+      font-weight: 800;
+      font-size: 11.5px;
+      color: #0f172a;
+      margin-top: 1px;
+    }
+
+    .date-header-above-sig {
+      text-align: right;
+      font-style: italic;
+      font-size: 10px;
+      color: #64748b;
+      margin: 2px 0 1px 0;
+    }
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      .page-container { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <!-- KHỐI BANNER ĐƠN HÀNG -->
+    <div class="order-banner-card">
+      <div class="order-left-info">
+        <div class="order-title-line">
+          <span class="badge-lenh-cat">LC-2026-0305</span>
+          <span>PHIẾU KIỂM ĐẾM & THEO DÕI</span>
+        </div>
+        <div style="margin-top: 2px;">
+          <span style="font-weight: 800; font-size: 11px; color: #475569;">Mã Sản Phẩm:</span>
+          <span class="sp-highlight">[M305] BỘ TRÒN PHỐI TAY BÀN 192</span>
+        </div>
+        <div class="order-sub-meta">
+          <span>Phân loại: <strong>Bộ Cổ Tròn</strong></span>
+          <span style="margin: 0 5px; color: #94a3b8;">•</span>
+          <span>Hạn giao hàng: <strong style="color: #b91c1c;">2026-10-26</strong></span>
+          <span style="margin: 0 5px; color: #94a3b8;">•</span>
+          <span>Ngày kiểm đếm: <strong>21/11/2026</strong></span>
+        </div>
+      </div>
+      <div class="gia-cong-box-outer">
+        <div class="gc-header-tag">🧵 ĐƠN VỊ GIA CÔNG PHỤ TRÁCH ĐƠN HÀNG:</div>
+        <div class="gc-list-compact">
+          <div class="gc-item-line">
+            <span style="color: #64748b; font-weight: 700;">🎨 In / Thêu:</span>
+            <strong style="color: #1e40af;">Xưởng in/dập Thanh Sơn</strong>
+          </div>
+          <div class="gc-item-line">
+            <span style="color: #64748b; font-weight: 700;">👕 May Áo:</span>
+            <strong style="color: #0f172a;">Xưởng may tròn Vân Anh</strong>
+          </div>
+          <div class="gc-item-line">
+            <span style="color: #64748b; font-weight: 700;">👖 May Quần:</span>
+            <strong style="color: #6b21a8;">Xưởng may quần chị Dung</strong>
+          </div>
+          <div class="gc-item-line">
+            <span style="color: #64748b; font-weight: 700;">✂️ Tổ Cắt:</span>
+            <strong style="color: #047857;">Bàn 192</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KHỐI 6 Ô TÓM TẮT THÔNG SỐ KỸ THUẬT -->
+    <div class="summary-cards-grid">
+      <div class="summary-card-box">
+        <div class="card-label">📦 Số lượng phiếu</div>
+        <div class="card-value">400 <span style="font-size: 10px; font-weight: normal; color: #64748b;">bộ</span></div>
+      </div>
+      <div class="summary-card-box">
+        <div class="card-label">⚖️ Tổng ký chuẩn</div>
+        <div class="card-value">...... kg</div>
+      </div>
+      <div class="summary-card-box">
+        <div class="card-label">📊 Tổng ký thực tế</div>
+        <div class="card-value">...... kg</div>
+      </div>
+      <div class="summary-card-box">
+        <div class="card-label">🎨 Tổng số màu</div>
+        <div class="card-value">5 <span style="font-size: 10px; font-weight: normal; color: #64748b;">màu</span></div>
+      </div>
+      <div class="summary-card-box">
+        <div class="card-label">📏 Tỉ lệ size</div>
+        <div class="card-value">1:1:1:1</div>
+      </div>
+      <div class="summary-card-box">
+        <div class="card-label">⚖️ Định mức (kg/SP)</div>
+        <div class="card-value">0.260 kg</div>
+      </div>
+    </div>
+
+    <!-- BẢNG 1: KIỂM ĐẾM SỐ LƯỢNG ÁO -->
+    <div class="section-header blue">
+      1. BẢNG KIỂM ĐẾM SỐ LƯỢNG ÁO (THEO MÀU & SIZE)
+    </div>
+    <table class="table-custom">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width: 3.5%; font-size: 10.5px; padding: 3px 2px;">STT</th>
+          <th rowspan="2" style="width: 24%; font-size: 10.5px; padding: 3px 4px;">Ảnh Mẫu & Màu Sắc Áo</th>
+          <th rowspan="2" style="width: 9%; font-size: 10.5px; padding: 3px 2px;">Tỷ lệ size</th>
+          <th rowspan="2" style="width: 8%; font-size: 10.5px; padding: 3px 2px;">Kế hoạch</th>
+          <th colspan="4" style="font-size: 10.5px; padding: 3px 2px;">Chi tiết số lượng Áo theo Size</th>
+          <th rowspan="2" style="width: 8%; font-size: 10.5px; padding: 3px 2px;">Thực nhận</th>
+          <th rowspan="2" style="width: 7%; font-size: 10.5px; padding: 3px 2px;">SL Đạt</th>
+          <th rowspan="2" style="width: 7%; font-size: 10.5px; padding: 3px 2px;">Lỗi/Hụt</th>
+          <th rowspan="2" style="width: 13.5%; font-size: 10.5px; padding: 3px 4px;">Ghi chú</th>
+        </tr>
+        <tr>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">L</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">XL</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">2XL</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">3XL</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      <tr>
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">1</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="color-flex-box">
+            <img src="data:image/jpg;base64,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" class="img-preview-large" style="width:46px;height:50px;" />
+            <div class="color-info-box">
+              <span class="color-name-main">MÀU ĐEN</span>
+              <span class="color-sku-tag">M305-ĐEN</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-slate-900" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr>
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">2</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="color-flex-box">
+            <img src="data:image/jpg;base64,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" class="img-preview-large" style="width:46px;height:50px;" />
+            <div class="color-info-box">
+              <span class="color-name-main">MÀU XANH ĐEN</span>
+              <span class="color-sku-tag">M305-X.ĐEN</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-slate-900" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr>
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">3</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="color-flex-box">
+            <img src="data:image/jpg;base64,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" class="img-preview-large" style="width:46px;height:50px;" />
+            <div class="color-info-box">
+              <span class="color-name-main">MÀU DA</span>
+              <span class="color-sku-tag">M305-DA</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-slate-900" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr>
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">4</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="color-flex-box">
+            <img src="data:image/jpg;base64,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" class="img-preview-large" style="width:46px;height:50px;" />
+            <div class="color-info-box">
+              <span class="color-name-main">MÀU RÊU</span>
+              <span class="color-sku-tag">M305-RÊU</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-slate-900" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr>
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">5</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="color-flex-box">
+            <img src="data:image/jpg;base64,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" class="img-preview-large" style="width:46px;height:50px;" />
+            <div class="color-info-box">
+              <span class="color-name-main">MÀU XÁM</span>
+              <span class="color-sku-tag">M305-XÁM</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-slate-900" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #f8fafc; color: #0f172a; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+        <tr style="background: #f1f5f9; font-weight: bold;">
+          <td colspan="3" class="text-center font-bold text-slate-800" style="font-size: 11.5px; padding: 2.5px 3px;">TỔNG CỘNG ÁO:</td>
+          <td class="text-right font-black text-slate-900" style="font-size: 13px; padding: 2.5px 3px;">400</td>
+          <td class="text-center font-black text-slate-900 bg-slate-100" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-slate-900 bg-slate-100" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-slate-900 bg-slate-100" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-slate-900 bg-slate-100" style="font-size: 12px; padding: 2.5px 3px;">100</td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center text-[10.5px] text-slate-600 font-bold">Tổng hợp Áo</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- BẢNG 2: KIỂM ĐẾM SỐ LƯỢNG QUẦN (RÚT GỌN - ĐỂ TRỐNG VẢI QUẦN THEO YÊU CẦU) -->
+    <div class="section-header purple">
+      2. BẢNG KIỂM ĐẾM SỐ LƯỢNG QUẦN (THEO MÀU & SIZE)
+    </div>
+    <table class="table-custom table-quan">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width: 3.5%; font-size: 10.5px; padding: 2.5px 2px;">STT</th>
+          <th rowspan="2" style="width: 24%; font-size: 10.5px; padding: 2.5px 4px;">Màu Sắc & Vải Quần</th>
+          <th rowspan="2" style="width: 9%; font-size: 10.5px; padding: 2.5px 2px;">Tỷ lệ size</th>
+          <th rowspan="2" style="width: 8%; font-size: 10.5px; padding: 2.5px 3px;">Kế hoạch</th>
+          <th colspan="4" style="font-size: 10.5px; padding: 2.5px 3px;">Chi tiết số lượng Quần theo Size</th>
+          <th rowspan="2" style="width: 8%; font-size: 10.5px; padding: 2.5px 2px;">Thực nhận</th>
+          <th rowspan="2" style="width: 7%; font-size: 10.5px; padding: 2.5px 2px;">SL Đạt</th>
+          <th rowspan="2" style="width: 7%; font-size: 10.5px; padding: 2.5px 2px;">Lỗi/Hụt</th>
+          <th rowspan="2" style="width: 13.5%; font-size: 10.5px; padding: 2.5px 4px;">Ghi chú</th>
+        </tr>
+        <tr>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">L</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">XL</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">2XL</th>
+          <th style="width: 5%; font-size: 10.5px; padding: 2px 2px;">3XL</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      <tr class="row-quan-compact">
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">1</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="quan-color-pill">
+            <span class="color-dot" style="background-color: #1e293b; border-color: #0f172a;"></span>
+            <div>
+              <span class="quan-color-title">MÀU ĐEN</span>
+              <span class="quan-fabric-tag">VẢI QUẦN (CHỜ BỔ SUNG)</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-purple-950" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr class="row-quan-compact">
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">2</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="quan-color-pill">
+            <span class="color-dot" style="background-color: #0f172a; border-color: #1e3a8a;"></span>
+            <div>
+              <span class="quan-color-title">MÀU XANH ĐEN</span>
+              <span class="quan-fabric-tag">VẢI QUẦN (CHỜ BỔ SUNG)</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-purple-950" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr class="row-quan-compact">
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">3</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="quan-color-pill">
+            <span class="color-dot" style="background-color: #fed7aa; border-color: #f97316;"></span>
+            <div>
+              <span class="quan-color-title">MÀU DA</span>
+              <span class="quan-fabric-tag">VẢI QUẦN (CHỜ BỔ SUNG)</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-purple-950" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr class="row-quan-compact">
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">4</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="quan-color-pill">
+            <span class="color-dot" style="background-color: #3f6212; border-color: #15803d;"></span>
+            <div>
+              <span class="quan-color-title">MÀU RÊU</span>
+              <span class="quan-fabric-tag">VẢI QUẦN (CHỜ BỔ SUNG)</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-purple-950" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+      <tr class="row-quan-compact">
+        <td class="text-center font-bold text-slate-600" style="padding: 2px 3px; font-size: 12px;">5</td>
+        <td class="text-left" style="padding: 2px 4px;">
+          <div class="quan-color-pill">
+            <span class="color-dot" style="background-color: #94a3b8; border-color: #64748b;"></span>
+            <div>
+              <span class="quan-color-title">MÀU XÁM</span>
+              <span class="quan-fabric-tag">VẢI QUẦN (CHỜ BỔ SUNG)</span>
+            </div>
+          </div>
+        </td>
+        <td class="text-center text-xs font-mono font-bold text-slate-700" style="padding: 2px 3px; font-size: 12px;">1:1:1:1</td>
+        <td class="text-right font-black text-purple-950" style="font-size: 13.5px; padding: 2px 4px;">80</td>
+        <td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td><td class="text-center font-bold" style="background: #faf5ff; color: #581c87; font-size: 12.5px; padding: 2px 3px;">20</td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+        <td class="text-left bg-white"><div class="blank-write-note"></div></td>
+      </tr>
+    
+        <tr style="background: #faf5ff; font-weight: bold;">
+          <td colspan="3" class="text-center font-bold text-purple-900" style="font-size: 11.5px; padding: 2.5px 3px;">TỔNG CỘNG QUẦN:</td>
+          <td class="text-right font-black text-purple-950" style="font-size: 13px; padding: 2.5px 3px;">400</td>
+          <td class="text-center font-black text-purple-950 bg-purple-50" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-purple-950 bg-purple-50" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-purple-950 bg-purple-50" style="font-size: 12px; padding: 2.5px 3px;">100</td><td class="text-center font-black text-purple-950 bg-purple-50" style="font-size: 12px; padding: 2.5px 3px;">100</td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center bg-white"><div class="blank-write-cell"></div></td>
+          <td class="text-center text-[10.5px] text-purple-900 font-bold">Tổng hợp Quần</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- BẢNG 3: THEO DÕI TIẾN TRÌNH CÁC KHÂU & SẢN LƯỢNG -->
+    <div class="section-header dark" style="font-size: 11.5px; margin: 3.5px 0 2px 0;">
+      3. THEO DÕI CÁC KHÂU & SẢN LƯỢNG (ĐỐI CHIẾU TIẾN TRÌNH TỪNG MÀU)
+    </div>
+    <table class="table-custom">
+      <thead>
+        <tr>
+          <th style="width: 4%; font-size: 11px; padding: 2.5px 2px;">STT</th>
+          <th style="width: 32%; font-size: 11px; padding: 2.5px 4px;">Khâu / Công Đoạn Theo Dõi</th>
+          <th style="font-size: 11px; padding: 2.5px 2px;" class="text-center font-bold">ĐEN</th><th style="font-size: 11px; padding: 2.5px 2px;" class="text-center font-bold">X.ĐEN</th><th style="font-size: 11px; padding: 2.5px 2px;" class="text-center font-bold">DA</th><th style="font-size: 11px; padding: 2.5px 2px;" class="text-center font-bold">RÊU</th><th style="font-size: 11px; padding: 2.5px 2px;" class="text-center font-bold">XÁM</th>
+          <th style="width: 13%; font-size: 11px; padding: 2.5px 3px;">Tổng (Bộ)</th>
+          <th style="width: 17%; font-size: 11px; padding: 2.5px 3px;">Ký tên / Xác nhận</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      <tr class="">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">1</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">🚚</span> Đếm số lượng gia công
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">2</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">🏷️</span> Khuy nút
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="row-error">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">3</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">⚠️</span> Lỗi khuy nút
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">4</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">🔥</span> Ủi
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="row-error">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">5</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">⚠️</span> Lỗi ủi
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">6</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">📦</span> Đóng gói
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="row-error">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">7</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">⚠️</span> Lỗi đóng gói
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-slate-300" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      <tr class="row-final font-bold">
+        <td class="text-center text-slate-500 font-bold" style="padding: 2.5px 2px; font-size: 11.5px;">8</td>
+        <td class="text-left font-bold text-slate-800" style="padding: 2.5px 4px; font-size: 11.5px;">
+          <span class="row-icon">📥</span> Nhập kho thành phẩm
+        </td>
+        <td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td><td class="text-center font-mono text-slate-300" style="font-size: 11.5px; padding: 2.5px 2px;">......</td>
+        <td class="text-right font-mono font-bold text-blue-900 bg-blue-50/50" style="padding: 2.5px 3px; font-size: 11.5px;">......</td>
+        <td class="text-center text-xs text-slate-300" style="padding: 2.5px 3px; font-size: 10px;">................</td>
+      </tr>
+    
+      </tbody>
+    </table>
+
+    <!-- Khối 3 Chữ Ký Biên Bản -->
+    <div class="date-header-above-sig">
+      TP. Hồ Chí Minh, ngày ...... tháng ...... năm 2026
+    </div>
+    <table class="signatures-table">
+      <tr>
+        <td>
+          <div class="sig-title">NGƯỜI KIỂM ĐẾM / QC</div>
+          <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Tổ Kiểm Đếm / QC</div>
+        </td>
+        <td>
+          <div class="sig-title">ĐẠI DIỆN BÊN GIAO (XƯỞNG GIA CÔNG)</div>
+          <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Xưởng may tròn Vân Anh</div>
+        </td>
+        <td>
+          <div class="sig-title">ĐẠI DIỆN BÊN NHẬN (GIÀU SANG)</div>
+          <div class="sig-sub">(Ký, đóng dấu xác nhận)</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">Hồ Minh Sang</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

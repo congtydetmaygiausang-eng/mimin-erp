@@ -91,10 +91,11 @@ const _raw: Omit<DoiTacGiaCong, "loaiDoiTuong" | "boPhan" | "chucVu" | "chuyenMo
   { stt: 15, ma: "GC-TRON-004", tenDonVi: "Xưởng may tròn anh Thuận", nguoiLienHe: "Thuận", sdt: "0903071501", email: "ducthuan0715@gmail.com", diaChi: "28/10/15 KP40, Tân Thới Nhất 11, Q.12", soTaiKhoan: "43075977", nganHang: "ACB", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
   { stt: 16, ma: "GC-TRON-005", tenDonVi: "Xưởng may tròn anh Quang", nguoiLienHe: "Quang", sdt: "0966670624", email: "", diaChi: "133/42 Liên Khu 4, Khu phố 5, Phường Bình Hưng Hòa B, Quận Bình Tân", soTaiKhoan: "6440205573303", nganHang: "Agribank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
 
-  // ===== 6 XƯỞNG MAY ÁO TRỤ =====
+  // ===== 7 XƯỞNG MAY ÁO TRỤ =====
   { stt: 26, ma: "GC-TRU-001", tenDonVi: "Xưởng may trụ chị Liễu", nguoiLienHe: "Nguyễn Thị Ngọc Liễu", sdt: "0933305465", email: "", diaChi: "594/59 Âu Cơ, KP 4, P. Bảy Hiền, TP.HCM", soTaiKhoan: "", nganHang: "", maSoThue: "83182011101", trangThai: "dang_hop_tac", ghiChu: "CCCD: 083182011101 | Cấp: 22/12/2021 | MST: 083182011101" },
   { stt: 27, ma: "GC-TRU-002", tenDonVi: "Xưởng may trụ chị Tý Sơn", nguoiLienHe: "Nguyễn Hữu Kim Ly Sơn", sdt: "0794953483", email: "nguyenhuukimlyson@gmail.com", diaChi: "Nhà không số Ấp 29, Xã Tân Vĩnh Lộc, TP.HCM", soTaiKhoan: "060287316545", nganHang: "Sacombank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: 066188019712 | Cấp: 20/01/2022 | MST: ---" },
   { stt: 28, ma: "GC-TRU-003", tenDonVi: "Xưởng may trụ anh Duẩn", nguoiLienHe: "Dương Xuân Duẩn", sdt: "0966266775", email: "Xuanduanduong87@gmail.com", diaChi: "Đường N11, Tổ 1 KP 2, P. Thới Hòa, TP.HCM", soTaiKhoan: "07119869", nganHang: "Vietcombank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: 034086003445 | Cấp: 26/08/2022 | MST: ---" },
+  { stt: 29, ma: "GC-TRU-004", tenDonVi: "Xưởng may cổ trụ anh Toàn", nguoiLienHe: "Anh Toàn", sdt: "0799962940", email: "", diaChi: "59/10H ấp7 xã Bà Điểm", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---", chuyenMonChiTiet: ["May áo trụ"] },
   { stt: 30, ma: "GC-TRU-005", tenDonVi: "Xưởng may trụ anh Thông", nguoiLienHe: "Nguyễn Văn Thông", sdt: "0933305465", email: "bt5815989@gmail.com", diaChi: "28/8 Ấp 46, Xã Hóc Môn, TP.HCM", soTaiKhoan: "0355589066", nganHang: "MB", maSoThue: "86090005870", trangThai: "dang_hop_tac", ghiChu: "CCCD: 086090005870 | Cấp: 22/12/2021 | MST: 086090005870" },
   { stt: 31, ma: "GC-TRU-006", tenDonVi: "Xưởng may trụ cô Cúc", nguoiLienHe: "Huỳnh Thị Cúc Em", sdt: "0907869422", email: "huynhthicucem1210@gmail.com", diaChi: "1/5B KP49 Nguyễn Văn Quá, P. Đông Hưng Thuận", soTaiKhoan: "9907869422", nganHang: "Techcombank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
   { stt: 32, ma: "GC-TRU-007", tenDonVi: "Xưởng may trụ anh Sản", nguoiLienHe: "Nguyễn Gia Sản", sdt: "0906042853", email: "Giasan20015@gmail.com", diaChi: "Tổ 16 Đường Lê Văn Chi, Linh Xuân", soTaiKhoan: "8888906042853", nganHang: "Agribank", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: 030080000661 | Cấp: 19/09/2024 | MST: ---" },
@@ -102,6 +103,8 @@ const _raw: Omit<DoiTacGiaCong, "loaiDoiTuong" | "boPhan" | "chucVu" | "chuyenMo
   // ===== XƯỞNG BỔ SUNG THEO EXCEL POLOMIMIN =====
   { stt: 33, ma: "GC-IN-007", tenDonVi: "Xưởng in anh Trung Nha Trang", nguoiLienHe: "Trung", sdt: "", email: "", diaChi: "Nha Trang", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
   { stt: 34, ma: "GC-ALL-01", tenDonVi: "Xưởng may anh Long", nguoiLienHe: "Long", sdt: "0906970535", email: "", diaChi: "Chợ đầu mối hóc môn", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "CCCD: --- | Cấp: --- | MST: ---" },
+  { stt: 35, ma: "GC-TRU-008", tenDonVi: "GC chị Vân cổ tròn trụ", nguoiLienHe: "Vân Anh", sdt: "0903627835", email: "", diaChi: "442/20/44 quốc lộ 1A phường An Phú Đông quận 12", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "Chuyên may cổ tròn, cổ trụ", chuyenMonChiTiet: ["May áo tròn", "May áo trụ"] },
+  { stt: 36, ma: "GC-TRON-006", tenDonVi: "GC cô Liên cổ tròn", nguoiLienHe: "Cô Liên", sdt: "0937522934", email: "", diaChi: "19/5 đường trần văn mười ấp 12 xã xuân thới thượng hóc môn", soTaiKhoan: "", nganHang: "", maSoThue: "", trangThai: "dang_hop_tac", ghiChu: "Chuyên may áo cổ tròn", chuyenMonChiTiet: ["May áo tròn"] },
 ];
 
 // ============ SUY RA CHUYÊN MÔN TỪ MÃ ============
@@ -179,7 +182,9 @@ export const NGUOI_MAY_QUAN = getDoiTacByLoai("GC-QUAN").map((d) => ({
   trangThai: d.trangThai,
 }));
 
-export const NGUOI_MAY_TRON = getDoiTacByLoai("GC-TRON").map((d) => ({
+export const NGUOI_MAY_TRON = DOI_TAC_GIA_CONG.filter(
+  (d) => d.ma.startsWith("GC-TRON-") || (d.chuyenMonChiTiet && d.chuyenMonChiTiet.includes("May áo tròn"))
+).map((d) => ({
   ma: d.ma,
   ten: d.nguoiLienHe,
   sdt: d.sdt,
