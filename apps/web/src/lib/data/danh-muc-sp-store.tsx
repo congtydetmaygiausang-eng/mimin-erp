@@ -110,6 +110,48 @@ export function isMatchingProduct(
   return false;
 }
 
+export const DANH_MUC_DELETED_KEY = "mimin_danh_muc_deleted_ids";
+
+export function getDeletedDanhMucSPIds(): Set<string> {
+  try {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem(DANH_MUC_DELETED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.map((x: string) => String(x || "").trim().toUpperCase()).filter(Boolean));
+        }
+      }
+    }
+  } catch {}
+  return new Set();
+}
+
+export function addDeletedDanhMucSPId(...ids: string[]) {
+  try {
+    if (typeof window === "undefined") return;
+    const set = getDeletedDanhMucSPIds();
+    ids.forEach(id => {
+      const norm = String(id || "").trim().toUpperCase();
+      if (norm) set.add(norm);
+    });
+    localStorage.setItem(DANH_MUC_DELETED_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+export function removeDeletedDanhMucSPId(id: string) {
+  try {
+    if (typeof window === "undefined") return;
+    const norm = String(id || "").trim().toUpperCase();
+    if (!norm) return;
+    const set = getDeletedDanhMucSPIds();
+    if (set.has(norm)) {
+      set.delete(norm);
+      localStorage.setItem(DANH_MUC_DELETED_KEY, JSON.stringify(Array.from(set)));
+    }
+  } catch {}
+}
+
 export interface LuuSanPhamOptions {
   skipKhoSync?: boolean;
 }
@@ -216,14 +258,23 @@ function mapSanPhamFromDB(item: any, localData: SanPham[]): SanPham {
 export function DanhMucSPProvider({ children }: { children: ReactNode }) {
   // Đọc local data một lần để merge
   const getLocalData = () => {
+    const deletedSet = getDeletedDanhMucSPIds();
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter((p: any) => {
+            const k = String(p.id || p.maSP || "").trim().toUpperCase();
+            return !deletedSet.has(k);
+          });
+        }
       }
     } catch { }
-    return DEFAULT_SAN_PHAM;
+    return DEFAULT_SAN_PHAM.filter((p) => {
+      const k = String(p.id || p.maSP || "").trim().toUpperCase();
+      return !deletedSet.has(k);
+    });
   };
 
   const { data: dsSanPham, setData: setDsSanPham, loading } = useSupabaseSync<SanPham>(
@@ -242,6 +293,10 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     const targetId = (data.id || id).trim().toUpperCase();
     if (!targetId) return;
     const isRenaming = Boolean(oldId && targetId && oldId !== targetId);
+
+    // Gỡ bỏ khỏi danh sách đã xóa nếu người dùng tạo lại hoặc cập nhật
+    removeDeletedDanhMucSPId(targetId);
+    if (isRenaming) removeDeletedDanhMucSPId(oldId);
 
     const existing = dsSanPham?.find((p) => {
       const pId = (p.id || "").trim().toUpperCase();
@@ -416,12 +471,13 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           }
 
           // 3B. BẢNG KHO_THANH_PHAM: Chính xác 1 dòng cho mỗi màu, triệt tiêu dòng trùng và xóa màu bị bỏ (chỉ chạy khi không skipKhoSync)
+          const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
+
           if (!options?.skipKhoSync) {
             const { data: currentKhoRows } = await supabase.from("kho_thanh_pham")
               .select("*")
               .ilike("ma_sp", targetId);
 
-            const dsMauList = data.dsMau && Array.isArray(data.dsMau) ? data.dsMau : (fullUpdatedSP?.dsMau || []);
             const activeColorNames = dsMauList.map((m: any) => String(m.ten || "").trim().toLowerCase());
             const bs = data.bangSize || fullUpdatedSP?.bangSize;
 
@@ -599,6 +655,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       return prev.filter((p) => !isMatchingProduct(p, target));
     });
 
+    // 1B. Ghi nhận vào danh sách đã xóa để F5 tuyệt đối không bao giờ bị nạp lại từ default/cache
+    const targetUpper = target.toUpperCase();
+    const idsToMarkDeleted: string[] = [target, targetUpper];
+    deletedItems.forEach(d => {
+      if (d.id) idsToMarkDeleted.push(d.id, d.id.toUpperCase());
+      if (d.dbId) idsToMarkDeleted.push(d.dbId);
+      if ((d as any).maSP) idsToMarkDeleted.push((d as any).maSP, String((d as any).maSP).toUpperCase());
+    });
+    addDeletedDanhMucSPId(...idsToMarkDeleted);
+
     // 2. Xóa triệt để khỏi localStorage của mimin_danh_muc_v2
     try {
       const rawDM = localStorage.getItem(STORAGE_KEY);
@@ -615,7 +681,7 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
       console.error("Lỗi xóa local danh_muc_sp:", e);
     }
 
-    // 3. Xóa triệt để khỏi localStorage của mimin_kho_thanh_pham_v2
+    // 3. Xóa triệt để khỏi localStorage của mimin_kho_thanh_pham_v2 và ghi nhớ vào mimin_kho_tp_deleted_ids
     try {
       const KHO_KEY = "mimin_kho_thanh_pham_v2";
       const rawKho = localStorage.getItem(KHO_KEY);
@@ -628,6 +694,19 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+      const rawDel = localStorage.getItem("mimin_kho_tp_deleted_ids");
+      const delSet = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
+      idsToMarkDeleted.forEach(id => delSet.add(id));
+      deletedItems.forEach(d => {
+        if (d.dsMau) {
+          d.dsMau.forEach(m => {
+            const vKey = cleanVariantKey(m.ten);
+            delSet.add(`TP-${targetUpper}-${vKey}`);
+            if (d.id) delSet.add(`TP-${d.id.toUpperCase()}-${vKey}`);
+          });
+        }
+      });
+      localStorage.setItem("mimin_kho_tp_deleted_ids", JSON.stringify(Array.from(delSet)));
     } catch (e) {
       console.error("Lỗi xóa local kho_thanh_pham:", e);
     }
@@ -678,12 +757,16 @@ export function DanhMucSPProvider({ children }: { children: ReactNode }) {
     }
   }, [setDsSanPham]);
 
-  // Đảm bảo dsSanPham luôn duy nhất theo ma_sp (id), ưu tiên bản ghi có dbId
+  // Đảm bảo dsSanPham luôn duy nhất theo ma_sp (id), ưu tiên bản ghi có dbId và lọc triệt để các sản phẩm đã xóa
   const uniqueDsSanPham = useMemo(() => {
+    const deletedSet = getDeletedDanhMucSPIds();
     const map = new Map<string, SanPham>();
     for (const sp of dsSanPham || []) {
       const key = (sp.id || "").trim().toUpperCase();
       if (!key) continue;
+      if (deletedSet.has(key) || (sp.dbId && deletedSet.has(sp.dbId)) || ((sp as any).maSP && deletedSet.has(String((sp as any).maSP).trim().toUpperCase()))) {
+        continue;
+      }
       if (!map.has(key)) {
         map.set(key, sp);
       } else {

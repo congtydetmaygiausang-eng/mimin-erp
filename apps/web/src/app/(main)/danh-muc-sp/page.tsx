@@ -8,7 +8,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Shirt, Sparkles, TrendingUp, X, Plus, Package, Tag, ShoppingCart, Store, RotateCcw, Send } from "lucide-react";
-import { useDanhMucSP, type SanPham } from "@/lib/data/danh-muc-sp-store";
+import { useDanhMucSP, type SanPham, getDeletedDanhMucSPIds, addDeletedDanhMucSPId } from "@/lib/data/danh-muc-sp-store";
 import { LOAI_SP_LABELS, type LoaiSP } from "@/lib/data/lenh-cat-store";
 import { useGioHang } from "@/lib/data/gio-hang-store";
 import { useDonHang } from "@/lib/data/don-hang-store";
@@ -168,8 +168,19 @@ export default function DanhMucSanPhamPage() {
   }, [refresh]);
 
   const dsDongBo = useMemo<SanPham[]>(() => {
-    const map = new Map((dsSanPham || []).map((sp) => [sp.id, sp]));
+    const deletedIds = getDeletedDanhMucSPIds();
+    const map = new Map(
+      (dsSanPham || [])
+        .filter(sp => {
+          const spId = (sp.id || "").trim().toUpperCase();
+          const spMa = ((sp as any).maSP || "").trim().toUpperCase();
+          return !deletedIds.has(spId) && !deletedIds.has(spMa);
+        })
+        .map((sp) => [sp.id, sp])
+    );
     for (const item of Object.values(danhMucKho)) {
+      const itemMa = (item.maSP || "").trim().toUpperCase();
+      if (deletedIds.has(itemMa)) continue;
       const sizes = Array.from(new Set(item.mau.flatMap((mau) => mau.sizes.map((size) => size.size))));
       const colors = item.mau.map((mau, index) => ({
         ten: mau.ten,
@@ -584,6 +595,7 @@ export default function DanhMucSanPhamPage() {
   const handleDeleteProduct = (sp: SanPham) => {
     if (confirm(`Bạn có chắc muốn xóa sản phẩm ${sp.tenSP}? Sản phẩm sẽ được xóa khỏi Danh mục và Kho thành phẩm.`)) {
       if (xoaSP) {
+        addDeletedDanhMucSPId(sp.id, (sp as any).maSP || "", sp.tenSP || "");
         xoaSP(sp.id, user);
         if (sp.maSP && sp.maSP !== sp.id) xoaSP(sp.maSP, user);
         if (sp.tenSP) xoaSP(sp.tenSP, user);

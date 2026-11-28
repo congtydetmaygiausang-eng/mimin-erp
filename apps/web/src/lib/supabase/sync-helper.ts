@@ -312,6 +312,46 @@ export async function supabaseDelete(table: string, id: string): Promise<boolean
  * - Lần đầu: đọc từ Supabase → nếu có thì ghi xuống localStorage
  * - Khi user thêm/sửa: ghi cả 2 nơi
  */
+function getDeletedIdsForStorageKey(key: string): Set<string> {
+  const set = new Set<string>();
+  if (typeof window === "undefined") return set;
+  try {
+    const rawDel = localStorage.getItem(`${key}_deleted_ids`);
+    if (rawDel) {
+      const parsed = JSON.parse(rawDel);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((x: any) => {
+          const s = String(x || "").trim().toUpperCase();
+          if (s) set.add(s);
+        });
+      }
+    }
+  } catch {}
+  if (key === "mimin_danh_muc_v2") {
+    try {
+      const rawDm = localStorage.getItem("mimin_danh_muc_deleted_ids");
+      if (rawDm) {
+        const parsed = JSON.parse(rawDm);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((x: any) => {
+            const s = String(x || "").trim().toUpperCase();
+            if (s) set.add(s);
+          });
+        }
+      }
+    } catch {}
+  }
+  return set;
+}
+
+function isItemDeleted(item: any, deletedSet: Set<string>): boolean {
+  if (deletedSet.size === 0) return false;
+  const id = String(item?.id || "").trim().toUpperCase();
+  const ma = String(item?.maSP || item?.ma_sp || "").trim().toUpperCase();
+  const dbId = String(item?.dbId || "").trim().toUpperCase();
+  return (Boolean(id) && deletedSet.has(id)) || (Boolean(ma) && deletedSet.has(ma)) || (Boolean(dbId) && deletedSet.has(dbId));
+}
+
 export function useSupabaseSync<T extends { id: string }>(
   localStorageKey: string,
   table: string,
@@ -357,23 +397,25 @@ export function useSupabaseSync<T extends { id: string }>(
   const loadLocal = useCallback((): T[] => {
     if (typeof window === "undefined") return [];
     try {
+      const deletedSet = getDeletedIdsForStorageKey(localStorageKey);
       const raw = localStorage.getItem(localStorageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
+          const cleanParsed = deletedSet.size > 0 ? parsed.filter(item => !isItemDeleted(item, deletedSet)) : parsed;
           const init = initialDataRef.current;
           if (Array.isArray(init) && init.length > 0) {
-            const existingIds = new Set(parsed.map((item: any) => item?.id));
-            const missing = init.filter((item: any) => item?.id && !existingIds.has(item.id));
+            const existingIds = new Set(cleanParsed.map((item: any) => item?.id));
+            const missing = init.filter((item: any) => item?.id && !existingIds.has(item.id) && !isItemDeleted(item, deletedSet));
             if (missing.length > 0) {
-              const combined = [...missing, ...parsed];
+              const combined = [...missing, ...cleanParsed];
               try {
                 localStorage.setItem(localStorageKey, JSON.stringify(combined));
               } catch {}
               return combined;
             }
           }
-          return parsed;
+          return cleanParsed;
         }
       }
     } catch {}
@@ -384,18 +426,20 @@ export function useSupabaseSync<T extends { id: string }>(
   const [data, setDataState] = useState<T[]>(() => {
     if (typeof window !== "undefined") {
       try {
+        const deletedSet = getDeletedIdsForStorageKey(localStorageKey);
         const raw = localStorage.getItem(localStorageKey);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleanParsed = deletedSet.size > 0 ? parsed.filter(item => !isItemDeleted(item, deletedSet)) : parsed;
             if (Array.isArray(initialData) && initialData.length > 0) {
-              const existingIds = new Set(parsed.map((item: any) => item?.id));
-              const missing = initialData.filter((item: any) => item?.id && !existingIds.has(item.id));
+              const existingIds = new Set(cleanParsed.map((item: any) => item?.id));
+              const missing = initialData.filter((item: any) => item?.id && !existingIds.has(item.id) && !isItemDeleted(item, deletedSet));
               if (missing.length > 0) {
-                return [...missing, ...parsed];
+                return [...missing, ...cleanParsed];
               }
             }
-            return parsed;
+            return cleanParsed;
           }
         }
       } catch {}
@@ -448,14 +492,17 @@ export function useSupabaseSync<T extends { id: string }>(
             remote = remote.map(optionsRef.current.mapIn);
           }
           if (!cancelled) {
+            const deletedSet = getDeletedIdsForStorageKey(localStorageKey);
             // Nguồn Supabase luôn là chân lý: nếu remote có dữ liệu thì cập nhật êm dịu và sync xuống local
             if (remote && remote.length > 0) {
-              setDataState(remote);
-              saveLocal(remote);
+              const cleanRemote = deletedSet.size > 0 ? remote.filter((item: any) => !isItemDeleted(item, deletedSet)) : remote;
+              setDataState(cleanRemote);
+              saveLocal(cleanRemote);
               setSource("supabase");
             } else if (local.length > 0) {
               // Nếu remote rỗng (do Supabase lỗi, timeout hoặc bảng trống): GIỮ NGUYÊN LOCAL DATA!
-              setDataState(local);
+              const cleanLocal = deletedSet.size > 0 ? local.filter((item: any) => !isItemDeleted(item, deletedSet)) : local;
+              setDataState(cleanLocal);
               setSource("local");
             }
           }
@@ -530,12 +577,43 @@ export function useSupabaseSync<T extends { id: string }>(
           if (item.id) deletedIds.push(item.id);
           if (item.dbId && item.dbId !== item.id) deletedIds.push(item.dbId);
         });
+
+        if (deletedIds.length > 0) {
+          try {
+            const rawDel = localStorage.getItem(`${localStorageKey}_deleted_ids`);
+            const delSet = new Set<string>(rawDel ? JSON.parse(rawDel) : []);
+            deletedIds.forEach(id => {
+              delSet.add(id);
+              delSet.add(id.toUpperCase());
+            });
+            localStorage.setItem(`${localStorageKey}_deleted_ids`, JSON.stringify(Array.from(delSet)));
+          } catch {}
+        }
         
         // Chỉ upsert những row mới hoặc bị thay đổi reference
         const rowsToUpsert = next.filter((row) => {
           const oldRow = prev.find((r) => r.id === row.id);
           return !oldRow || oldRow !== row;
         });
+
+        if (rowsToUpsert.length > 0) {
+          try {
+            const rawDel = localStorage.getItem(`${localStorageKey}_deleted_ids`);
+            if (rawDel) {
+              const delSet = new Set<string>(JSON.parse(rawDel));
+              let changed = false;
+              rowsToUpsert.forEach((r: any) => {
+                const id = r.id;
+                const idUpper = String(id || "").toUpperCase();
+                if (delSet.has(id)) { delSet.delete(id); changed = true; }
+                if (delSet.has(idUpper)) { delSet.delete(idUpper); changed = true; }
+              });
+              if (changed) {
+                localStorage.setItem(`${localStorageKey}_deleted_ids`, JSON.stringify(Array.from(delSet)));
+              }
+            }
+          } catch {}
+        }
 
         Promise.all([
           ...rowsToUpsert.map((row) => upsertRow(row)),

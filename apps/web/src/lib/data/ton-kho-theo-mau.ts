@@ -64,13 +64,30 @@ function damBaoChiTietSize(chiTiet: TonKhoTheoSize, soLuongThat: number, sizeDef
 }
 
 function getDeletedKhoIds(): Set<string> {
+  const set = new Set<string>();
   try {
     if (typeof window !== "undefined") {
       const raw = localStorage.getItem("mimin_kho_tp_deleted_ids");
-      if (raw) return new Set(JSON.parse(raw));
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) arr.forEach((x: any) => set.add(String(x || "").trim().toUpperCase()));
+      }
+      const rawDm = localStorage.getItem("mimin_danh_muc_deleted_ids");
+      if (rawDm) {
+        const arrDm = JSON.parse(rawDm);
+        if (Array.isArray(arrDm)) arrDm.forEach((x: any) => set.add(String(x || "").trim().toUpperCase()));
+      }
     }
   } catch {}
-  return new Set();
+  return set;
+}
+
+function isRowDeleted(r: any, deletedIds: Set<string>): boolean {
+  if (deletedIds.size === 0) return false;
+  const id = String(r.id || "").trim().toUpperCase();
+  const lsx = String(r.lsx || "").trim().toUpperCase();
+  const maSP = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
+  return (Boolean(id) && deletedIds.has(id)) || (Boolean(lsx) && deletedIds.has(lsx)) || (Boolean(maSP) && deletedIds.has(maSP));
 }
 
 function extractImage(r: any): string {
@@ -93,7 +110,7 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
   const remoteProductCodes = new Set<string>();
   if (rows && rows.length > 0) {
     for (const r of rows) {
-      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      if (isRowDeleted(r, deletedIds)) continue;
       const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
       if (rawMa) remoteProductCodes.add(rawMa);
       if (r.id) rowsMap.set(String(r.id), r);
@@ -101,7 +118,7 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
   }
   if (localKho && localKho.length > 0) {
     for (const r of localKho) {
-      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      if (isRowDeleted(r, deletedIds)) continue;
       const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
       if (rawMa && remoteProductCodes.has(rawMa)) continue; // Bỏ qua cache local nếu server đã có sản phẩm này
       if (r.id && !rowsMap.has(String(r.id))) rowsMap.set(String(r.id), r);
@@ -118,7 +135,7 @@ export async function layTonKhoTheoSanPham(): Promise<TonKhoTheoSanPham> {
 
   const result: TonKhoTheoSanPham = {};
   for (const r of effectiveRows) {
-    if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+    if (isRowDeleted(r, deletedIds)) continue;
     const rawMaSP = String(r.ma_sp || r.maSP || "").trim();
     if (!rawMaSP) continue;
     const maSPUpper = rawMaSP.toUpperCase();
@@ -155,7 +172,7 @@ export function layTonKhoTheoSanPhamSync(): TonKhoTheoSanPham {
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   const deletedIds = getDeletedKhoIds();
   const uniqueRows = (Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[])
-    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
+    .filter(r => !isRowDeleted(r, deletedIds));
 
   const result: TonKhoTheoSanPham = {};
   for (const r of uniqueRows) {
@@ -203,7 +220,7 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   const remoteProductCodes = new Set<string>();
   if (rows && rows.length > 0) {
     for (const r of rows) {
-      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      if (isRowDeleted(r, deletedIds)) continue;
       const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
       if (rawMa) remoteProductCodes.add(rawMa);
       if (r.id) rowsMap.set(String(r.id), r);
@@ -211,7 +228,7 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   }
   if (localKho && localKho.length > 0) {
     for (const r of localKho) {
-      if (r.id && (deletedIds.has(String(r.id)) || (r.lsx && deletedIds.has(String(r.lsx))))) continue;
+      if (isRowDeleted(r, deletedIds)) continue;
       const rawMa = String(r.ma_sp || r.maSP || "").trim().toUpperCase();
       if (rawMa && remoteProductCodes.has(rawMa)) continue; // Bỏ qua cache local nếu server đã có sản phẩm này
       if (r.id && !rowsMap.has(String(r.id))) rowsMap.set(String(r.id), r);
@@ -220,7 +237,7 @@ export async function layDanhMucKhoThanhPham(): Promise<DanhMucKhoThanhPham> {
   const effectiveRows = rowsMap.size > 0 ? Array.from(rowsMap.values()) : (rows && rows.length > 0 ? rows : localKho);
 
   const uniqueRows = Array.from(new Map(effectiveRows.map(r => [r.id, r])).values())
-    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
+    .filter(r => !isRowDeleted(r, deletedIds));
 
   const result: DanhMucKhoThanhPham = {};
   for (const r of uniqueRows) {
@@ -312,7 +329,7 @@ export function layDanhMucKhoThanhPhamSync(): DanhMucKhoThanhPham {
   const localKho = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("mimin_kho_thanh_pham_v2") || "[]") : [];
   const deletedIds = getDeletedKhoIds();
   const uniqueRows = (Array.from(new Map(localKho.map((r: any) => [r.id, r])).values()) as any[])
-    .filter(r => !deletedIds.has(String(r.id)) && (!r.lsx || !deletedIds.has(String(r.lsx))));
+    .filter(r => !isRowDeleted(r, deletedIds));
 
   const result: DanhMucKhoThanhPham = {};
   for (const r of uniqueRows) {
