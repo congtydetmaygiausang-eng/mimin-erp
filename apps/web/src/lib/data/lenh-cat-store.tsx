@@ -326,6 +326,7 @@ export type LenhCat = RecordAssignment & {
   trangThai: TrangThaiLenhCat;
   phienBanDinhMuc: number;
   ngayTao: string;
+  ngayBatDau?: string;
   nguoiTao?: string;
 };
 
@@ -461,8 +462,31 @@ const LenhCatContext = createContext<LenhCatStore | null>(null);
 
 const DUMMY_DATA: LenhCat[] = defaultOrdersData as unknown as LenhCat[];
 
+export const normalizeDateStr = (val: any): string => {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.slice(0, 10);
+  }
+  const parts = s.split("/");
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  try {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  } catch {}
+  return s;
+};
+
 const mapLenhCatFromDB = (item: any): LenhCat => {
   const tl = item.bang_cogs?.taiLieuSanXuat || item.bangCogs?.taiLieuSanXuat || item.bangCOGS?.taiLieuSanXuat || {};
+  const dateStr = normalizeDateStr(item.ngay_bat_dau || item.ngayBatDau || item.ngay_tao || item.ngayTao || item.created_at);
   return {
     id: item.id,
     loaiLenh: item.loai_lenh || item.loaiLenh,
@@ -474,7 +498,7 @@ const mapLenhCatFromDB = (item: any): LenhCat => {
     tongSLThucTe: item.tong_sl_thuc_te || item.tongSlThucTe || item.tongSLThucTe,
     tongSLThucTeAo: item.tong_sl_thuc_te_ao || item.tongSlThucTeAo || item.tongSLThucTeAo,
     tongSLThucTeQuan: item.tong_sl_thuc_te_quan || item.tongSlThucTeQuan || item.tongSLThucTeQuan,
-    hanHoanThanh: item.han_hoan_thanh || item.hanHoanThanh,
+    hanHoanThanh: normalizeDateStr(item.han_hoan_thanh || item.hanHoanThanh),
     tiLeSize: item.ti_le_size || item.tiLeSize,
     dsMau: item.ds_mau || item.dsMau || [],
     dsPhuLieu: item.ds_phu_lieu || item.dsPhuLieu || [],
@@ -489,7 +513,8 @@ const mapLenhCatFromDB = (item: any): LenhCat => {
     ghiChu: item.ghi_chu || item.ghiChu,
     trangThai: item.trang_thai || item.trangThai,
     phienBanDinhMuc: item.phien_ban_dinh_muc || item.phienBanDinhMuc,
-    ngayTao: item.ngay_tao || item.ngayTao,
+    ngayTao: dateStr,
+    ngayBatDau: dateStr,
     nguoiTao: item.nguoi_tao || item.nguoiTao,
 
     // Sơ đồ & tài liệu sản xuất (Lưu trong bang_cogs.taiLieuSanXuat để đồng bộ bền vững với Supabase)
@@ -887,8 +912,12 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
         phuTrachSoDo: lenh.phuTrachSoDo,
       }
     };
+    const dateStr = normalizeDateStr(lenh.ngayTao || (lenh as any).ngayBatDau) || new Date().toISOString().slice(0, 10);
     const fullLenh: LenhCat = {
       ...lenh,
+      hanHoanThanh: normalizeDateStr(lenh.hanHoanThanh),
+      ngayTao: dateStr,
+      ngayBatDau: dateStr,
       bangCOGS: cogsWithDocs,
     };
     setDsLenhCat((prev) => [fullLenh, ...prev]);
@@ -900,18 +929,20 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase!.from("lenh_cat").upsert({
       id: lenh.id, loai_lenh: lenh.loaiLenh, khach_hang: lenh.khachHang, loai_sp: lenh.loaiSP, ma_sp: lenh.maSP,
       ten_sp: lenh.tenSP, tong_sl: lenh.tongSL, tong_sl_thuc_te: lenh.tongSLThucTe,
-      han_hoan_thanh: lenh.hanHoanThanh, ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
+      han_hoan_thanh: normalizeDateStr(lenh.hanHoanThanh), ti_le_size: lenh.tiLeSize, ds_mau: lenh.dsMau, ds_phu_lieu: lenh.dsPhuLieu,
       mau_cong_doan: lenh.mauCongDoan, phan_cong: lenh.phanCong, mau_chi_phi: lenh.mauChiPhi,
       chi_phi_co_dinh: lenh.chiPhiCoDinh, bang_cogs: cogsWithDocs, phu_trach_cat: lenh.phuTrachCat,
       phu_trach_sx: lenh.phuTrachSX, ghi_chu: lenh.ghiChu, 
       trang_thai: lenh.trangThai,
-      phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: lenh.ngayTao, nguoi_tao: lenh.nguoiTao,
+      phien_ban_dinh_muc: lenh.phienBanDinhMuc, ngay_tao: dateStr, nguoi_tao: lenh.nguoiTao,
     });
     if (error) throw error;
   }, []);
 
   const suaLenhCat = useCallback(async (id: string, lenh: Partial<LenhCat>, u: AppUser) => {
     let currentItem: LenhCat | undefined;
+    const targetDate = lenh.ngayTao !== undefined ? normalizeDateStr(lenh.ngayTao) : ((lenh as any).ngayBatDau !== undefined ? normalizeDateStr((lenh as any).ngayBatDau) : undefined);
+    const targetHanHT = lenh.hanHoanThanh !== undefined ? normalizeDateStr(lenh.hanHoanThanh) : undefined;
     setDsLenhCat((prev) => {
       currentItem = prev.find((item) => item.id === id);
       const targetCogs = lenh.bangCOGS !== undefined ? lenh.bangCOGS : currentItem?.bangCOGS;
@@ -943,6 +974,8 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       return prev.map((item) => item.id === id ? { 
         ...item, 
         ...lenh,
+        ...(targetDate !== undefined ? { ngayTao: targetDate, ngayBatDau: targetDate } : {}),
+        ...(targetHanHT !== undefined ? { hanHoanThanh: targetHanHT } : {}),
         bangCOGS: {
           ...existingCogsObj,
           taiLieuSanXuat: updatedTaiLieu,
@@ -961,7 +994,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.tenSP !== undefined)             updateData.ten_sp = lenh.tenSP;
       if (lenh.tongSL !== undefined)            updateData.tong_sl = lenh.tongSL;
       if (lenh.tongSLThucTe !== undefined)      updateData.tong_sl_thuc_te = lenh.tongSLThucTe;
-      if (lenh.hanHoanThanh !== undefined)      updateData.han_hoan_thanh = lenh.hanHoanThanh;
+      if (targetHanHT !== undefined)            updateData.han_hoan_thanh = targetHanHT;
       if (lenh.tiLeSize !== undefined)          updateData.ti_le_size = lenh.tiLeSize;
       if (lenh.dsMau !== undefined)             updateData.ds_mau = lenh.dsMau;
       if (lenh.dsPhuLieu !== undefined)         updateData.ds_phu_lieu = lenh.dsPhuLieu;
@@ -973,7 +1006,7 @@ export function LenhCatProvider({ children }: { children: ReactNode }) {
       if (lenh.ghiChu !== undefined)            updateData.ghi_chu = lenh.ghiChu;
       if (lenh.trangThai !== undefined)         updateData.trang_thai = lenh.trangThai;
       if (lenh.phienBanDinhMuc !== undefined)   updateData.phien_ban_dinh_muc = lenh.phienBanDinhMuc;
-      if (lenh.ngayTao !== undefined)           updateData.ngay_tao = lenh.ngayTao;
+      if (targetDate !== undefined)             updateData.ngay_tao = targetDate;
 
       // Đóng gói tài liệu sản xuất & sơ đồ vào bang_cogs (JSONB)
       const targetCogs = lenh.bangCOGS !== undefined ? lenh.bangCOGS : currentItem?.bangCOGS;

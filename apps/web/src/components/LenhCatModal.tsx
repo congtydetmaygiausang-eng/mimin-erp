@@ -52,6 +52,28 @@ function formatValue(value: string | number) {
   return value.toLocaleString("vi-VN");
 }
 
+function formatDateForInput(val?: any): string {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.slice(0, 10);
+  }
+  const parts = s.split("/");
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  try {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  } catch {}
+  return s;
+}
+
 function SearchableSelectKhachHang({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: any[]; placeholder: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -687,8 +709,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         setTenSP(editing.tenSP);
         setTongSL(editing.tongSL);
         setTongSLThucTe(editing.tongSLThucTe || "");
-        if (editing.ngayTao) setNgayBatDau(editing.ngayTao);
-        setHanHoanThanh(editing.hanHoanThanh);
+        const rawNgayBD = (editing as any).ngayBatDau || editing.ngayTao || (editing as any).created_at;
+        setNgayBatDau(formatDateForInput(rawNgayBD) || new Date().toISOString().slice(0, 10));
+        setHanHoanThanh(formatDateForInput(editing.hanHoanThanh));
         setPhuTrachCat(editing.phuTrachCat || "");
         setPhuTrachSX(editing.phuTrachSX || "");
         setPhuTrachSoDo(editing.phuTrachSoDo || "");
@@ -1454,9 +1477,10 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
             if (parsed.tenSP) setTenSP(parsed.tenSP);
             if (parsed.tongSL) setTongSL(parsed.tongSL);
             if (parsed.tongSLThucTe) setTongSLThucTe(parsed.tongSLThucTe);
-            if (parsed.ngayBatDau) setNgayBatDau(parsed.ngayBatDau);
+            const rawDraftBD = parsed.ngayBatDau || parsed.ngayTao;
+            if (rawDraftBD) setNgayBatDau(formatDateForInput(rawDraftBD));
             if (parsed.sdtLienHe) setSdtLienHe(parsed.sdtLienHe);
-            if (parsed.hanHoanThanh) setHanHoanThanh(parsed.hanHoanThanh);
+            if (parsed.hanHoanThanh) setHanHoanThanh(formatDateForInput(parsed.hanHoanThanh));
             if (parsed.phuTrachCat) setPhuTrachCat(parsed.phuTrachCat);
             if (parsed.phuTrachSX) setPhuTrachSX(parsed.phuTrachSX);
             if (parsed.phuTrachSoDo) setPhuTrachSoDo(parsed.phuTrachSoDo);
@@ -1529,7 +1553,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     if (!editId && draftLoaded) {
       localStorage.setItem("lenhCatDraft", JSON.stringify({
         loaiLenh, khachHang, loaiSP, maSP, tenSP, tongSL, tongSLThucTe,
-        ngayBatDau, sdtLienHe, hanHoanThanh, phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat,
+        ngayBatDau: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
+        ngayTao: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
+        sdtLienHe, hanHoanThanh: formatDateForInput(hanHoanThanh), phuTrachCat, phuTrachSX, phuTrachSoDo, ghiChu, ghiChuKyThuat,
         tiLeSize, selectedPresetId, soMau, dsMau, dsPhuLieu, mauCongDoan, phanCong, chiPhiCoDinh,
         loaiSoDoPhoi,
         daiSoDoAo, soDoAo: JSON.stringify({ file: soDoAo, image: hinhAnhSoDoAo }), daiSoDoQuan, soDoQuan: JSON.stringify({ file: soDoQuan, image: hinhAnhSoDoQuan }),
@@ -1724,8 +1750,9 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
     tongSL: Number(tongSL || 0),
     tongSLThucTe: tongSLThucTe !== "" ? Number(tongSLThucTe) : undefined,
     tiLeSize,
-    hanHoanThanh,
-    ngayTao: ngayBatDau || editing?.ngayTao || new Date().toISOString(),
+    hanHoanThanh: formatDateForInput(hanHoanThanh),
+    ngayTao: formatDateForInput(ngayBatDau) || formatDateForInput(editing?.ngayTao) || new Date().toISOString().slice(0, 10),
+    ngayBatDau: formatDateForInput(ngayBatDau) || formatDateForInput(editing?.ngayTao) || new Date().toISOString().slice(0, 10),
     phuTrachCat: nguoiPhuTrachCat || editing?.phuTrachCat,
     phuTrachSX: nhanVienOptions.find(n => n.ma === phuTrachSX)?.ten || phuTrachSX,
     ghiChuKyThuat,
@@ -1859,7 +1886,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         tenSP,
         tongSL: Number(tongSL) || 0,
         tongSLThucTe: Number(tongSLThucTe) || undefined,
-        hanHoanThanh,
+        hanHoanThanh: formatDateForInput(hanHoanThanh),
         tiLeSize,
         dsMau: finalDsMau,
         dsPhuLieu,
@@ -1875,7 +1902,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         trangThai: (editing && status === "Nhap" && editing.trangThai && editing.trangThai !== "Nhap")
           ? editing.trangThai
           : status,
-        ngayTao: ngayBatDau,
+        ngayTao: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
+        ngayBatDau: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
         loaiSoDoPhoi,
         daiSoDoAo,
         soDoAo: JSON.stringify({ file: soDoAo, image: hinhAnhSoDoAo }),
@@ -1926,7 +1954,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         tenSP,
         tongSL: Number(tongSL) || 0,
         tongSLThucTe: Number(tongSLThucTe) || undefined,
-        hanHoanThanh,
+        hanHoanThanh: formatDateForInput(hanHoanThanh),
         tiLeSize,
         dsMau: finalDsMau,
         dsPhuLieu,
@@ -1941,7 +1969,8 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
         ghiChuKyThuat,
         trangThai: status,
         phienBanDinhMuc: 1,
-        ngayTao: ngayBatDau,
+        ngayTao: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
+        ngayBatDau: formatDateForInput(ngayBatDau) || new Date().toISOString().slice(0, 10),
         loaiSoDoPhoi,
         daiSoDoAo,
         soDoAo: JSON.stringify({ file: soDoAo, image: hinhAnhSoDoAo }),
@@ -2378,7 +2407,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                   <input 
                     type="date" 
                     className="w-full px-3 py-2 text-sm font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E]" 
-                    value={ngayBatDau} 
+                    value={formatDateForInput(ngayBatDau)} 
                     onChange={e => setNgayBatDau(e.target.value)} 
                   />
                 </div>
@@ -2387,7 +2416,7 @@ export function LenhCatModal({ isOpen, onClose, editId, initialSP }: { isOpen: b
                   <input 
                     type="date" 
                     className="w-full px-3 py-2 text-sm font-medium border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2B4C3E]" 
-                    value={hanHoanThanh} 
+                    value={formatDateForInput(hanHoanThanh)} 
                     onChange={e => setHanHoanThanh(e.target.value)} 
                   />
                 </div>
