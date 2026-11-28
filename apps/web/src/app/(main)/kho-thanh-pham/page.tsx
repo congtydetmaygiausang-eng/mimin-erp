@@ -1441,7 +1441,7 @@ export default function KhoThanhPhamPage() {
 
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden animate-fade-in">
-      <div className="max-w-7xl mx-auto space-y-4">
+      <div className="w-full max-w-[1800px] mx-auto px-2 sm:px-4 md:px-6 space-y-4">
         {/* Header Banner cao cấp & Thống kê KPI */}
         <StatsHeader
           stats={{

@@ -117,7 +117,7 @@ export function StatsHeader({ stats, onThemSP, onTiLeSize, onExportCSV, onAutoSy
       {/* Bottom row: 4 Thẻ KPI Thống Kê Tổng Quan (Chuẩn thẻ mờ kính như Kho Phụ Liệu) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-5 relative z-10">
         {/* KPI 1: Tổng tồn kho SP */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <Package className="w-4 h-4 text-teal-200" /> Tổng tồn kho
@@ -126,17 +126,17 @@ export function StatsHeader({ stats, onThemSP, onTiLeSize, onExportCSV, onAutoSy
               Thành phẩm
             </span>
           </div>
-          <div className="text-2xl font-black text-white mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-white mt-2 tabular-nums">
             {(isNaN(Number(stats.tongSP)) || Number(stats.tongSP) < 0 ? 0 : Number(stats.tongSP)).toLocaleString("vi-VN")}{" "}
             <span className="text-sm font-semibold text-teal-100/90">SP</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1 flex items-center gap-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal flex items-center gap-1">
             <span>{stats.conHang} lô đang còn hàng</span>
           </div>
         </div>
 
         {/* KPI 2: Tổng giá trị tồn */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-emerald-300" /> Tổng giá trị tồn
@@ -145,16 +145,16 @@ export function StatsHeader({ stats, onThemSP, onTiLeSize, onExportCSV, onAutoSy
               Giá trị kho
             </span>
           </div>
-          <div className="text-2xl font-black text-emerald-200 mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-emerald-200 mt-2 tabular-nums">
             {gt.num} <span className="text-sm font-semibold text-emerald-300">{gt.unit}</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal">
             Theo đơn giá xuất nhập kho
           </div>
         </div>
 
         {/* KPI 3: Số mẫu mã / SP */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-cyan-300" /> Mẫu mã / Biến thể
@@ -163,16 +163,16 @@ export function StatsHeader({ stats, onThemSP, onTiLeSize, onExportCSV, onAutoSy
               Biến thể
             </span>
           </div>
-          <div className="text-2xl font-black text-cyan-200 mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-cyan-200 mt-2 tabular-nums">
             {stats.soLoai} <span className="text-sm font-semibold text-cyan-300">mã SP</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal">
             {stats.countManPJ ?? 0} ManPJ · {stats.countPolo ?? 0} Polomimin
           </div>
         </div>
 
         {/* KPI 4: Tình trạng tồn kho */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-amber-300" /> Cảnh báo tồn kho
@@ -181,12 +181,12 @@ export function StatsHeader({ stats, onThemSP, onTiLeSize, onExportCSV, onAutoSy
               Tồn kho
             </span>
           </div>
-          <div className="text-2xl font-black text-white mt-2 tabular-nums flex items-center gap-1.5">
+          <div className="text-2xl lg:text-3xl font-black text-white mt-2 tabular-nums flex items-center gap-1.5">
             <span className="text-emerald-300">{stats.conHang} còn</span>
             <span className="text-white/50">·</span>
             <span className="text-rose-300">{stats.daDat} xuất</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal">
             Kiểm soát số lượng theo size & màu
           </div>
         </div>

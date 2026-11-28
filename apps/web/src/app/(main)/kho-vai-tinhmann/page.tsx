@@ -447,7 +447,7 @@ export default function KhoVaiPage() {
 
   return (
     <div className="space-y-5 animate-fade-in w-full max-w-full pb-10">
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="w-full max-w-[1800px] mx-auto px-2 sm:px-4 md:px-6 space-y-5">
         {/* ============ HEADER TỔNG QUAN KHO VẢI THÀNH PHẨM (PREMIUM HEADER) ============ */}
         <div className="bg-gradient-to-r from-teal-800 via-teal-700 to-cyan-800 rounded-3xl p-5 md:p-6 text-white shadow-lg border border-teal-600/30">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -491,59 +491,86 @@ export default function KhoVaiPage() {
             </div>
           </div>
 
-          {/* 4 THẺ KPI TỔNG QUAN */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+                    {/* 4 THẺ KPI TỔNG QUAN */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-5">
             {/* Card 1: Tổng tồn kho */}
-            <div className="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 border border-white/15">
-              <div className="text-xs font-semibold text-teal-200 flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5" /> Tổng Tồn Kho Vải
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 transition backdrop-blur-md border border-white/15 min-h-[125px] flex flex-col justify-between shadow-sm">
+              <div className="text-xs font-semibold text-teal-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-teal-300" /> Tổng Tồn Kho Vải
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-500/20 text-teal-200 border border-teal-400/30">
+                  Kho vải
+                </span>
               </div>
-              <div className="text-xl md:text-2xl font-black mt-1 font-mono">
-                {(totalTonKho / 1000).toFixed(1)} <span className="text-sm font-semibold">tấn</span>
+              <div className="flex items-baseline gap-1.5 mt-2 font-mono">
+                <span className="text-2xl lg:text-3xl font-black text-white">
+                  {(totalTonKho / 1000).toFixed(1)}
+                </span>
+                <span className="text-xs font-bold text-teal-200 uppercase">tấn</span>
               </div>
-              <div className="text-[11px] text-teal-100/80 font-medium mt-0.5">
+              <div className="text-xs text-teal-100/85 font-medium mt-1 leading-normal">
                 {totalTonKho.toLocaleString()} kg · ≈ {(totalTonKho / 20).toFixed(0)} cây vải
               </div>
             </div>
 
             {/* Card 2: Giá trị tồn */}
-            <div className="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 border border-white/15">
-              <div className="text-xs font-semibold text-teal-200 flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5" /> Tổng Giá Trị Tồn Kho
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 transition backdrop-blur-md border border-white/15 min-h-[125px] flex flex-col justify-between shadow-sm">
+              <div className="text-xs font-semibold text-teal-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-emerald-300" /> Tổng Giá Trị Tồn Kho
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
+                  Giá trị kho
+                </span>
               </div>
-              <div className="text-xl md:text-2xl font-black mt-1 font-mono">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black mt-2 font-mono text-emerald-200 truncate" title={formatVND(totalDonGia)}>
                 {formatVND(totalDonGia)}
               </div>
-              <div className="text-[11px] text-teal-100/80 font-medium mt-0.5">
-                Đơn giá quy đổi chuẩn 3 khâu
+              <div className="text-xs text-teal-100/85 font-medium mt-1 leading-normal">
+                Đơn giá quy đổi chuẩn 3 khâu Sợi - Dệt - Nhuộm
               </div>
             </div>
 
             {/* Card 3: Phân loại thương hiệu */}
-            <div className="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 border border-white/15">
-              <div className="text-xs font-semibold text-teal-200 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" /> Phân Loại Thương Hiệu
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 transition backdrop-blur-md border border-white/15 min-h-[125px] flex flex-col justify-between shadow-sm">
+              <div className="text-xs font-semibold text-teal-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-cyan-300" /> Phân Loại Thương Hiệu
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/20 text-cyan-200 border border-cyan-400/30">
+                  Thương hiệu
+                </span>
               </div>
-              <div className="text-xl md:text-2xl font-black mt-1 flex items-center gap-2">
-                <span className="text-indigo-200 font-mono">{thuongHieuCounts.manpj}</span>
-                <span className="text-xs opacity-60">/</span>
-                <span className="text-emerald-200 font-mono">{thuongHieuCounts.polomimin}</span>
+              <div className="flex items-baseline gap-2 mt-2 font-mono">
+                <span className="text-2xl lg:text-3xl font-black text-indigo-200">{thuongHieuCounts.manpj}</span>
+                <span className="text-sm opacity-60">/</span>
+                <span className="text-2xl lg:text-3xl font-black text-emerald-200">{thuongHieuCounts.polomimin}</span>
+                <span className="text-xs font-semibold text-teal-100/80 ml-1">loại vải</span>
               </div>
-              <div className="text-[11px] text-teal-100/80 font-medium mt-0.5">
+              <div className="text-xs text-teal-100/85 font-medium mt-1 leading-normal">
                 👔 {thuongHieuCounts.manpj} ManPJ · 👕 {thuongHieuCounts.polomimin} Polomimin
               </div>
             </div>
 
             {/* Card 4: Tình trạng tồn */}
-            <div className="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 border border-white/15">
-              <div className="text-xs font-semibold text-teal-200 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5" /> Cảnh Báo Tồn Kho
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 transition backdrop-blur-md border border-white/15 min-h-[125px] flex flex-col justify-between shadow-sm">
+              <div className="text-xs font-semibold text-teal-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-300" /> Cảnh Báo Tồn Kho
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30">
+                  Cảnh báo
+                </span>
               </div>
-              <div className="text-xl md:text-2xl font-black mt-1 font-mono text-amber-200">
-                {stockStats.sapHet + stockStats.hetHang} <span className="text-xs font-semibold text-white">loại</span>
+              <div className="flex items-baseline gap-1.5 mt-2 font-mono text-amber-200">
+                <span className="text-2xl lg:text-3xl font-black">
+                  {stockStats.sapHet + stockStats.hetHang}
+                </span>
+                <span className="text-xs font-bold text-white">loại vải</span>
               </div>
-              <div className="text-[11px] text-teal-100/80 font-medium mt-0.5">
-                {stockStats.sapHet > 0 ? `${stockStats.sapHet} sắp hết (<100kg)` : "Không có sắp hết"} · {stockStats.hetHang} hết hàng
+              <div className="text-xs text-teal-100/85 font-medium mt-1 leading-normal">
+                {stockStats.sapHet > 0 ? (stockStats.sapHet + " sắp hết (<100kg)") : "Không có sắp hết"} · {stockStats.hetHang} hết hàng
               </div>
             </div>
           </div>

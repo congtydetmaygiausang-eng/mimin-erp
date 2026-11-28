@@ -114,7 +114,7 @@ export function Header({
       {/* 4 Thẻ KPI động */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-5 relative z-10">
         {/* KPI 1: Tổng tồn kho */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <Package className="w-4 h-4 text-teal-200" /> Tổng mã phụ liệu
@@ -123,16 +123,16 @@ export function Header({
               Đang quản lý
             </span>
           </div>
-          <div className="text-2xl font-black text-white mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-white mt-2 tabular-nums">
             {inventoryCount} <span className="text-sm font-semibold text-teal-100/90">mã VT</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1 flex items-center gap-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal flex items-center gap-1">
             <span>Sẵn sàng cấp cho xưởng sản xuất</span>
           </div>
         </div>
 
         {/* KPI 2: Tổng giá trị tồn */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-emerald-300" /> Tổng giá trị tồn
@@ -141,16 +141,16 @@ export function Header({
               Giá trị kho
             </span>
           </div>
-          <div className="text-2xl font-black text-emerald-200 mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-emerald-200 mt-2 tabular-nums">
             {gt.num} <span className="text-sm font-semibold text-emerald-300">{gt.unit}</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal">
             {formatVND(tongGiaTri)}
           </div>
         </div>
 
         {/* KPI 3: Tổng nhập luỹ kế */}
-        <div className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-md transition-all shadow-sm min-h-[125px] flex flex-col justify-between">
           <div className="flex items-center justify-between text-teal-200 text-xs">
             <span className="font-semibold flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-cyan-300" /> Tổng nhập từ NCC
@@ -159,10 +159,10 @@ export function Header({
               Luỹ kế
             </span>
           </div>
-          <div className="text-2xl font-black text-cyan-200 mt-2 tabular-nums">
+          <div className="text-2xl lg:text-3xl font-black text-cyan-200 mt-2 tabular-nums">
             {tn.num} <span className="text-sm font-semibold text-cyan-300">{tn.unit}</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1">
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal">
             {formatVND(tongNhap)}
           </div>
         </div>
@@ -189,7 +189,7 @@ export function Header({
           <div className={`text-2xl font-black mt-2 tabular-nums ${dsCanhBao.length > 0 ? "text-rose-200" : "text-white"}`}>
             {dsCanhBao.length} <span className="text-sm font-semibold opacity-80">mã</span>
           </div>
-          <div className="text-[11px] text-teal-100/80 mt-1 truncate" title={dsCanhBaoDetails}>
+          <div className="text-xs text-teal-100/85 mt-1 leading-normal truncate" title={dsCanhBaoDetails}>
             {dsCanhBao.length > 0 ? dsCanhBaoDetails : "Tất cả phụ liệu đều trên mức tối thiểu"}
           </div>
         </div>
